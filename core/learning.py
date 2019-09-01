@@ -1,4 +1,6 @@
 from core.dynamics import AffineDynamics, ScalarDynamics
+from numpy import array, arange, dot, zeros, reshape
+from scipy.linalg import solve
 
 def differentiate(xs, ts, L=3):
     half_L = (L - 1) // 2
