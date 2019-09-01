@@ -6,10 +6,10 @@ class BasisFunctions():
     Override construct_basis
     """
 
-    def __init__(self, n, Nlift, Lambda=None):
+    def __init__(self, n, Nlift):
         self.n = n
         self.Nlift = Nlift
-        self.Lambda = Lambda
+        self.Lambda = None
         self.basis = None
 
     def lift(self, q):
