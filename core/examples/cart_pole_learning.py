@@ -83,14 +83,14 @@ subplot(2, 1, 2)
 plot(t_eval[:-1], us[2][:,0], label='$u$')
 legend(fontsize=12)
 grid()
-#show()  # TODO: Create plot of all collected trajectories (subplot with one plot for each state), not mission critical
+show()  # TODO: Create plot of all collected trajectories (subplot with one plot for each state), not mission critical
 
 # Construct basis of Koopman eigenfunctions
-A_cl = A_nom - dot(B_nom,concatenate((K_p, K_d),axis=1))
-eigenfunction_basis = KoopmanEigenfunctions(n=n, max_power=3, A_cl=A_cl)
-eigenfunction_basis.build_diffeomorphism_model()
-eigenfunction_basis.fit_diffeomorphism_model(X=xs, t=t_eval, X_d=q_d)
-eigenfunction_basis.construct_basis(ub=upper_bounds, lb=lower_bounds)
+# A_cl = A_nom - dot(B_nom,concatenate((K_p, K_d),axis=1))
+# eigenfunction_basis = KoopmanEigenfunctions(n=n, max_power=3, A_cl=A_cl)
+# eigenfunction_basis.build_diffeomorphism_model()
+# eigenfunction_basis.fit_diffeomorphism_model(X=xs, t=t_eval, X_d=q_d)
+# eigenfunction_basis.construct_basis(ub=upper_bounds, lb=lower_bounds)
 
 
 

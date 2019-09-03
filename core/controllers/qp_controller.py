@@ -11,6 +11,7 @@ class QPController(Controller):
     QPs are solved using cvxpy.
     """
 
+
     def __init__(self, affine_dynamics, m):
         """Create a QPController object.
 
