@@ -5,7 +5,9 @@ from .linearizable_dynamics import LinearizableDynamics
 from .system_dynamics import SystemDynamics
 
 class LinearSystemDynamics(SystemDynamics, AffineDynamics, LinearizableDynamics):
-    """Class for linear dynamics of the form x_dot = A * x + B * u."""
+    """
+    Class for linear dynamics of the form x_dot = A * x + B * u.
+    """
 
     def __init__(self, A, B):
         """Create a LinearSystemDynamics object.
