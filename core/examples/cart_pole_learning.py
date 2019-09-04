@@ -87,10 +87,11 @@ grid()
 
 # Construct basis of Koopman eigenfunctions
 A_cl = A_nom - dot(B_nom,concatenate((K_p, K_d),axis=1))
-eigenfunction_basis = KoopmanEigenfunctions(n=n, max_power=3, A_cl=A_cl)
-eigenfunction_basis.build_diffeomorphism_model()
+BK = dot(B_nom,concatenate((K_p, K_d),axis=1))
+eigenfunction_basis = KoopmanEigenfunctions(n=n, max_power=3, A_cl=A_cl, BK=BK)
+eigenfunction_basis.build_diffeomorphism_model(l1=0.0001, l2=1.)
 eigenfunction_basis.fit_diffeomorphism_model(X=xs, t=t_eval, X_d=q_d)
 eigenfunction_basis.construct_basis(ub=upper_bounds, lb=lower_bounds)
-
+eigenfunction_basis.plot_eigenfunction_evolution(xs[-1], t_eval)
 
 

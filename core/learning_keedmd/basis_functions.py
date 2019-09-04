@@ -12,8 +12,8 @@ class BasisFunctions():
         self.Lambda = None
         self.basis = None
 
-    def lift(self, q):
-        return self.basis(x)
+    def lift(self, q, t):
+        return self.basis(q, t)
 
     def construct_basis(self, ub=None, lb=None):
         pass

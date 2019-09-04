@@ -23,6 +23,8 @@ class LinearSystemDynamics(SystemDynamics, AffineDynamics, LinearizableDynamics)
         self.B = B
 
     def drift(self, x, t):
+        if len(x.shape) == 1:
+            x = x.reshape((x.shape[0],1))
         return dot(self.A, x)
 
     def act(self, x, t):
