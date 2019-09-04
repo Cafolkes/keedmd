@@ -72,7 +72,7 @@ plotMPC = True
 # Simulate system from each initial condition
 outputs = [CartPoleTrajectory(system_true, q_d[:,i,:],t_d) for i in range(Ntraj)]
 pd_controllers = [PDController(outputs[i], K_p, K_d) for i in range(Ntraj)]
-MPC_controllers = [MPCController( affine_dynamics=nominal_model, 
+MPC_controllers = MPCController( affine_dynamics=nominal_model, 
                                    Ac=A_nom, 
                                    Bc=B_nom, 
                                    dt=dt, 
@@ -83,16 +83,16 @@ MPC_controllers = [MPCController( affine_dynamics=nominal_model,
                                    Q=Q, 
                                    R=R, 
                                    QN=QN, 
-                                   x0=q_d[:,i,0], 
-                                   xr=q_d[:,i,:],
+                                   x0=q_d[:,2,0], 
+                                   xr=q_d[:,2,:],
                                    teval=t_eval,
-                                   plotMPC=plotMPC) for i in range(Ntraj)]
+                                   plotMPC=plotMPC) #for i in range(Ntraj)]
 
 xs, us = [], []
 #for ii in range(3):
 ii=2
 x_0 = q_d[:,ii,0]
-xs_tmp, us_tmp = system_true.simulate(x_0, MPC_controllers[ii], t_eval)
+xs_tmp, us_tmp = system_true.simulate(x_0, MPC_controllers, t_eval)
 xs.append(xs_tmp)
 us.append(us_tmp)
 

@@ -1,12 +1,14 @@
 
+import scipy
 
-class BasisFunctions():
-    """Abstract class for basis functions that can be used to "lift" the state values.
-    
-    Override construct_basis
+from .basis_functions import BasisFunctions
+
+class RBF(BasisFunctions):
+    """
+    Implements Radial Basis Functions (RBD) as a basis function
     """
 
-    def __init__(self, n, Nlift):
+    def __init__(self, nodes, type='thin_plate'):
         """
         Parameters
         ----------
@@ -16,9 +18,9 @@ class BasisFunctions():
             Number of lifing functions
         """
         self.n = n
-        self.Nlift = Nlift
+        self.Nlift = 
         self.Lambda = None
-        self.basis = None
+        self.basis = scipy.interpolate.Rbf(nodes,type)
 
     def lift(self, q):
         """
@@ -33,7 +35,7 @@ class BasisFunctions():
         -------
         basis applied to q
         """
-        return self.basis(x)
+        return self.basis(q)
 
-    def construct_basis(self, ub=None, lb=None):
+    def construct_basis(self):
         pass
