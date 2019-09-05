@@ -3,14 +3,14 @@
 from os import path
 import sys
 from matplotlib.pyplot import figure, grid, legend, plot, show, subplot, suptitle, title
-from numpy import arange, array, concatenate, cos, identity, linspace, ones, sin, tanh, tile, zeros, pi, random, interp, dot
+from numpy import arange, array, concatenate, cos, identity, linspace, ones, sin, tanh, tile, zeros, pi, random, interp, dot, multiply
 #from numpy.random import uniform
 from scipy.io import loadmat, savemat
 from sys import argv
 from core.systems import CartPole
 from core.dynamics import LinearSystemDynamics
 from core.controllers import PDController
-from core.learning_keedmd import KoopmanEigenfunctions, RBF_basis_functions, Edmd, Keedmd
+from core.learning_keedmd import KoopmanEigenfunctions, RBF, Edmd, Keedmd
 
 
 class CartPoleTrajectory(CartPole):
@@ -50,7 +50,7 @@ nominal_model = LinearSystemDynamics(A=A_nom, B=B_nom)
 
 # Simulation parameters
 dt = 1.0e-2  # Time step
-N = t_d[0,-1]/dt  # Number of time steps
+N = 2./dt  # Number of time steps
 t_eval = dt * arange(N + 1) # Simulation time points
 noise_var = 0.25  # Exploration noise to perturb controller
 
@@ -123,7 +123,6 @@ grid()
 # Construct basis of Koopman eigenfunctions for KEEDMD:
 A_cl = A_nom - dot(B_nom,concatenate((K_p, K_d),axis=1))
 BK = dot(B_nom,concatenate((K_p, K_d),axis=1))
-
 eigenfunction_basis = KoopmanEigenfunctions(n=n, max_power=eigenfunction_max_power, A_cl=A_cl, BK=BK)
 eigenfunction_basis.build_diffeomorphism_model(n_hidden_layers = diff_n_hidden_layers, layer_width=diff_layer_width,
                                                l2=l2_diffeomorphism, batch_size = diff_batch_size)
@@ -134,14 +133,15 @@ else:
                                                  learning_decay=diff_learn_rate_decay, n_epochs=diff_n_epochs, train_frac=diff_train_frac)
     eigenfunction_basis.save_diffeomorphism_model(diffeomorphism_model_file)
 eigenfunction_basis.construct_basis(ub=upper_bounds, lb=lower_bounds)
-eigenfunction_basis.plot_eigenfunction_evolution(xs[-1], t_eval)
+#eigenfunction_basis.plot_eigenfunction_evolution(xs[-1], t_eval)
 
 # Fit KEEDMD model:
 keedmd_model = Keedmd(eigenfunction_basis, n, l1=l1_keedmd, l2=l2_keedmd)
 keedmd_model.fit(xs, us, us_nom, ts)
 
 # Construct basis of RBFs for EDMD:
-rbf_basis = RBF_basis_functions(rbf_centers, n)
+rbf_centers = multiply(random.rand(n_lift_edmd, n),(upper_bounds-lower_bounds))+lower_bounds
+rbf_basis = RBF(rbf_centers, n)
 
 # Fit EDMD model
 edmd_model = Edmd(sq_basis, n, l1=l1_edmd, l2=l2_edmd)

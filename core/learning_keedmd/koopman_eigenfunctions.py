@@ -83,7 +83,7 @@ class KoopmanEigenfunctions(BasisFunctions):
 
         self.diffeomorphism_model = self.diffeomorphism_model.double()
 
-    def fit_diffeomorphism_model(self, X, t, X_d, learning_rate=1e-2, n_epochs=50, train_frac=0.8, l2=1e1):
+    def fit_diffeomorphism_model(self, X, t, X_d, learning_rate=1e-2, learning_decay=0.95, n_epochs=50, train_frac=0.8, l2=1e1):
         X, X_dot, X_d, t = self.process(X=X, t=t, X_d=X_d)
         y_target = X_dot - dot(self.A_cl, X.transpose()).transpose() - dot(self.BK, X_d.transpose()).transpose()
         y_fit = npconcatenate((y_target, zeros(y_target.shape)), axis=1)
@@ -117,7 +117,7 @@ class KoopmanEigenfunctions(BasisFunctions):
 
         # Set up optimizer and learning rate scheduler:
         optimizer = optim.Adam(self.diffeomorphism_model.parameters(),lr=learning_rate,weight_decay=l2)
-        lambda1 = lambda epoch: 0.95 ** epoch
+        lambda1 = lambda epoch: learning_decay ** epoch
         scheduler = optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda1)
         self.A_cl = from_numpy(self.A_cl)
 
