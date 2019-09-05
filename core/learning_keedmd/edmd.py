@@ -23,7 +23,6 @@ class Edmd():
 
     def fit(self, X, U, U_nom, t):
         X, Z, Z_dot, U, U_nom, t = self.process(X, U, U_nom, t)
-
         if self.l1 == 0. and self.l2 == 0.:
             # Construct EDMD matrices as described in M. Korda, I. Mezic, "Linear predictors for nonlinear dynamical systems: Koopman operator meets model predictive control":
             W = concatenate((Z_dot, X), axis=0)
@@ -67,7 +66,6 @@ class Edmd():
 
         Ntraj = X_filtered.shape[0]  # Number of trajectories in dataset
         Z = array([self.lift(X_filtered[ii,:,:].transpose(), t_filtered[ii,:]) for ii in range(Ntraj)])  # Lift x
-        Z = concatenate((X_filtered,Z), axis=2)  # Add state to beginning of lifted state
         Z_dot = array([differentiate(Z[ii,:,:],t_filtered[ii,:]) for ii in range(Ntraj)])  #Numerical differentiate lifted state
 
         # Align data with numerical differentiated data because ends of trajectories "lost" in numerical differentiation
@@ -103,7 +101,8 @@ class Edmd():
         return X_filtered, U_filtered, U_nom_filtered, t_filtered
 
     def lift(self, X, t):
-        return self.basis.lift(X, t)
+        Z = self.basis.lift(X, t)
+        return concatenate((X.transpose(),Z),axis=1)
 
     def predict(self,X, U):
         return dot(self.C, dot(self.A,X) + dot(self.B, U))

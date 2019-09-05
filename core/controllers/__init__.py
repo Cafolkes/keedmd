@@ -8,3 +8,4 @@ from .pd_controller import PDController
 from .qp_controller import QPController
 from .mpc_controller import MPCController
 from .random_controller import RandomController
+from .openloop_controller import OpenLoopController
