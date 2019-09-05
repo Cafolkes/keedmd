@@ -1,5 +1,6 @@
 from core.learning import differentiate
 from sklearn import linear_model
+from scipy.linalg import expm
 from numpy import array, concatenate, zeros, dot, linalg, eye
 
 class Edmd():
@@ -107,6 +108,11 @@ class Edmd():
     def predict(self,X, U):
         return dot(self.C, dot(self.A,X) + dot(self.B, U))
 
-    def discretize(self):
-        #TODO: Implement same as Daniel has done for discretization.
-        pass
+    def discretize(self,dt):
+        '''
+        Discretizes continous dynamics
+        '''
+        self.dt = dt
+        self.Bd = self.B*dt
+        self.Ad = expm(self.A*self.dt)
+        
