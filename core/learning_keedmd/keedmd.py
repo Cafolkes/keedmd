@@ -4,10 +4,14 @@ from numpy import array, concatenate, zeros, dot, linalg, eye, diag
 
 
 class Keedmd(Edmd):
-    def __init__(self, basis, system_dim, l1=0., l2=0., acceleration_bounds=None, override_C=True):
+    def __init__(self, basis, system_dim, l1=0., l2=0., acceleration_bounds=None, override_C=True, K_p = None, K_d = None):
         super().__init__(basis, system_dim, l1=l1, l2=l2, acceleration_bounds=acceleration_bounds, override_C=override_C)
+        self.K_p = K_d
+        self.K_d = K_d
         if self.basis.Lambda is None:
             raise Exception('Basis provided is not an Koopman eigenfunction basis')
+        elif self.K_p is None or self.K_p is None:
+            raise Exception('Nominal controller gains not defined.')
 
     def fit(self, X, U, U_nom, t):
         X, Z, Z_dot, U, U_nom, t = self.process(X, U, U_nom, t)
@@ -87,3 +91,5 @@ class Keedmd(Edmd):
                 self.C[:self.n, :self.n] = eye(self.n)
             else:
                 raise Exception('Warning: Learning of C not implemented for structured regression.')
+
+        self.A[self.n:,:self.n] -= dot(self.B[self.n:,:],concatenate((self.K_p, self.K_d), axis=1))
