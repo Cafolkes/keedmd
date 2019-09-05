@@ -84,15 +84,15 @@ l2_edmd = 1e-2
 traj_origin = 'gen_MPC'
 if (traj_origin == 'gen_MPC'):
     Ntraj = 10
+    t_d = t_eval
     traj_bounds = [1,0.2,1.,1.] # x, theta, x_dot, theta_dot 
     q_d = zeros((n,Ntraj,N+1))
     Q = sparse.diags([0,0,0,0])
     QN = sparse.diags([100000.,100000.,50000.,10000.])
     R = sparse.eye(m)
 
-    mpc_controller = MPCController(affine_dynamics=nominal_model, 
-                                Ac=A_nom, 
-                                Bc=B_nom, 
+    mpc_controller = MPCController(affine_dynamics=nominal_sys, 
+                                N=200,
                                 dt=dt, 
                                 umin=array([-10]), 
                                 umax=array([10]),
@@ -102,8 +102,7 @@ if (traj_origin == 'gen_MPC'):
                                 R=R, 
                                 QN=QN, 
                                 x0=zeros(n), 
-                                xr=zeros(n), 
-                                teval=t_eval )
+                                xr=zeros(n) )
     for ii in range(Ntraj):
         x_0 = asarray([random.uniform(-i,i)  for i in traj_bounds ])
         mpc_controller.eval(x_0,0)

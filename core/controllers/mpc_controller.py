@@ -11,27 +11,38 @@ import osqp
 import matplotlib.pyplot as plt
 
 from .controller import Controller
+from core.dynamics.linear_system_dynamics import LinearSystemDynamics
 
 class MPCController(Controller):
        """Class for controllers MPC.
 
        MPC are solved using osqp.
        """
-       def __init__(self, affine_dynamics, Ac, Bc, dt, umin, umax, xmin, xmax, Q, R, QN, x0, xr, teval, plotMPC=False):
-              """Create an LQRController object.
+       def __init__(self, affine_dynamics, N, dt, umin, umax, xmin, xmax, Q, R, QN, x0, xr, teval, plotMPC=False):
+              """Create an MPC Controller object.
 
               Inputs:
-              Positive-definite cost-to-go matrix, P: numpy array
-              Positive-definite action cost matrix, R: numpy array
+              affine_dynamics, 
+              dt, 
+              umin, 
+              umax, 
+              xmin, 
+              xmax, 
+              Q, 
+              R, 
+              QN, 
+              x0, 
+              xr, 
+              teval
               """
 
               Controller.__init__(self, affine_dynamics)
 
+              Ac, Bc = affine_dynamics.linear_system()
               [nx, nu] = Bc.shape
               self.dt = dt
               self._osqp_Ad = sparse.eye(nx)+Ac*self.dt
               self._osqp_Bd = Bc*self.dt
-              self.teval = teval
               self.plotMPC = plotMPC
               self.q_d = xr
               self.Q = Q
@@ -41,7 +52,6 @@ class MPCController(Controller):
               self.nx = nx
 
               # Prediction horizon
-              N = int(2.0/dt)
               self._osqp_N = N
 
               # Cast MPC problem to a QP: x = (x(0),x(1),...,x(N),u(0),...,u(N-1))

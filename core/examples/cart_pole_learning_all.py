@@ -73,8 +73,7 @@ plotMPC = True
 outputs = [CartPoleTrajectory(system_true, q_d[:,i,:],t_d) for i in range(Ntraj)]
 pd_controllers = [PDController(outputs[i], K_p, K_d) for i in range(Ntraj)]
 MPC_controllers = MPCController( affine_dynamics=nominal_model, 
-                                   Ac=A_nom, 
-                                   Bc=B_nom, 
+                                   N=200,
                                    dt=dt, 
                                    umin=array([-10]), 
                                    umax=array([+10]), 
@@ -85,7 +84,6 @@ MPC_controllers = MPCController( affine_dynamics=nominal_model,
                                    QN=QN, 
                                    x0=q_d[:,2,0], 
                                    xr=q_d[:,2,:],
-                                   teval=t_eval,
                                    plotMPC=plotMPC) #for i in range(Ntraj)]
 
 xs, us = [], []
