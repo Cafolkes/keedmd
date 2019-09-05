@@ -22,7 +22,6 @@ class Edmd():
 
     def fit(self, X, U, U_nom, t):
         X, Z, Z_dot, U, U_nom, t = self.process(X, U, U_nom, t)
-
         if self.l1 == 0. and self.l2 == 0.:
             # Construct EDMD matrices as described in M. Korda, I. Mezic, "Linear predictors for nonlinear dynamical systems: Koopman operator meets model predictive control":
             W = concatenate((Z_dot, X), axis=0)

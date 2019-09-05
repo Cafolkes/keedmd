@@ -1,5 +1,6 @@
 from sklearn.metrics.pairwise import rbf_kernel
 from .basis_functions import BasisFunctions
+from numpy import array
 
 class RBF(BasisFunctions):
     """
@@ -36,11 +37,11 @@ class RBF(BasisFunctions):
         -------
         basis applied to q
         """
-        return self.basis(q, t)
+        return array([self.basis(q[:, ii].reshape((self.n, 1)), t[ii]) for ii in range(q.shape[1])]).squeeze()
 
     def construct_basis(self):
         if self.type == 'gaussian':
-            self.basis = lambda q, t: rbf_kernel(q, self.rbf_centers, self.gamma)
+            self.basis = lambda q, t: array([rbf_kernel(q.reshape(1,self.n), self.rbf_centers[ii,:].reshape(1,self.n), self.gamma) for ii in range(self.n_lift)])
         else:
             raise Exception('RBF kernels other than Gaussian not implemented')
 

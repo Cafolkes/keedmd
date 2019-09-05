@@ -2,7 +2,6 @@
 
 from os import path
 import sys
-from matplotlib.pyplot import figure, grid, legend, plot, show, subplot, suptitle, title
 from numpy import arange, array, concatenate, cos, identity, linspace, ones, sin, tanh, tile, zeros, pi, random, interp, dot, multiply
 #from numpy.random import uniform
 from scipy.io import loadmat, savemat
@@ -10,7 +9,7 @@ from sys import argv
 from core.systems import CartPole
 from core.dynamics import LinearSystemDynamics
 from core.controllers import PDController
-from core.learning_keedmd import KoopmanEigenfunctions, RBF, Edmd, Keedmd
+from core.learning_keedmd import KoopmanEigenfunctions, RBF, Edmd, Keedmd, plot_trajectory
 
 
 class CartPoleTrajectory(CartPole):
@@ -102,27 +101,14 @@ for ii in range(Ntraj):
 savemat('./core/examples/results/cart_pendulum_pd_data.mat', {'xs': xs, 't_eval': t_eval, 'us': us, 'us_nom':us_nom})
 xs, us, us_nom, ts = array(xs), array(us), array(us_nom), array(ts)
 
-# Plot the first simulated trajectory
-figure()
-subplot(2, 1, 1)
-plot(t_eval, xs[2][:,0], linewidth=2, label='$x$')
-plot(t_eval, xs[2][:,2], linewidth=2, label='$\\dot{x}$')
-plot(t_eval, q_d[0,2,:], '--', linewidth=2, label='$x_d$')
-plot(t_eval, q_d[2,2,:], '--', linewidth=2, label='$\\dot{x}_d$')
-title('Trajectory Tracking with PD controller (2nd trajectory plotted)')
-legend(fontsize=12)
-grid()
-subplot(2, 1, 2)
-plot(t_eval[:-1], us[2][:,0], label='$u$')
-plot(t_eval[:-1], us_nom[2][:,0], label='$u_{nom}$')
-legend(fontsize=12)
-grid()
+#plot_trajectory(xs[0], q_d[:,0,:].transpose(), us[0], us_nom[0], ts[0])  # Plot simulated trajectory if desired
 
 #%% ===============================================     FIT MODELS      ===============================================
 
 # Construct basis of Koopman eigenfunctions for KEEDMD:
 A_cl = A_nom - dot(B_nom,concatenate((K_p, K_d),axis=1))
 BK = dot(B_nom,concatenate((K_p, K_d),axis=1))
+print('Constructing Koopman eigenfunction basis....')
 eigenfunction_basis = KoopmanEigenfunctions(n=n, max_power=eigenfunction_max_power, A_cl=A_cl, BK=BK)
 eigenfunction_basis.build_diffeomorphism_model(n_hidden_layers = diff_n_hidden_layers, layer_width=diff_layer_width,
                                                l2=l2_diffeomorphism, batch_size = diff_batch_size)
@@ -136,15 +122,19 @@ eigenfunction_basis.construct_basis(ub=upper_bounds, lb=lower_bounds)
 #eigenfunction_basis.plot_eigenfunction_evolution(xs[-1], t_eval)
 
 # Fit KEEDMD model:
+print('Fitting KEEDMD model...')
 keedmd_model = Keedmd(eigenfunction_basis, n, l1=l1_keedmd, l2=l2_keedmd)
 keedmd_model.fit(xs, us, us_nom, ts)
 
 # Construct basis of RBFs for EDMD:
+print('Constructing RBF basis...')
 rbf_centers = multiply(random.rand(n_lift_edmd, n),(upper_bounds-lower_bounds))+lower_bounds
 rbf_basis = RBF(rbf_centers, n)
+rbf_basis.construct_basis()
 
 # Fit EDMD model
-edmd_model = Edmd(sq_basis, n, l1=l1_edmd, l2=l2_edmd)
+print('Fitting EDMD model...')
+edmd_model = Edmd(rbf_basis, n, l1=l1_edmd, l2=l2_edmd)
 edmd_model.fit(xs, us, us_nom, ts)
 
 #%% ==============================================  EVALUATE PERFORMANCE  =============================================
