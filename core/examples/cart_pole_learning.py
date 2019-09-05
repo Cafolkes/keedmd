@@ -8,7 +8,7 @@ from scipy.io import loadmat, savemat
 from sys import argv
 from core.systems import CartPole
 from core.dynamics import LinearSystemDynamics
-from core.controllers import PDController
+from core.controllers import PDController, OpenLoopController
 from core.learning_keedmd import KoopmanEigenfunctions, RBF, Edmd, Keedmd, plot_trajectory
 
 
@@ -45,7 +45,7 @@ A_nom = array([[0., 0., 1., 0.], [0., 0., 0., 1.], [0., -3.924, 0., 0.], [0., 34
 B_nom = array([[0.],[0.],[2.],[-5.]])  # Linearization of the true system around the origin
 K_p = -array([[7.3394, 39.0028]])  # Proportional control gains
 K_d = -array([[8.0734, 7.4294]])  # Derivative control gains
-nominal_model = LinearSystemDynamics(A=A_nom, B=B_nom)
+nominal_sys = LinearSystemDynamics(A=A_nom, B=B_nom)
 
 # Simulation parameters
 dt = 1.0e-2  # Time step
@@ -138,3 +138,26 @@ edmd_model = Edmd(rbf_basis, n, l1=l1_edmd, l2=l2_edmd)
 edmd_model.fit(xs, us, us_nom, ts)
 
 #%% ==============================================  EVALUATE PERFORMANCE  =============================================
+# Set up trajectory and controller for prediction task:
+q_d_pred = q_d[:,4,:]
+t_pred = t_d.squeeze()
+noise_var_pred = 0.5
+output_pred = CartPoleTrajectory(system_true, q_d_pred,t_pred)
+pd_controller_pred = PDController(output_pred, K_p, K_d, noise_var_pred)
+
+# Simulate true system (baseline):
+x0_pred = q_d_pred[:,0]
+xs_pred, us_pred = system_true.simulate(x0_pred, pd_controller_pred, t_pred)
+
+# Create systems for each of the learned models and simulate with open loop control signal us_pred:
+#keedmd_sys = LinearSystemDynamics(A=keedmd_model.A, B=keedmd_model.B)
+#keedmd_controller = OpenLoopController(keedmd_sys, us_pred, t_pred[:us_pred.shape[0]])
+#z0_keedmd = keedmd_model.lift(x0_pred.reshape(x0_pred.shape[0],1), zeros((1,))).squeeze()
+#print(z0_keedmd.shape, len(z0_keedmd), keedmd_sys.n)
+#zs_keedmd, us_keedmd = keedmd_sys.simulate(z0_keedmd,keedmd_controller,t_pred)
+#rint(z0_keedmd.shape, zs_keedmd.shape, us_keedmd.shape)
+
+#edmd_sys = LinearSystemDynamics(A=edmd_model.A, B=edmd_model.B)
+
+#savemat('./core/examples/results/cart_pendulum_pd_data.mat', {'xs': xs, 't_eval': t_eval, 'us': us, 'us_nom':us_nom})
+#xs, us, us_nom, ts = array(xs), array(us), array(us_nom), array(ts)
