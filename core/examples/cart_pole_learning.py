@@ -10,7 +10,7 @@ from sys import argv
 from core.systems import CartPole
 from core.dynamics import LinearSystemDynamics
 from core.controllers import PDController
-from core.learning_keedmd import KoopmanEigenfunctions, Edmd, BasisFunctions
+from core.learning_keedmd import KoopmanEigenfunctions, Edmd, BasisFunctions, Keedmd
 
 
 class CartPoleTrajectory(CartPole):
@@ -62,15 +62,18 @@ noise_var = 0.25  # Exploration noise to perturb controller
 # Simulate system from each initial condition
 outputs = [CartPoleTrajectory(system_true, q_d[:,i,:],t_d) for i in range(Ntraj)]
 pd_controllers = [PDController(outputs[i], K_p, K_d, noise_var) for i in range(Ntraj)]
-xs, us, ts = [], [], []
+pd_controllers_nom = [PDController(outputs[i], K_p, K_d, 0.) for i in range(Ntraj)]  # Duplicate of controllers with no noise perturbation
+xs, us, us_nom, ts = [], [], [], []
 for ii in range(Ntraj):
     x_0 = q_d[:,ii,0]
     xs_tmp, us_tmp = system_true.simulate(x_0, pd_controllers[ii], t_eval)
+    us_nom_tmp = pd_controllers_nom[ii].eval(xs_tmp.transpose(), t_eval).transpose()
     xs.append(xs_tmp)
     us.append(us_tmp)
+    us_nom.append(us_nom_tmp[:us_tmp.shape[0],:])
     ts.append(t_eval)
 savemat('./core/examples/results/cart_pendulum_pd_data.mat', {'xs': xs, 't_eval': t_eval, 'us': us})
-xs, us, ts = array(xs), array(us), array(ts)
+xs, us, us_nom, ts = array(xs), array(us), array(us_nom), array(ts)
 
 # Plot the first simulated trajectory
 figure()
@@ -84,9 +87,10 @@ legend(fontsize=12)
 grid()
 subplot(2, 1, 2)
 plot(t_eval[:-1], us[2][:,0], label='$u$')
+plot(t_eval[:-1], us_nom[2][:,0], label='$u_{nom}$')
 legend(fontsize=12)
 grid()
-#show()  # TODO: Create plot of all collected trajectories (subplot with one plot for each state), not mission critical
+#show()
 
 # Construct basis of Koopman eigenfunctions
 load_model = True
@@ -101,15 +105,18 @@ else:
     eigenfunction_basis.fit_diffeomorphism_model(X=xs, t=t_eval, X_d=q_d, n_epochs=200, train_frac=0.9)
     eigenfunction_basis.save_diffeomorphism_model(model_file)
 eigenfunction_basis.construct_basis(ub=upper_bounds, lb=lower_bounds)
-#eigenfunction_basis.plot_eigenfunction_evolution(xs[-1], t_eval)
+eigenfunction_basis.plot_eigenfunction_evolution(xs[-1], t_eval)
 
 # Fit EDMD model
 #TODO: Remove when implementation finalized:
 class Squared_basis(BasisFunctions):
     def __init__(self):
-        self.basis = lambda x, t: x**2
+        self.basis = lambda x, t: x.transpose()**2
 sq_basis = Squared_basis()
 
 edmd_model = Edmd(sq_basis, n, l1=1e-2)
-edmd_model.fit(xs, us, ts)
+edmd_model.fit(xs, us, us_nom, ts)
+
+keedmd_model = Keedmd(eigenfunction_basis, n, l1=1e-2)
+keedmd_model.fit(xs, us, us_nom, ts)
 

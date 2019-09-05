@@ -20,8 +20,8 @@ class Edmd():
         self.override_C = override_C
         self.acceleration_bounds = acceleration_bounds #(nx1)
 
-    def fit(self, X, U, t):
-        X, Z, Z_dot, U, t = self.process(X, U, t)
+    def fit(self, X, U, U_nom, t):
+        X, Z, Z_dot, U, U_nom, t = self.process(X, U, U_nom, t)
 
         if self.l1 == 0. and self.l2 == 0.:
             # Construct EDMD matrices as described in M. Korda, I. Mezic, "Linear predictors for nonlinear dynamical systems: Koopman operator meets model predictive control":
@@ -50,9 +50,9 @@ class Edmd():
                 self.C = zeros((self.n,self.n_lift))
                 self.C[:self.n,:self.n] = eye(self.n)
             else:
-                print('Warning: Learning of C not implemented for regularized regression, no value for C set.')
+                raise Exception('Warning: Learning of C not implemented for regularized regression.')
 
-    def process(self, X, U, t):
+    def process(self, X, U, U_nom, t):
         # Remove points where not every input is available:
         if U.shape[1] < X.shape[1]:
             X = X[:,:U.shape[1],:]
@@ -60,12 +60,12 @@ class Edmd():
 
         # Filter data to exclude non-continuous dynamics:
         if self.acceleration_bounds is not None:
-            X_filtered, U_filtered, t_filtered = self.filter_input(X,U)
+            X_filtered, U_filtered, U_nom_filtered, t_filtered = self.filter_input(X, U, U_nom, t)
         else:
-            X_filtered, U_filtered, t_filtered = X, U, t
+            X_filtered, U_filtered, U_nom_filtered, t_filtered = X, U, U_nom, t
 
         Ntraj = X_filtered.shape[0]  # Number of trajectories in dataset
-        Z = array([self.lift(X_filtered[ii,:,:], t_filtered[ii,:]) for ii in range(Ntraj)])  # Lift x
+        Z = array([self.lift(X_filtered[ii,:,:].transpose(), t_filtered[ii,:]) for ii in range(Ntraj)])  # Lift x
         Z = concatenate((X_filtered,Z), axis=2)  # Add state to beginning of lifted state
         Z_dot = array([differentiate(Z[ii,:,:],t_filtered[ii,:]) for ii in range(Ntraj)])  #Numerical differentiate lifted state
 
@@ -74,19 +74,20 @@ class Edmd():
         X_filtered = X_filtered[:, clip:-clip, :]
         Z = Z[:,clip:-clip,:]
         U_filtered = U_filtered[:,clip:-clip,:]
+        U_nom_filtered = U_nom_filtered[:, clip:-clip, :]
         t_filtered = t_filtered[:,clip:-clip]
 
         # Vectorize data
         n_data = Z.shape[0]*Z.shape[1]
         self.n_lift = Z.shape[2]
         self.m = U_filtered.shape[2]
-        X_filtered, Z, Z_dot, U_filtered, t_filtered = X_filtered.reshape((self.n,n_data)), Z.reshape((self.n_lift,n_data)), \
-                                                        Z_dot.reshape((self.n_lift,n_data)), U_filtered.reshape((self.m,n_data)),\
-                                                        t_filtered.reshape((1,n_data))
+        X_filtered, Z, Z_dot, U_filtered, U_nom_filtered, t_filtered = X_filtered.reshape((self.n,n_data)), Z.reshape((self.n_lift,n_data)), \
+                                                        Z_dot.reshape((self.n_lift,n_data)), U_filtered.reshape((self.m,n_data)), \
+                                                        U_nom_filtered.reshape((self.m, n_data)), t_filtered.reshape((1,n_data))
 
-        return X_filtered, Z, Z_dot, U_filtered, t_filtered
+        return X_filtered, Z, Z_dot, U_filtered, U_nom_filtered, t_filtered
 
-    def filter_input(self, X, U, t):
+    def filter_input(self, X, U, U_nom, t):
         '''
         Calculates the numerical derivative of the data and removes points that lie outside of the accepted acceleration
         interval (used to filter out data points corresponding to impacts with the environment)
@@ -96,8 +97,9 @@ class Edmd():
         '''
         X_filtered = X
         U_filtered = U
+        U_nom_filtered = U_nom
         t_filtered = t
-        return X_filtered, U_filtered, t_filtered
+        return X_filtered, U_filtered, U_nom_filtered, t_filtered
 
     def lift(self, X, t):
         return self.basis.lift(X, t)

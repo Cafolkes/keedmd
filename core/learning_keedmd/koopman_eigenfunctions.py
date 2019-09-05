@@ -261,7 +261,7 @@ class KoopmanEigenfunctions(BasisFunctions):
         z0 = self.lift(x0, array([[0.]]))
         eigval_evo, us = eigval_system.simulate(z0.flatten(), eigval_ctrl, t)
         eigval_evo = eigval_evo.transpose()
-        eigfunc_evo = self.lift(X, t.reshape((t.shape[0],1)))
+        eigfunc_evo = self.lift(X, t.reshape((t.shape[0],1))).transpose()
 
 
         figure()
@@ -275,4 +275,4 @@ class KoopmanEigenfunctions(BasisFunctions):
         show()  # TODO: Create plot of all collected trajectories (subplot with one plot for each state), not mission critical
 
     def lift(self, q, t):
-        return array([self.basis(q[:,ii].reshape((self.n,1)), t[ii]) for ii in range(q.shape[1])]).transpose()
+        return array([self.basis(q[:,ii].reshape((self.n,1)), t[ii]) for ii in range(q.shape[1])])
