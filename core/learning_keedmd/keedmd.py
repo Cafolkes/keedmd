@@ -93,3 +93,7 @@ class Keedmd(Edmd):
                 raise Exception('Warning: Learning of C not implemented for structured regression.')
 
         self.A[self.n:,:self.n] -= dot(self.B[self.n:,:],concatenate((self.K_p, self.K_d), axis=1))
+
+    def lift(self, X, t):
+        Z = self.basis.lift(X, t)
+        return concatenate((X.transpose(), Z),axis=1)

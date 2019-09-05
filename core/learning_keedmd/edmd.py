@@ -1,7 +1,7 @@
-from core.learning import differentiate
+from core.learning import differentiate_vec
 from sklearn import linear_model
 from scipy.linalg import expm
-from numpy import array, concatenate, zeros, dot, linalg, eye
+from numpy import array, concatenate, zeros, dot, linalg, eye, ones
 
 class Edmd():
     '''
@@ -33,6 +33,7 @@ class Edmd():
             self.A = M[:self.n_lift,:self.n_lift]
             self.B = M[:self.n_lift,self.n_lift:]
             self.C = M[self.n_lift:,:self.n_lift]
+
             if self.override_C:
                 self.C = zeros(self.C.shape)
                 self.C[:self.n,:self.n] = eye(self.n)
@@ -42,7 +43,7 @@ class Edmd():
             output = Z_dot.transpose()
             l1_ratio = self.l1/(self.l1+self.l2)
             alpha = self.l1 + self.l2
-            reg_model = linear_model.ElasticNet(alpha=alpha, l1_ratio=l1_ratio, fit_intercept=False, normalize=True)
+            reg_model = linear_model.ElasticNet(alpha=alpha, l1_ratio=l1_ratio, fit_intercept=False, normalize=False, max_iter=1e4)
             reg_model.fit(input,output)
             self.A = reg_model.coef_[:self.n_lift,:self.n_lift]
             self.B = reg_model.coef_[:self.n_lift,self.n_lift:]
@@ -66,7 +67,9 @@ class Edmd():
 
         Ntraj = X_filtered.shape[0]  # Number of trajectories in dataset
         Z = array([self.lift(X_filtered[ii,:,:].transpose(), t_filtered[ii,:]) for ii in range(Ntraj)])  # Lift x
-        Z_dot = array([differentiate(Z[ii,:,:],t_filtered[ii,:]) for ii in range(Ntraj)])  #Numerical differentiate lifted state
+        Z_dot = array([differentiate_vec(Z[ii,:,:],t_filtered[ii,:]) for ii in range(Ntraj)])  #Numerical differentiate lifted state
+
+        print(X_filtered.shape, Z.shape, Z_dot.shape, U_filtered.shape, U_nom_filtered.shape, t_filtered.shape)
 
         # Align data with numerical differentiated data because ends of trajectories "lost" in numerical differentiation
         clip = int((Z.shape[1]-Z_dot.shape[1])/2)
@@ -80,6 +83,9 @@ class Edmd():
         n_data = Z.shape[0]*Z.shape[1]
         self.n_lift = Z.shape[2]
         self.m = U_filtered.shape[2]
+
+        print(X_filtered.shape, Z.shape, Z_dot.shape, U_filtered.shape, U_nom_filtered.shape, t_filtered.shape)
+
         X_filtered, Z, Z_dot, U_filtered, U_nom_filtered, t_filtered = X_filtered.reshape((self.n,n_data)), Z.reshape((self.n_lift,n_data)), \
                                                         Z_dot.reshape((self.n_lift,n_data)), U_filtered.reshape((self.m,n_data)), \
                                                         U_nom_filtered.reshape((self.m, n_data)), t_filtered.reshape((1,n_data))
@@ -102,7 +108,9 @@ class Edmd():
 
     def lift(self, X, t):
         Z = self.basis.lift(X, t)
-        return concatenate((X.transpose(),Z),axis=1)
+        one_vec = ones((Z.shape[0],1))
+        #return concatenate((X.transpose(),one_vec, Z),axis=1)
+        return X.transpose()
 
     def predict(self,X, U):
         return dot(self.C, dot(self.A,X) + dot(self.B, U))

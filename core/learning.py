@@ -3,6 +3,7 @@ from numpy import array, arange, dot, zeros, reshape
 from scipy.linalg import solve
 
 def differentiate(xs, ts, L=3):
+    assert (xs.shape[0] == ts.shape[0])
     half_L = (L - 1) // 2
     b = zeros(L)
     b[1] = 1
@@ -16,6 +17,11 @@ def differentiate(xs, ts, L=3):
         return dot(w, xs)
 
     return array([diff(xs[k - half_L:k + half_L + 1], ts[k - half_L:k + half_L + 1]) for k in range(half_L, len(ts) - half_L)])
+
+def differentiate_vec(xs, ts, L=3):
+    assert(xs.shape[0] == ts.shape[0])
+    #TODO: Current implementation is slow, modify implementation to speed up.
+    return array([differentiate(xs[:,ii], ts, L=L) for ii in range(xs.shape[1])]).transpose()
 
 class AffineResidualDynamics(AffineDynamics):
     def __init__(self, affine_dynamics, drift_res, act_res):
