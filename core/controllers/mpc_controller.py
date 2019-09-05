@@ -104,31 +104,29 @@ class MPCController(Controller):
               self.prob.update(q=self._osqp_q, l=self._osqp_l, u=self._osqp_u)
 
               ## Solve MPC Instance
-              _osqp_result = self.prob.solve()
+              self._osqp_result = self.prob.solve()
 
               # Check solver status
-              if _osqp_result.info.status != 'solved':
+              if self._osqp_result.info.status != 'solved':
                      raise ValueError('OSQP did not solve the problem!')
 
-
-
-              # Apply first control input to the plant 
-              #print( np.divmod(int(t/self.dt),10)) 
-              #if np.divmod(int(t/self.dt),10)[1]==0:
               if self.plotMPC:
-                     self.plot_MPC(_osqp_result, t, xr)
-              return  _osqp_result.x[-N*nu:-(N-1)*nu]
+                     self.plot_MPC(t, xr)
+              return  self._osqp_result.x[-N*nu:-(N-1)*nu]
 
-       def plot_MPC(self, _osqp_result, current_time, xr):
+       def parse_result(self):
+              return  np.transpose(np.reshape( self._osqp_result.x[:(self._osqp_N+1)*self.nx], (self._osqp_N+1,self.nx)))
+
+
+       def plot_MPC(self, current_time, xr):
               # Unpack OSQP results
 
               nu = self.nu
               nx = self.nx
               N = self._osqp_N
 
-
-              osqp_sim_state = np.reshape( _osqp_result.x[:(N+1)*nx], (N+1,nx))
-              osqp_sim_forces = np.reshape( _osqp_result.x[-N*nu:], (N,nu))
+              osqp_sim_state = np.reshape( self._osqp_result.x[:(N+1)*nx], (N+1,nx))
+              osqp_sim_forces = np.reshape( self._osqp_result.x[-N*nu:], (N,nu))
 
               # Plot 
               pos = current_time/(N*self.dt)

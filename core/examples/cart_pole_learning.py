@@ -3,14 +3,17 @@
 from os import path
 import sys
 from matplotlib.pyplot import figure, grid, legend, plot, show, subplot, suptitle, title
-from numpy import arange, array, concatenate, cos, identity, linspace, ones, sin, tanh, tile, zeros, pi, random, interp, dot, multiply
+from numpy import arange, array, concatenate, cos, identity, linspace, ones, sin, tanh, tile, zeros, pi, random, interp, dot, multiply, asarray
 #from numpy.random import uniform
 from scipy.io import loadmat, savemat
 from sys import argv
 from core.systems import CartPole
 from core.dynamics import LinearSystemDynamics
-from core.controllers import PDController
+from core.controllers import PDController, MPCController
 from core.learning_keedmd import KoopmanEigenfunctions, RBF, Edmd, Keedmd
+import random
+import scipy.sparse as sparse
+
 
 
 class CartPoleTrajectory(CartPole):
@@ -38,7 +41,7 @@ class CartPoleTrajectory(CartPole):
 # Define true system
 system_true = CartPole(m_c=.5, m_p=.2, l=.4)
 n, m = 4, 1  # Number of states and actuators
-upper_bounds = array([[2.5, pi/3, 2, 2]])  # State constraints
+upper_bounds = array([2.5, pi/3, 2, 2])  # State constraints
 lower_bounds = -upper_bounds  # State constraints
 
 # Define nominal model and nominal controller:
@@ -50,7 +53,7 @@ nominal_model = LinearSystemDynamics(A=A_nom, B=B_nom)
 
 # Simulation parameters
 dt = 1.0e-2  # Time step
-N = 2./dt  # Number of time steps
+N = int(2./dt)  # Number of time steps
 t_eval = dt * arange(N + 1) # Simulation time points
 noise_var = 0.25  # Exploration noise to perturb controller
 
@@ -80,11 +83,59 @@ l2_edmd = 1e-2
 #%% ===============================================    COLLECT DATA     ===============================================
 
 # Load trajectories
-#TODO: Sample random intitial conditions (inside some interval)^4 and generate trajectories using the MPC controller
-res = loadmat('./core/examples/cart_pole_d.mat') # Tensor (n, Ntraj, Ntime)
-q_d = res['Q_d']  # Desired states
-t_d = res['t_d']  # Time points
-Ntraj = q_d.shape[1]  # Number of trajectories to execute
+traj_origin = 'gen_MPC'
+if (traj_origin == 'gen_MPC'):
+    Ntraj = 10
+    traj_bounds = [1,0.2,1.,1.] # x, theta, x_dot, theta_dot 
+    q_d = zeros((n,Ntraj,N+1))
+    Q = sparse.diags([0,0,0,0])
+    QN = sparse.diags([100000.,100000.,50000.,10000.])
+    R = sparse.eye(m)
+
+    mpc_controller = MPCController(affine_dynamics=nominal_model, 
+                                Ac=A_nom, 
+                                Bc=B_nom, 
+                                dt=dt, 
+                                umin=array([-10]), 
+                                umax=array([10]),
+                                xmin=lower_bounds, 
+                                xmax=upper_bounds, 
+                                Q=Q, 
+                                R=R, 
+                                QN=QN, 
+                                x0=zeros(n), 
+                                xr=zeros(n), 
+                                teval=t_eval )
+    for ii in range(Ntraj):
+        x_0 = asarray([random.uniform(-i,i)  for i in traj_bounds ])
+        mpc_controller.eval(x_0,0)
+        q_d[:,ii,:] = mpc_controller.parse_result()
+    
+    plot_traj_gen = True
+    if plot_traj_gen:
+        figure()
+        title('Input Trajectories')
+        for j in range(n):
+            subplot(n,1,j+1)
+            [plot(t_eval, q_d[j,ii,:] , linewidth=2) for ii in range(Ntraj)]
+            grid()
+        show()
+            
+        
+elif (traj_origin=='load_mat'):
+    res = loadmat('./core/examples/cart_pole_d.mat') # Tensor (n, Ntraj, Ntime)
+    q_d = res['Q_d']  # Desired states
+    t_d = res['t_d']  # Time points
+    Ntraj = q_d.shape[1]  # Number of trajectories to execute
+
+    figure()
+    title('Input Trajectories')
+    for j in range(n):
+        subplot(n,1,j+1)
+        [plot(t_eval, q_d[j,ii,:] , linewidth=2) for ii in range(Ntraj)]
+        grid()
+    show()
+
 
 # Simulate system from each initial condition
 outputs = [CartPoleTrajectory(system_true, q_d[:,i,:],t_d) for i in range(Ntraj)]
