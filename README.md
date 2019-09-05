@@ -2,7 +2,7 @@
 Python simulation and hardware library for learning and control
 
 ## macOS setup
-Set up virtual environment
+Set up virtual environment 
 ```
 python3 -m venv .venv
 ```

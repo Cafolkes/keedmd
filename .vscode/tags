@@ -1,0 +1,251 @@
+!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
+!_TAG_PROGRAM_AUTHOR	Darren Hiebert	/dhiebert@users.sourceforge.net/
+!_TAG_PROGRAM_NAME	Exuberant Ctags	//
+!_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
+!_TAG_PROGRAM_VERSION	5.9~svn20110310	//
+A_cl	../core/examples/cart_pole_learning.py	/^A_cl = A_nom - dot(B_nom,concatenate((K_p, K_d),axis=1))$/;"	kind:variable	line:89
+A_nom	../core/examples/cart_pole_learning.py	/^A_nom = array([[0., 0., 1., 0.], [0., 0., 0., 1.], [0., -3.924, 0., 0.], [0., 34.335, 0., 0.]])  # Linearization of the true system around the origin$/;"	kind:variable	line:44
+AffineDynamics	../core/dynamics/affine_dynamics.py	/^class AffineDynamics(Dynamics):$/;"	kind:class	line:5
+AffineQuadCLF	../core/dynamics/affine_quad_clf.py	/^class AffineQuadCLF(AffineDynamics, QuadraticCLF):$/;"	kind:class	line:7
+AffineResidualDynamics	../core/learning.py	/^class AffineResidualDynamics(AffineDynamics):$/;"	kind:class	line:20
+B	../core/dynamics/robotic_dynamics.py	/^    def B(self, q):$/;"	kind:member	line:47
+B	../core/systems/cart_pole.py	/^    def B(self, q):$/;"	kind:member	line:32
+B_nom	../core/examples/cart_pole_learning.py	/^B_nom = array([[0.],[0.],[2.],[-5.]])  # Linearization of the true system around the origin$/;"	kind:variable	line:45
+BasisFunctions	../core/learning_keedmd/basis_functions.py	/^class BasisFunctions():$/;"	kind:class	line:3
+C	../core/dynamics/robotic_dynamics.py	/^    def C(self, q, q_dot):$/;"	kind:member	line:36
+C	../core/systems/cart_pole.py	/^    def C(self, q, q_dot):$/;"	kind:member	line:16
+C	../core/systems/double_inverted_pendulum.py	/^    def C(self, q, q_dot):$/;"	kind:member	line:19
+C	../core/systems/inverted_pendulum.py	/^    def C(self, q, q_dot):$/;"	kind:member	line:15
+CartPole	../core/systems/cart_pole.py	/^class CartPole(RoboticDynamics):$/;"	kind:class	line:6
+CartPoleTrajectory	../core/examples/cart_pole_learning.py	/^class CartPoleTrajectory(CartPole):$/;"	kind:class	line:16
+ConstantController	../core/controllers/constant_controller.py	/^class ConstantController(Controller):$/;"	kind:class	line:3
+Controller	../core/controllers/controller.py	/^class Controller:$/;"	kind:class	line:1
+D	../core/dynamics/robotic_dynamics.py	/^    def D(self, q):$/;"	kind:member	line:26
+D	../core/systems/cart_pole.py	/^    def D(self, q):$/;"	kind:member	line:11
+D	../core/systems/double_inverted_pendulum.py	/^    def D(self, q):$/;"	kind:member	line:10
+D	../core/systems/inverted_pendulum.py	/^    def D(self, q):$/;"	kind:member	line:11
+DoubleInvertedPendulum	../core/systems/double_inverted_pendulum.py	/^class DoubleInvertedPendulum(RoboticDynamics):$/;"	kind:class	line:4
+Dynamics	../core/dynamics/dynamics.py	/^class Dynamics:$/;"	kind:class	line:1
+EnergyController	../core/controllers/energy_controller.py	/^class EnergyController(Controller):$/;"	kind:class	line:6
+FBLinController	../core/controllers/fb_lin_controller.py	/^class FBLinController(Controller):$/;"	kind:class	line:6
+FBLinDynamics	../core/dynamics/fb_lin_dynamics.py	/^class FBLinDynamics(AffineDynamics, LinearizableDynamics):$/;"	kind:class	line:7
+G	../core/dynamics/robotic_dynamics.py	/^    def G(self, q):$/;"	kind:member	line:67
+G	../core/systems/cart_pole.py	/^    def G(self, q):$/;"	kind:member	line:27
+G	../core/systems/double_inverted_pendulum.py	/^    def G(self, q):$/;"	kind:member	line:34
+G	../core/systems/inverted_pendulum.py	/^    def G(self, q):$/;"	kind:member	line:23
+H	../core/dynamics/robotic_dynamics.py	/^    def H(self, q, q_dot):$/;"	kind:member	line:88
+InvertedPendulum	../core/systems/inverted_pendulum.py	/^class InvertedPendulum(RoboticDynamics):$/;"	kind:class	line:5
+K_d	../core/examples/cart_pole_learning.py	/^K_d = -array([[8.0734, 7.4294]])  # Derivative control gains$/;"	kind:variable	line:47
+K_p	../core/examples/cart_pole_learning.py	/^K_p = -array([[7.3394, 39.0028]])  # Proportional control gains$/;"	kind:variable	line:46
+KoopmanEigenfunctions	../core/learning_keedmd/koopman_eigenfunctions.py	/^class KoopmanEigenfunctions(BasisFunctions):$/;"	kind:class	line:13
+LQRController	../core/controllers/lqr_controller.py	/^class LQRController(Controller):$/;"	kind:class	line:7
+LinearController	../core/controllers/linear_controller.py	/^class LinearController(Controller):$/;"	kind:class	line:5
+LinearSystemDynamics	../core/dynamics/linear_system_dynamics.py	/^class LinearSystemDynamics(SystemDynamics, AffineDynamics, LinearizableDynamics):$/;"	kind:class	line:7
+LinearizableDynamics	../core/dynamics/linearizable_dynamics.py	/^class LinearizableDynamics(Dynamics):$/;"	kind:class	line:5
+N	../core/examples/cart_pole_learning.py	/^N = t_d[0,-1]\/dt  # Number of time steps$/;"	kind:variable	line:58
+Ntraj	../core/examples/cart_pole_learning.py	/^Ntraj = q_d.shape[1]  # Number of trajectories to execute #TODO: Reset to sim all trajectories$/;"	kind:variable	line:54
+PDController	../core/controllers/pd_controller.py	/^class PDController(Controller):$/;"	kind:class	line:5
+PDDynamics	../core/dynamics/pd_dynamics.py	/^class PDDynamics(Dynamics):$/;"	kind:class	line:3
+PytdRun	../.venv/lib/mypy/typeshed/tests/pytype_test.py	/^class PytdRun(object):$/;"	kind:class	line:43
+PytdRun	../.venv/lib64/mypy/typeshed/tests/pytype_test.py	/^class PytdRun(object):$/;"	kind:class	line:43
+QPController	../core/controllers/qp_controller.py	/^class QPController(Controller):$/;"	kind:class	line:8
+QuadraticCLF	../core/dynamics/quadratic_clf.py	/^class QuadraticCLF(ScalarDynamics):$/;"	kind:class	line:5
+RandomController	../core/controllers/random_controller.py	/^class RandomController(Controller):$/;"	kind:class	line:6
+RoboticDynamics	../core/dynamics/robotic_dynamics.py	/^class RoboticDynamics(SystemDynamics, AffineDynamics, PDDynamics):$/;"	kind:class	line:8
+ScalarDynamics	../core/dynamics/scalar_dynamics.py	/^class ScalarDynamics(Dynamics):$/;"	kind:class	line:3
+ScalarResidualDynamics	../core/learning.py	/^class ScalarResidualDynamics(AffineResidualDynamics, ScalarDynamics):$/;"	kind:class	line:35
+SystemDynamics	../core/dynamics/system_dynamics.py	/^class SystemDynamics(Dynamics):$/;"	kind:class	line:6
+T	../core/dynamics/robotic_dynamics.py	/^    def T(self, q, q_dot):$/;"	kind:member	line:77
+U	../core/dynamics/robotic_dynamics.py	/^    def U(self, q):$/;"	kind:member	line:57
+U	../core/systems/cart_pole.py	/^    def U(self, q):$/;"	kind:member	line:22
+U	../core/systems/double_inverted_pendulum.py	/^    def U(self, q):$/;"	kind:member	line:29
+U	../core/systems/inverted_pendulum.py	/^    def U(self, q):$/;"	kind:member	line:18
+__init__	../.venv/lib/mypy/typeshed/tests/pytype_test.py	/^    def __init__(self, args, dry_run=False):$/;"	kind:member	line:44
+__init__	../.venv/lib64/mypy/typeshed/tests/pytype_test.py	/^    def __init__(self, args, dry_run=False):$/;"	kind:member	line:44
+__init__	../core/controllers/constant_controller.py	/^    def __init__(self, dynamics, u_const):$/;"	kind:member	line:6
+__init__	../core/controllers/controller.py	/^    def __init__(self, dynamics):$/;"	kind:member	line:7
+__init__	../core/controllers/energy_controller.py	/^    def __init__(self, robotic_dynamics, K_p, K_d, q_d=None):$/;"	kind:member	line:9
+__init__	../core/controllers/fb_lin_controller.py	/^    def __init__(self, fb_lin_dynamics, linear_controller):$/;"	kind:member	line:9
+__init__	../core/controllers/linear_controller.py	/^    def __init__(self, affine_dynamics, K):$/;"	kind:member	line:8
+__init__	../core/controllers/lqr_controller.py	/^    def __init__(self, affine_linearizable_dynamics, P, R):$/;"	kind:member	line:16
+__init__	../core/controllers/pd_controller.py	/^    def __init__(self, pd_dynamics, K_p, K_d):$/;"	kind:member	line:8
+__init__	../core/controllers/qp_controller.py	/^    def __init__(self, affine_dynamics, m):$/;"	kind:member	line:14
+__init__	../core/controllers/random_controller.py	/^    def __init__(self, controller, cov, reps=2):$/;"	kind:member	line:13
+__init__	../core/dynamics/affine_quad_clf.py	/^    def __init__(self, affine_dynamics, P):$/;"	kind:member	line:10
+__init__	../core/dynamics/fb_lin_dynamics.py	/^    def __init__(self, relative_degrees, perm=None):$/;"	kind:member	line:21
+__init__	../core/dynamics/linear_system_dynamics.py	/^    def __init__(self, A, B):$/;"	kind:member	line:10
+__init__	../core/dynamics/quadratic_clf.py	/^    def __init__(self, dynamics, P):$/;"	kind:member	line:8
+__init__	../core/dynamics/robotic_dynamics.py	/^    def __init__(self, n, m):$/;"	kind:member	line:16
+__init__	../core/dynamics/system_dynamics.py	/^    def __init__(self, n, m):$/;"	kind:member	line:12
+__init__	../core/examples/cart_pole_learning.py	/^    def __init__(self, robotic_dynamics, q_d, t_d):$/;"	kind:member	line:17
+__init__	../core/learning.py	/^    def __init__(self, affine_dynamics, drift_res, act_res):$/;"	kind:member	line:21
+__init__	../core/learning.py	/^    def __init__(self, scalar_dynamics, drift_res, act_res):$/;"	kind:member	line:36
+__init__	../core/learning_keedmd/basis_functions.py	/^    def __init__(self, n, Nlift):$/;"	kind:member	line:9
+__init__	../core/learning_keedmd/koopman_eigenfunctions.py	/^    def __init__(self, n, max_power, A_cl):$/;"	kind:member	line:17
+__init__	../core/systems/cart_pole.py	/^    def __init__(self, m_c, m_p, l, g=9.81):$/;"	kind:member	line:7
+__init__	../core/systems/double_inverted_pendulum.py	/^    def __init__(self, m_1, m_2, l_1, l_2, g=9.81):$/;"	kind:member	line:5
+__init__	../core/systems/inverted_pendulum.py	/^    def __init__(self, m, l, g=9.81):$/;"	kind:member	line:6
+__init__.py	../core/__init__.py	1;"	kind:file	line:1
+__init__.py	../core/controllers/__init__.py	1;"	kind:file	line:1
+__init__.py	../core/dynamics/__init__.py	1;"	kind:file	line:1
+__init__.py	../core/examples/__init__.py	1;"	kind:file	line:1
+__init__.py	../core/learning_keedmd/__init__.py	1;"	kind:file	line:1
+__init__.py	../core/systems/__init__.py	1;"	kind:file	line:1
+_build	../core/controllers/qp_controller.py	/^    def _build(aff_dynamics, K, Q, R, method):$/;"	kind:member	line:145
+act	../core/dynamics/affine_dynamics.py	/^    def act(self, x, t):$/;"	kind:member	line:24
+act	../core/dynamics/affine_quad_clf.py	/^    def act(self, x, t):$/;"	kind:member	line:23
+act	../core/dynamics/linear_system_dynamics.py	/^    def act(self, x, t):$/;"	kind:member	line:28
+act	../core/dynamics/robotic_dynamics.py	/^    def act(self, x, t):$/;"	kind:member	line:104
+act	../core/examples/cart_pole_learning.py	/^    def act(self, q, t):$/;"	kind:member	line:33
+act	../core/learning.py	/^    def act(self, x, t):$/;"	kind:member	line:32
+add_dynamic_cost	../core/controllers/qp_controller.py	/^    def add_dynamic_cost(self, P, q, r):$/;"	kind:member	line:46
+add_regularizer	../core/controllers/qp_controller.py	/^    def add_regularizer(self, controller, coeff=1):$/;"	kind:member	line:64
+add_safety_constraint	../core/controllers/qp_controller.py	/^    def add_safety_constraint(self, aff_safety, comp=None, slacked=False, coeff=0):$/;"	kind:member	line:96
+add_stability_constraint	../core/controllers/qp_controller.py	/^    def add_stability_constraint(self, aff_lyap, comp=None, slacked=False, coeff=0):$/;"	kind:member	line:75
+add_static_cost	../core/controllers/qp_controller.py	/^    def add_static_cost(self, P=None, q=None, r=0):$/;"	kind:member	line:30
+affine_dynamics.py	../core/dynamics/affine_dynamics.py	1;"	kind:file	line:1
+affine_quad_clf.py	../core/dynamics/affine_quad_clf.py	1;"	kind:file	line:1
+basis_functions.py	../core/learning_keedmd/basis_functions.py	1;"	kind:file	line:1
+build	../core/controllers/lqr_controller.py	/^    def build(affine_linearizable_dynamics, Q, R):$/;"	kind:member	line:32
+build_care	../core/controllers/qp_controller.py	/^    def build_care(aff_dynamics, Q, R):$/;"	kind:member	line:117
+build_care	../core/dynamics/affine_quad_clf.py	/^    def build_care(affine_linearizable_dynamics, Q, R):$/;"	kind:member	line:26
+build_ctle	../core/controllers/qp_controller.py	/^    def build_ctle(aff_dynamics, K, Q):$/;"	kind:member	line:131
+build_ctle	../core/dynamics/affine_quad_clf.py	/^    def build_ctle(affine_linearizable_dynamics, K, Q):$/;"	kind:member	line:41
+build_diffeomorphism_model	../core/learning_keedmd/koopman_eigenfunctions.py	/^    def build_diffeomorphism_model(self, layer_width=100):$/;"	kind:member	line:60
+cart_pole.py	../core/systems/cart_pole.py	1;"	kind:file	line:1
+cart_pole_learning.py	../core/examples/cart_pole_learning.py	1;"	kind:file	line:1
+closed_loop_linear_system	../core/dynamics/linearizable_dynamics.py	/^    def closed_loop_linear_system(self, K):$/;"	kind:member	line:20
+communicate	../.venv/lib/mypy/typeshed/tests/pytype_test.py	/^    def communicate(self):$/;"	kind:member	line:57
+communicate	../.venv/lib64/mypy/typeshed/tests/pytype_test.py	/^    def communicate(self):$/;"	kind:member	line:57
+constant_controller.py	../core/controllers/constant_controller.py	1;"	kind:file	line:1
+construct_basis	../core/learning_keedmd/basis_functions.py	/^    def construct_basis(self, ub=None, lb=None):$/;"	kind:member	line:18
+construct_basis	../core/learning_keedmd/koopman_eigenfunctions.py	/^    def construct_basis(self, ub=None, lb=None):$/;"	kind:member	line:30
+construct_linear_eigfuncs	../core/learning_keedmd/koopman_eigenfunctions.py	/^    def construct_linear_eigfuncs(self):$/;"	kind:member	line:36
+construct_scaling_function	../core/learning_keedmd/koopman_eigenfunctions.py	/^    def construct_scaling_function(self,ub,lb):$/;"	kind:member	line:54
+controller.py	../core/controllers/controller.py	1;"	kind:file	line:1
+derivative	../core/dynamics/pd_dynamics.py	/^    def derivative(self, x, t):$/;"	kind:member	line:22
+derivative	../core/dynamics/robotic_dynamics.py	/^    def derivative(self, x, t):$/;"	kind:member	line:111
+desired_state	../core/examples/cart_pole_learning.py	/^    def desired_state(self, t):$/;"	kind:member	line:27
+diff	../core/learning.py	/^    def diff(xs, ts):$/;"	kind:function	line:10
+diffeomorphism_loss	../core/learning_keedmd/koopman_eigenfunctions.py	/^        def diffeomorphism_loss(input_tensor, output_tensor, Acl_tensor):$/;"	kind:function	line:61
+differentiate	../core/learning.py	/^def differentiate(xs, ts, L=3):$/;"	kind:function	line:5
+dill_unpickle.py	../.venv/bin/dill_unpickle.py	1;"	kind:file	line:1
+dirpath	../.venv/lib/mypy/typeshed/tests/mypy_selftest.py	/^        dirpath = Path(tempdir)$/;"	kind:variable	line:13
+dirpath	../.venv/lib64/mypy/typeshed/tests/mypy_selftest.py	/^        dirpath = Path(tempdir)$/;"	kind:variable	line:13
+double_inverted_pendulum.py	../core/systems/double_inverted_pendulum.py	1;"	kind:file	line:1
+drift	../core/dynamics/affine_dynamics.py	/^    def drift(self, x, t):$/;"	kind:member	line:11
+drift	../core/dynamics/affine_quad_clf.py	/^    def drift(self, x, t):$/;"	kind:member	line:20
+drift	../core/dynamics/linear_system_dynamics.py	/^    def drift(self, x, t):$/;"	kind:member	line:25
+drift	../core/dynamics/robotic_dynamics.py	/^    def drift(self, x, t):$/;"	kind:member	line:99
+drift	../core/examples/cart_pole_learning.py	/^    def drift(self, q, t):$/;"	kind:member	line:30
+drift	../core/learning.py	/^    def drift(self, x, t):$/;"	kind:member	line:29
+dt	../core/examples/cart_pole_learning.py	/^dt = 1.0e-2  # Time step$/;"	kind:variable	line:57
+dynamics.py	../core/dynamics/dynamics.py	1;"	kind:file	line:1
+eigenfunction_basis	../core/examples/cart_pole_learning.py	/^eigenfunction_basis = KoopmanEigenfunctions(n=n, max_power=3, A_cl=A_cl)$/;"	kind:variable	line:90
+energy_controller.py	../core/controllers/energy_controller.py	1;"	kind:file	line:1
+eval	../core/controllers/constant_controller.py	/^    def eval(self, x, t):$/;"	kind:member	line:17
+eval	../core/controllers/controller.py	/^    def eval(self, x, t):$/;"	kind:member	line:16
+eval	../core/controllers/energy_controller.py	/^    def eval(self, x, t):$/;"	kind:member	line:27
+eval	../core/controllers/fb_lin_controller.py	/^    def eval(self, x, t):$/;"	kind:member	line:27
+eval	../core/controllers/linear_controller.py	/^    def eval(self, x, t):$/;"	kind:member	line:21
+eval	../core/controllers/lqr_controller.py	/^    def eval(self, x, t):$/;"	kind:member	line:28
+eval	../core/controllers/pd_controller.py	/^    def eval(self, x, t):$/;"	kind:member	line:24
+eval	../core/controllers/qp_controller.py	/^    def eval(self, x, t):$/;"	kind:member	line:162
+eval	../core/controllers/random_controller.py	/^    def eval(self, x, t):$/;"	kind:member	line:38
+eval	../core/dynamics/dynamics.py	/^    def eval(self, x, t):$/;"	kind:member	line:7
+eval	../core/dynamics/quadratic_clf.py	/^    def eval(self, x, t):$/;"	kind:member	line:19
+eval	../core/dynamics/system_dynamics.py	/^    def eval(self, x, t):$/;"	kind:member	line:23
+eval	../core/examples/cart_pole_learning.py	/^    def eval(self, q, t):$/;"	kind:member	line:24
+eval	../core/learning.py	/^    def eval(self, x, t):$/;"	kind:member	line:26
+eval_dot	../core/dynamics/affine_dynamics.py	/^    def eval_dot(self, x, u, t):$/;"	kind:member	line:37
+eval_dot	../core/dynamics/dynamics.py	/^    def eval_dot(self, x, u, t):$/;"	kind:member	line:20
+eval_dot	../core/dynamics/quadratic_clf.py	/^    def eval_dot(self, x, u, t):$/;"	kind:member	line:37
+eval_grad	../core/dynamics/quadratic_clf.py	/^    def eval_grad(self, x, t):$/;"	kind:member	line:33
+eval_grad	../core/dynamics/scalar_dynamics.py	/^    def eval_grad(self, x, t):$/;"	kind:member	line:9
+fb_lin_controller.py	../core/controllers/fb_lin_controller.py	1;"	kind:file	line:1
+fb_lin_dynamics.py	../core/dynamics/fb_lin_dynamics.py	1;"	kind:file	line:1
+fit_diffeomorphism_model	../core/learning_keedmd/koopman_eigenfunctions.py	/^    def fit_diffeomorphism_model(self, X, t, X_d):$/;"	kind:member	line:89
+get_objgraph.py	../.venv/bin/get_objgraph.py	1;"	kind:file	line:1
+help	../.venv/lib/mypy/typeshed/tests/mypy_test.py	/^                    help="Run mypy with --no-implicit-optional (causes lots of errors)")$/;"	kind:variable	line:28
+help	../.venv/lib/mypy/typeshed/tests/mypy_test.py	/^                    help="Run mypy with --warn-unused-ignores "$/;"	kind:variable	line:30
+help	../.venv/lib/mypy/typeshed/tests/mypy_test.py	/^                    help="These versions only (major[.minor])")$/;"	kind:variable	line:26
+help	../.venv/lib/mypy/typeshed/tests/pytype_test.py	/^                    help="Number of test processes to spawn")$/;"	kind:variable	line:20
+help	../.venv/lib64/mypy/typeshed/tests/mypy_test.py	/^                    help="Run mypy with --no-implicit-optional (causes lots of errors)")$/;"	kind:variable	line:28
+help	../.venv/lib64/mypy/typeshed/tests/mypy_test.py	/^                    help="Run mypy with --warn-unused-ignores "$/;"	kind:variable	line:30
+help	../.venv/lib64/mypy/typeshed/tests/mypy_test.py	/^                    help="These versions only (major[.minor])")$/;"	kind:variable	line:26
+help	../.venv/lib64/mypy/typeshed/tests/pytype_test.py	/^                    help="Number of test processes to spawn")$/;"	kind:variable	line:20
+inv_permute	../core/dynamics/fb_lin_dynamics.py	/^    def inv_permute(self, arr):$/;"	kind:member	line:60
+inverted_pendulum.py	../core/systems/inverted_pendulum.py	1;"	kind:file	line:1
+koopman_eigenfunctions.py	../core/learning_keedmd/koopman_eigenfunctions.py	1;"	kind:file	line:1
+learning.py	../core/learning.py	1;"	kind:file	line:1
+libpath	../.venv/lib/mypy/typeshed/tests/mypy_test.py	/^def libpath(major, minor):$/;"	kind:function	line:66
+libpath	../.venv/lib64/mypy/typeshed/tests/mypy_test.py	/^def libpath(major, minor):$/;"	kind:function	line:66
+lift	../core/learning_keedmd/basis_functions.py	/^    def lift(self, q):$/;"	kind:member	line:15
+lift	../core/learning_keedmd/koopman_eigenfunctions.py	/^    def lift(self, q):$/;"	kind:member	line:125
+linear_controller.py	../core/controllers/linear_controller.py	1;"	kind:file	line:1
+linear_system	../core/dynamics/fb_lin_dynamics.py	/^    def linear_system(self):$/;"	kind:member	line:72
+linear_system	../core/dynamics/linear_system_dynamics.py	/^    def linear_system(self):$/;"	kind:member	line:31
+linear_system	../core/dynamics/linearizable_dynamics.py	/^    def linear_system(self):$/;"	kind:member	line:11
+linear_system_dynamics.py	../core/dynamics/linear_system_dynamics.py	1;"	kind:file	line:1
+linearizable_dynamics.py	../core/dynamics/linearizable_dynamics.py	1;"	kind:file	line:1
+load_blacklist	../.venv/lib/mypy/typeshed/tests/pytype_test.py	/^def load_blacklist():$/;"	kind:function	line:35
+load_blacklist	../.venv/lib64/mypy/typeshed/tests/pytype_test.py	/^def load_blacklist():$/;"	kind:function	line:35
+log	../.venv/lib/mypy/typeshed/tests/mypy_test.py	/^def log(args, *varargs):$/;"	kind:function	line:37
+log	../.venv/lib64/mypy/typeshed/tests/mypy_test.py	/^def log(args, *varargs):$/;"	kind:function	line:37
+loss	../core/learning_keedmd/koopman_eigenfunctions.py	/^            def loss(y_true, y_pred):$/;"	kind:function	line:62
+lower_bounds	../core/examples/cart_pole_learning.py	/^lower_bounds = -upper_bounds  # State constraints$/;"	kind:variable	line:41
+lqr_controller.py	../core/controllers/lqr_controller.py	1;"	kind:file	line:1
+main	../.venv/lib/mypy/typeshed/tests/mypy_test.py	/^def main():$/;"	kind:function	line:80
+main	../.venv/lib/mypy/typeshed/tests/pytype_test.py	/^def main():$/;"	kind:function	line:23
+main	../.venv/lib64/mypy/typeshed/tests/mypy_test.py	/^def main():$/;"	kind:function	line:80
+main	../.venv/lib64/mypy/typeshed/tests/pytype_test.py	/^def main():$/;"	kind:function	line:23
+match	../.venv/lib/mypy/typeshed/tests/mypy_test.py	/^def match(fn, args, blacklist):$/;"	kind:function	line:42
+match	../.venv/lib64/mypy/typeshed/tests/mypy_test.py	/^def match(fn, args, blacklist):$/;"	kind:function	line:42
+msg	../.venv/bin/get_objgraph.py	/^        msg = "\\n"$/;"	kind:variable	line:26
+mypy_selftest.py	../.venv/lib/mypy/typeshed/tests/mypy_selftest.py	1;"	kind:file	line:1
+mypy_selftest.py	../.venv/lib64/mypy/typeshed/tests/mypy_selftest.py	1;"	kind:file	line:1
+mypy_test.py	../.venv/lib/mypy/typeshed/tests/mypy_test.py	1;"	kind:file	line:1
+mypy_test.py	../.venv/lib64/mypy/typeshed/tests/mypy_test.py	1;"	kind:file	line:1
+name	../core/__init__.py	/^name = 'core'/;"	kind:variable	line:1
+nominal_model	../core/examples/cart_pole_learning.py	/^nominal_model = LinearSystemDynamics(A=A_nom, B=B_nom)$/;"	kind:variable	line:48
+obj	../.venv/bin/get_objgraph.py	/^        obj = objects[objtype]$/;"	kind:variable	line:32
+objtype	../.venv/bin/get_objgraph.py	/^        objtype = str(sys.argv[-1])$/;"	kind:variable	line:31
+outputs	../core/examples/cart_pole_learning.py	/^outputs = [CartPoleTrajectory(system_true, q_d[:,i,:],t_d) for i in range(Ntraj)]$/;"	kind:variable	line:62
+parser	../.venv/lib/mypy/typeshed/tests/mypy_test.py	/^parser = argparse.ArgumentParser(description="Test runner for typeshed. "$/;"	kind:variable	line:20
+parser	../.venv/lib/mypy/typeshed/tests/pytype_test.py	/^parser = argparse.ArgumentParser(description="Pytype tests.")$/;"	kind:variable	line:17
+parser	../.venv/lib64/mypy/typeshed/tests/mypy_test.py	/^parser = argparse.ArgumentParser(description="Test runner for typeshed. "$/;"	kind:variable	line:20
+parser	../.venv/lib64/mypy/typeshed/tests/pytype_test.py	/^parser = argparse.ArgumentParser(description="Pytype tests.")$/;"	kind:variable	line:17
+pd_controller.py	../core/controllers/pd_controller.py	1;"	kind:file	line:1
+pd_controllers	../core/examples/cart_pole_learning.py	/^pd_controllers = [PDController(outputs[i], K_p, K_d) for i in range(Ntraj)]$/;"	kind:variable	line:63
+pd_dynamics.py	../core/dynamics/pd_dynamics.py	1;"	kind:file	line:1
+permute	../core/dynamics/fb_lin_dynamics.py	/^    def permute(self, arr):$/;"	kind:member	line:48
+plot_eigenfunction_evolution	../core/learning_keedmd/koopman_eigenfunctions.py	/^    def plot_eigenfunction_evolution(self, X):$/;"	kind:member	line:116
+process	../core/controllers/controller.py	/^    def process(self, u):$/;"	kind:member	line:29
+process	../core/controllers/qp_controller.py	/^    def process(self, u):$/;"	kind:member	line:171
+process	../core/controllers/random_controller.py	/^    def process(self, u):$/;"	kind:member	line:45
+process	../core/learning_keedmd/koopman_eigenfunctions.py	/^    def process(self, X, t, X_d):$/;"	kind:member	line:99
+proportional	../core/dynamics/pd_dynamics.py	/^    def proportional(self, x, t):$/;"	kind:member	line:9
+proportional	../core/dynamics/robotic_dynamics.py	/^    def proportional(self, x, t):$/;"	kind:member	line:108
+pytype_test	../.venv/lib/mypy/typeshed/tests/pytype_test.py	/^def pytype_test(args):$/;"	kind:function	line:66
+pytype_test	../.venv/lib64/mypy/typeshed/tests/pytype_test.py	/^def pytype_test(args):$/;"	kind:function	line:66
+pytype_test.py	../.venv/lib/mypy/typeshed/tests/pytype_test.py	1;"	kind:file	line:1
+pytype_test.py	../.venv/lib64/mypy/typeshed/tests/pytype_test.py	1;"	kind:file	line:1
+q_d	../core/examples/cart_pole_learning.py	/^q_d = res['Q_d']  # Desired states$/;"	kind:variable	line:52
+qp_controller.py	../core/controllers/qp_controller.py	1;"	kind:file	line:1
+quadratic_clf.py	../core/dynamics/quadratic_clf.py	1;"	kind:file	line:1
+random_controller.py	../core/controllers/random_controller.py	1;"	kind:file	line:1
+res	../core/examples/cart_pole_learning.py	/^res = loadmat('.\/core\/examples\/cart_pole_d.mat') # Tensor (n, Ntraj, Ntime)$/;"	kind:variable	line:51
+reset	../core/controllers/controller.py	/^    def reset(self):$/;"	kind:member	line:41
+reset	../core/controllers/random_controller.py	/^    def reset(self):$/;"	kind:member	line:49
+robotic_dynamics.py	../core/dynamics/robotic_dynamics.py	1;"	kind:file	line:1
+sample	../core/controllers/random_controller.py	/^    def sample(self):$/;"	kind:member	line:29
+scalar_dynamics.py	../core/dynamics/scalar_dynamics.py	1;"	kind:file	line:1
+select	../core/dynamics/fb_lin_dynamics.py	/^    def select(self, arr):$/;"	kind:member	line:36
+simulate	../core/dynamics/system_dynamics.py	/^    def simulate(self, x_0, controller, ts, processed=True, atol=1e-6, rtol=1e-6):$/;"	kind:member	line:26
+system_dynamics.py	../core/dynamics/system_dynamics.py	1;"	kind:file	line:1
+system_true	../core/examples/cart_pole_learning.py	/^system_true = CartPole(m_c=.5, m_p=.2, l=.4)$/;"	kind:variable	line:38
+t_d	../core/examples/cart_pole_learning.py	/^t_d = res['t_d']  # Time points$/;"	kind:variable	line:53
+t_eval	../core/examples/cart_pole_learning.py	/^t_eval = dt * arange(N + 1) # Simulation time points$/;"	kind:variable	line:59
+upper_bounds	../core/examples/cart_pole_learning.py	/^upper_bounds = array([[2.5, pi\/3, 2, 2]])  # State constraints$/;"	kind:variable	line:40
+x_0	../core/examples/cart_pole_learning.py	/^    x_0 = q_d[:,ii,0]$/;"	kind:variable	line:66

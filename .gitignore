@@ -2,3 +2,8 @@
 __pycache__
 .ipynb_checkpoints
 *.slides.html
+.vscode/settings.json
+.vscode/.ropeproject/objectdb
+.vscode/.ropeproject/config.py
+.vscode/launch.json
+.vscode/launch.json

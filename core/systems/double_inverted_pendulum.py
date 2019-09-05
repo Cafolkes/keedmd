@@ -1,7 +1,7 @@
 from numpy import array, cos, identity, sin
-from core.dynamics import RoboticDynamics, SystemDynamics
+from core.dynamics import SystemDynamics, RoboticDynamics
 
-class DoubleInvertedPendulum(SystemDynamics, RoboticDynamics):
+class DoubleInvertedPendulum(RoboticDynamics):
     def __init__(self, m_1, m_2, l_1, l_2, g=9.81):
         SystemDynamics.__init__(self, 4, 2)
         RoboticDynamics.__init__(self, identity(2))
