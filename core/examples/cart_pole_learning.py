@@ -187,7 +187,7 @@ rbf_basis.construct_basis()
 print('Fitting EDMD model...')
 edmd_model = Edmd(rbf_basis, n, l1=l1_edmd, l2=l2_edmd)
 edmd_model.fit(xs, us, us_nom, ts)
-print(edmd_model.A, edmd_model.B)
+
 
 #%% ==============================================  EVALUATE PERFORMANCE  =============================================
 # Set up trajectory and controller for prediction task:

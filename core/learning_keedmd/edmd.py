@@ -69,8 +69,6 @@ class Edmd():
         Z = array([self.lift(X_filtered[ii,:,:].transpose(), t_filtered[ii,:]) for ii in range(Ntraj)])  # Lift x
         Z_dot = array([differentiate_vec(Z[ii,:,:],t_filtered[ii,:]) for ii in range(Ntraj)])  #Numerical differentiate lifted state
 
-        print(X_filtered.shape, Z.shape, Z_dot.shape, U_filtered.shape, U_nom_filtered.shape, t_filtered.shape)
-
         # Align data with numerical differentiated data because ends of trajectories "lost" in numerical differentiation
         clip = int((Z.shape[1]-Z_dot.shape[1])/2)
         X_filtered = X_filtered[:, clip:-clip, :]
@@ -83,8 +81,6 @@ class Edmd():
         n_data = Z.shape[0]*Z.shape[1]
         self.n_lift = Z.shape[2]
         self.m = U_filtered.shape[2]
-
-        print(X_filtered.shape, Z.shape, Z_dot.shape, U_filtered.shape, U_nom_filtered.shape, t_filtered.shape)
 
         X_filtered, Z, Z_dot, U_filtered, U_nom_filtered, t_filtered = X_filtered.reshape((self.n,n_data)), Z.reshape((self.n_lift,n_data)), \
                                                         Z_dot.reshape((self.n_lift,n_data)), U_filtered.reshape((self.m,n_data)), \
