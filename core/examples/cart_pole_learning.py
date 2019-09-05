@@ -1,5 +1,5 @@
 """Cart Pendulum Example"""
-
+from matplotlib.pyplot import figure, grid, legend, plot, show, subplot, suptitle, title, ylim, xlabel, ylabel
 from os import path
 import sys
 from numpy import arange, array, concatenate, cos, identity, linspace, ones, sin, tanh, tile, zeros, pi, random, interp, dot, multiply
@@ -148,16 +148,42 @@ pd_controller_pred = PDController(output_pred, K_p, K_d, noise_var_pred)
 # Simulate true system (baseline):
 x0_pred = q_d_pred[:,0]
 xs_pred, us_pred = system_true.simulate(x0_pred, pd_controller_pred, t_pred)
+xs_pred = xs_pred.transpose()
 
 # Create systems for each of the learned models and simulate with open loop control signal us_pred:
-#keedmd_sys = LinearSystemDynamics(A=keedmd_model.A, B=keedmd_model.B)
-#keedmd_controller = OpenLoopController(keedmd_sys, us_pred, t_pred[:us_pred.shape[0]])
-#z0_keedmd = keedmd_model.lift(x0_pred.reshape(x0_pred.shape[0],1), zeros((1,))).squeeze()
-#print(z0_keedmd.shape, len(z0_keedmd), keedmd_sys.n)
-#zs_keedmd, us_keedmd = keedmd_sys.simulate(z0_keedmd,keedmd_controller,t_pred)
-#rint(z0_keedmd.shape, zs_keedmd.shape, us_keedmd.shape)
+keedmd_sys = LinearSystemDynamics(A=keedmd_model.A, B=keedmd_model.B)
+keedmd_controller = OpenLoopController(keedmd_sys, us_pred, t_pred[:us_pred.shape[0]])
+z0_keedmd = keedmd_model.lift(x0_pred.reshape(x0_pred.shape[0],1), zeros((1,))).squeeze()
+zs_keedmd,_= keedmd_sys.simulate(z0_keedmd,keedmd_controller,t_pred)
+xs_keedmd = dot(keedmd_model.C,zs_keedmd.transpose())
 
-#edmd_sys = LinearSystemDynamics(A=edmd_model.A, B=edmd_model.B)
+edmd_sys = LinearSystemDynamics(A=edmd_model.A, B=edmd_model.B)
+edmd_controller = OpenLoopController(edmd_sys, us_pred, t_pred[:us_pred.shape[0]])
+z0_edmd = edmd_model.lift(x0_pred.reshape(x0_pred.shape[0],1), zeros((1,))).squeeze()
+zs_edmd,_ = edmd_sys.simulate(z0_edmd,edmd_controller,t_pred)
+xs_edmd = dot(edmd_model.C,zs_edmd.transpose())
 
-#savemat('./core/examples/results/cart_pendulum_pd_data.mat', {'xs': xs, 't_eval': t_eval, 'us': us, 'us_nom':us_nom})
-#xs, us, us_nom, ts = array(xs), array(us), array(us_nom), array(ts)
+nom_controller = OpenLoopController(nominal_sys, us_pred, t_pred[:us_pred.shape[0]])
+xs_nom,_ = nominal_sys.simulate(x0_pred,nom_controller,t_pred)
+xs_nom = xs_nom.transpose()
+
+savemat('./core/examples/results/cart_pendulum_prediction.mat', {'t_pred':t_pred, 'xs_pred': xs_pred, 'us_pred':us_pred,
+                                                            'xs_keedmd':xs_keedmd, 'xs_edmd':xs_edmd, 'xs_nom': xs_nom})
+
+# Plot the first simulated trajectory
+ylabels = ['x', '$\\theta$', '$\\dot{x}$', '$\\dot{\\theta}$']
+figure()
+for ii in range(n):
+    subplot(4, 1, ii+1)
+    plot(t_pred, xs_pred[ii,:], linewidth=2, label='$true$')
+    plot(t_pred, xs_keedmd[ii,:], linewidth=2, label='$keedmd$')
+    plot(t_pred, xs_edmd[ii,:], linewidth=2, label='$edmd$')
+    plot(t_pred, xs_nom[ii,:], linewidth=2, label='$nom$')
+    ylim(min(xs_pred[ii,:])-0.1,max(xs_pred[ii,:])+0.1)
+    xlabel('Time (sec)')
+    ylabel(ylabels[ii])
+    grid()
+    if ii == 0:
+        title('Predicted state evolution of different models with open loop control')
+legend(fontsize=10, loc='best')
+show()
