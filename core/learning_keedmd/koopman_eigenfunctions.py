@@ -1,36 +1,39 @@
-from core.learning_keedmd.basis_functions import BasisFunctions
-from numpy import array, linalg, transpose, math, diag, dot, ones, zeros, reshape, unique, power, prod, exp, log, divide
+from matplotlib.pyplot import figure, grid, legend, plot, show, subplot, suptitle, title
+from numpy import array, linalg, transpose, math, diag, dot, ones, zeros, reshape, unique, power, prod, exp, log, divide, linspace, square
 from numpy import concatenate as npconcatenate
 from itertools import combinations_with_replacement, permutations
 from core.learning import differentiate
-from keras.models import Model, Sequential
-from keras.layers import Input, Dense, Concatenate, concatenate
-from keras import backend as K
+from core.learning_keedmd.basis_functions import BasisFunctions
 from core.dynamics.linear_system_dynamics import LinearSystemDynamics
 from core.controllers.constant_controller import ConstantController
+from torch import nn, cuda, optim, from_numpy, manual_seed, mean, transpose as t_transpose, mm, matmul, zeros as t_zeros, save, load
+from torch.utils.data.dataset import Dataset, TensorDataset
+from torch.utils.data.dataset import random_split
+from torch.utils.data.dataloader import DataLoader
+from torch.autograd.gradcheck import zero_gradients
+from torchviz import make_dot
 
 
 class KoopmanEigenfunctions(BasisFunctions):
     """
     Class for construction and lifting using Koopman eigenfunctions
     """
-    def __init__(self, n, max_power, A_cl):
+    def __init__(self, n, max_power, A_cl, BK):
         self.n = n
         self.max_power = max_power
         self.A_cl = A_cl
+        self.BK = BK
         self.Nlift = None
         self.Lambda = None
         self.basis = None
         self.eigfuncs_lin = None  #Eigenfunctinos for linearized autonomous dynamics xdot = A_cl*x
         self.scale_func = None  #Scaling function scaling relevant state space into unit cube
         self.diffeomorphism_model = None
-        self.diffeomorphism = lambda q: q  #Diffeomorphism between linearized and true dynamics (to be learned)
-
 
     def construct_basis(self, ub=None, lb=None):
         self.eigfunc_lin = self.construct_linear_eigfuncs()
         self.scale_func = self.construct_scaling_function(ub,lb)
-        self.basis = lambda q: self.eigfunc_lin(self.scale_func(self.diffeomorphism(q)))
+        self.basis = lambda q, t: self.eigfunc_lin(self.scale_func(self.diffeomorphism(q, t)))
         #print('Dimensional test: ', self.lift(ones((self.n,2))).shape)
 
     def construct_linear_eigfuncs(self):
@@ -57,70 +60,219 @@ class KoopmanEigenfunctions(BasisFunctions):
 
         return scale_func
 
-    def build_diffeomorphism_model(self, layer_width=100):
-        def diffeomorphism_loss(input_tensor, output_tensor, Acl_tensor):
-            def loss(y_true, y_pred):
-                h_pred = y_pred[:,:4]
-                xdot = y_pred[:,4:]
-                y_true_red = y_true[:,:4]
+    def diffeomorphism(self, q, t):
+        q = q.transpose()
+        self.diffeomorphism_model.eval()
+        input = npconcatenate((q,t.reshape((1,1))),axis=1)
+        diff_pred = self.diffeomorphism_model(from_numpy(input)).detach().numpy()
+        return (q + diff_pred).transpose()
 
-                h_grad = K.gradients(output_tensor,input_tensor)[0]
-                h_dot = K.dot(K.transpose(h_grad), xdot)
-                y_pred_sum = h_dot - K.transpose(K.dot(Acl_tensor, K.transpose(h_pred)))
-                return K.square(y_pred_sum - y_true_red)
+    def build_diffeomorphism_model(self, n_hidden_layers = 2, layer_width=50, l1=0., l2=0., batch_size = 64):
+        # Set up model architecture for h(x,t):
+        N, d_h_in, H, d_h_out = batch_size, self.n + 1, layer_width, self.n
+        self.diffeomorphism_model= nn.Sequential(
+            nn.Linear(d_h_in,H),
+            nn.ReLU()
+        )
+        for ii in range(n_hidden_layers):
+            self.diffeomorphism_model.add_module('dense_' + str(ii+1), nn.Linear(H,H))
+            self.diffeomorphism_model.add_module('relu_' + str(ii + 1), nn.ReLU())
+            if ii < n_hidden_layers-1:
+                self.diffeomorphism_model.add_module('dropout_' + str(ii+1), nn.Dropout(p=.1))
+        self.diffeomorphism_model.add_module('output', nn.Linear(H,d_h_out))
+
+        self.diffeomorphism_model = self.diffeomorphism_model.double()
+
+    def fit_diffeomorphism_model(self, X, t, X_d, learning_rate=1e-2, n_epochs=50, train_frac=0.8, l2=1e1):
+        X, X_dot, X_d, t = self.process(X=X, t=t, X_d=X_d)
+        y_target = X_dot - dot(self.A_cl, X.transpose()).transpose() - dot(self.BK, X_d.transpose()).transpose()
+        y_fit = npconcatenate((y_target, zeros(y_target.shape)), axis=1)
+
+        device = 'cuda' if cuda.is_available() else 'cpu'
+
+        # Prepare data for pytorch:
+        manual_seed(42)  # Fix seed for reproducibility
+        X_tensor = from_numpy(npconcatenate((X,t.reshape((t.shape[0],1)),X_dot),axis=1)) #[x (1,4), t (1,1), x_dot (1,4)]
+        y_tensor = from_numpy(y_target)
+        X_tensor.requires_grad_(True)
+
+
+        # Builds dataset with all data
+        dataset = TensorDataset(X_tensor, y_tensor)
+        # Splits randomly into train and validation datasets
+        n_train = int(train_frac*X.shape[0])
+        n_val = X.shape[0]-n_train
+        train_dataset, val_dataset = random_split(dataset, [n_train, n_val])
+        # Builds a loader for each dataset to perform mini-batch gradient descent
+        train_loader = DataLoader(dataset=train_dataset, batch_size=64, shuffle=True)
+        val_loader = DataLoader(dataset=val_dataset, batch_size=64)
+
+        def diffeomorphism_loss(h_dot, zero_jacobian, y_true, y_pred, is_training):
+            h_sum_pred = h_dot - t_transpose(mm(self.A_cl, t_transpose(y_pred, 1, 0)), 1, 0)
+            if is_training:
+                loss = mean((y_true-h_sum_pred)**2) + 1e1*mean((zero_jacobian**2))
+            else:
+                loss = mean((y_true-h_sum_pred)**2)
             return loss
 
-        # NN for h(x):
-        x_input = Input(shape=(self.n,), dtype='float32', name='x_input')  #Input to h(x)
-        h = Dense(units=layer_width, activation='relu')(x_input)  # Hidden layer #1
-        h = Dense(units=layer_width, activation='relu')(h)  #Hidden layer #2
-        h_output = Dense(units=self.n)(h) #Output layer
+        # Set up optimizer and learning rate scheduler:
+        optimizer = optim.Adam(self.diffeomorphism_model.parameters(),lr=learning_rate,weight_decay=l2)
+        lambda1 = lambda epoch: 0.95 ** epoch
+        scheduler = optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda1)
+        self.A_cl = from_numpy(self.A_cl)
 
-        # Pass xdot through network as well to allow desired loss function:
-        xdot_input = Input(shape=(self.n,), dtype='float32', name='xdot_input')  #h_dot(x) = grad_x(h(x))*xdot
+        def calc_gradients(xt, xdot, yhat, zero_input, yzero, is_training):
+            xt.retain_grad()
+            if is_training:
+                zero_input.retain_grad()
+                zero_jacobian = compute_jacobian(zero_input, yzero)[:,:,:self.n]
+                zero_jacobian.requires_grad_(True)
+                zero_jacobian = zero_jacobian.squeeze()
+                optimizer.zero_grad()
+            else:
+                zero_jacobian = None
 
-        # Concatenate into single output
-        concatenated_output = concatenate([h_output, xdot_input])
+            jacobian = compute_jacobian(xt, yhat)[:,:,:self.n]
+            optimizer.zero_grad()
+            h_dot = matmul(jacobian, xdot.reshape((xdot.shape[0],xdot.shape[1],1)))
+            h_dot = h_dot.squeeze()
 
-        model = Model(inputs=[x_input, xdot_input], outputs=concatenated_output)
-        model.compile(optimizer='adam', loss=diffeomorphism_loss(x_input, h_output, K.variable(self.A_cl)))
-        self.diffeomorphism_model = model
+            return h_dot, zero_jacobian
 
-    def fit_diffeomorphism_model(self, X, t, X_d):
-        X, X_dot = self.process(X=X, t=t, X_d=X_d)
-        #X_fit = npconcatenate((X,X_dot),axis=1) #TODO: Remove (?)
-        y_target = (X_dot - (dot(self.A_cl,X.transpose())).transpose())
-        y_fit = npconcatenate((y_target, zeros(y_target.shape)),axis=1)
-        self.diffeomorphism_model.fit([X, X_dot], y_fit, epochs=1, batch_size=1)
+        def compute_jacobian(inputs, output):
+            """
+            :param inputs: Batch X Size (e.g. Depth X Width X Height)
+            :param output: Batch X Classes
+            :return: jacobian: Batch X Classes X Size
+            """
+            assert inputs.requires_grad
 
-        self.plot_eigenfunction_evolution(X[:,-200:])
+            num_classes = output.size()[1]
 
+            jacobian = t_zeros((num_classes, *inputs.size())).double()
+            grad_output = t_zeros((*output.size(),)).double()
+            if inputs.is_cuda:
+                grad_output = grad_output.cuda()
+                jacobian = jacobian.cuda()
+
+            for i in range(num_classes):
+                zero_gradients(inputs)
+                grad_output.zero_()
+                grad_output[:, i] = 1
+                output.backward(grad_output, retain_graph=True)
+                jacobian[i] = inputs.grad
+
+            return t_transpose(jacobian, dim0=0, dim1=1)
+
+        def make_train_step(model, loss_fn, optimizer):
+            def train_step(xt, xdot, y):
+                model.train() # Set model to training mode
+                yhat = model(xt)
+                zero_input = t_zeros(xt.shape).double()
+                zero_input[:,self.n:] = xt[:,self.n:]
+                zero_input.requires_grad_(True)
+                y_zero = model(zero_input)
+
+                # Do necessary calculations for loss formulation and regularization:
+                h_dot, zero_jacobian = calc_gradients(xt, xdot, yhat, zero_input, y_zero, model.training)
+                #optimizer.zero_grad() #TODO: Remove(?)
+                loss = loss_fn(h_dot, zero_jacobian, y, yhat, model.training)
+                loss.backward()
+                optimizer.step()
+                #optimizer.zero_grad() #TODO: Remove(?)
+                return loss.item()
+            return train_step
+
+        losses = []
+        val_losses = []
+        train_step = make_train_step(self.diffeomorphism_model, diffeomorphism_loss, optimizer)
+
+        # Training loop
+        for i in range(n_epochs):
+            # Uses loader to fetch one mini-batch for training
+            for x_batch, y_batch in train_loader:
+                # Send mini batch data to same location as model:
+                x_batch = x_batch.to(device)
+                y_batch = y_batch.to(device)
+
+                # Train based on current batch:
+                xt = x_batch[:,:self.n+1]  # [x, t]
+                xdot = x_batch[:,self.n+1:]  # [xdot]
+                loss = train_step(xt, xdot, y_batch)
+                losses.append(loss)
+
+            #with no_grad():
+                # Uses loader to fetch one mini-batch for validation
+            for x_val, y_val in val_loader:
+                # Sends data to same device as model
+                x_val = x_val.to(device)
+                y_val = y_val.to(device)
+
+                self.diffeomorphism_model.eval() # Change model model to evaluation
+                xt_val = x_val[:, :self.n + 1]  # [x, t]
+                xdot_val = x_val[:, self.n + 1:]  # [xdot]
+                yhat = self.diffeomorphism_model(xt_val)  # Predict
+                #y_z = t_zeros(yhat.shape)
+                #input_z = t_zeros(xt_val.shape)
+                jacobian_xdot_val, zero_jacobian_val = calc_gradients(xt_val, xdot_val, yhat, None, None, self.diffeomorphism_model.training)
+                val_loss = diffeomorphism_loss(jacobian_xdot_val, zero_jacobian_val, y_val, yhat, self.diffeomorphism_model.training)  # Compute validation loss
+                optimizer.zero_grad()
+                val_losses.append(val_loss.item())  # Save validation loss
+
+            scheduler.step(i)
+            print('Epoch: ',i,' Training loss:', format(losses[-1]/128, '08f'), ' Validation loss:', format(val_losses[-1]/128, '08f'))
 
     def process(self, X, t, X_d):
         # Shift dynamics to make origin a fixed point
         X_f = X_d[:,:,-1]
         X_shift = array([X[ii] - X_f[:,ii] for ii in range(len(X))])
+        X_d = array([X_d[:,ii,:].reshape((X_d.shape[2],X_d.shape[0])) - X_f[:, ii] for ii in range(len(X))])
 
         # Calculate numerical derivatives
         X_dot = array([differentiate(X_shift[ii,:,:],t) for ii in range(len(X))])
+        t = array([t for _ in range(len(X))])
         clip = int((X_shift.shape[1]-X_dot.shape[1])/2)
         X_shift = X_shift[:,clip:-clip,:]
+        X_d = X_d[:, clip:-clip, :]
+        t = t[:,clip:-clip]
         assert(X_shift.shape == X_dot.shape)
+        assert(X_d.shape == X_dot.shape)
+        assert(t.shape == X_shift[:,:,0].shape)
 
         # Reshape to have input-output data
         X_shift = X_shift.reshape((X_shift.shape[0]*X_shift.shape[1],X_shift.shape[2]))
         X_dot = X_dot.reshape((X_dot.shape[0] * X_dot.shape[1], X_dot.shape[2]))
+        X_d = X_d.reshape((X_d.shape[0] * X_d.shape[1], X_d.shape[2]))
+        t = t.reshape((t.shape[0] * t.shape[1],))
+        return X_shift, X_dot, X_d, t
 
-        return X_shift, X_dot
+    def save_diffeomorphism_model(self, filename):
+        save(self.diffeomorphism_model.state_dict(), filename)
 
-    def plot_eigenfunction_evolution(self, X):
-        print(self.Lambda)
-        print(diag(self.Lambda).shape)
+    def load_diffeomorphism_model(self, filename):
+        self.diffeomorphism_model.load_state_dict(load(filename))
+
+    def plot_eigenfunction_evolution(self, X, t):
+        X = X.transpose()
         eigval_system = LinearSystemDynamics(A=diag(self.Lambda),B=zeros((self.Lambda.shape[0],1)))
-        eigval_sim = ConstantController(eigval_system,0.)
-        print(X.shape)
-        x0 = X[:,0]
+        eigval_ctrl = ConstantController(eigval_system,0.)
+        x0 = X[:,:1]
+        t0 = array([[0.]])
+        z0 = self.lift(x0, array([[0.]]))
+        eigval_evo, us = eigval_system.simulate(z0.flatten(), eigval_ctrl, t)
+        eigval_evo = eigval_evo.transpose()
+        eigfunc_evo = self.lift(X, t.reshape((t.shape[0],1))).transpose()
 
 
-    def lift(self, q):
-        return array([self.basis(q[:,ii].reshape((self.n,1))) for ii in range(q.shape[1])]).transpose()
+        figure()
+        for ii in range(1,17):
+            subplot(4, 4, ii)
+            plot(t, eigval_evo[ii,:], linewidth=2, label='$eigval evo$')
+            plot(t, eigfunc_evo[ii,:], linewidth=2, label='$eigfunc evo$')
+            title('Eigenvalue VS eigenfunction evolution')
+            grid()
+        legend(fontsize=12)
+        show()  # TODO: Create plot of all collected trajectories (subplot with one plot for each state), not mission critical
+
+    def lift(self, q, t):
+        return array([self.basis(q[:,ii].reshape((self.n,1)), t[ii]) for ii in range(q.shape[1])])

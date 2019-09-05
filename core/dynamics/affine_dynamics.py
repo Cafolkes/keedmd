@@ -35,4 +35,4 @@ class AffineDynamics(Dynamics):
         pass
 
     def eval_dot(self, x, u, t):
-        return self.drift(x, t) + dot(self.act(x, t), u)
+        return (self.drift(x, t) + dot(self.act(x, t), u)).flatten()
