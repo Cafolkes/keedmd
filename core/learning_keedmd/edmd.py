@@ -65,7 +65,6 @@ class Edmd():
 
         Ntraj = X_filtered.shape[0]  # Number of trajectories in dataset
         Z = array([self.lift(X_filtered[ii,:,:].transpose(), t_filtered[ii,:]) for ii in range(Ntraj)])  # Lift x
-        Z = concatenate((X_filtered,Z), axis=2)  # Add state to beginning of lifted state
         Z_dot = array([differentiate(Z[ii,:,:],t_filtered[ii,:]) for ii in range(Ntraj)])  #Numerical differentiate lifted state
 
         # Align data with numerical differentiated data because ends of trajectories "lost" in numerical differentiation
@@ -101,7 +100,8 @@ class Edmd():
         return X_filtered, U_filtered, U_nom_filtered, t_filtered
 
     def lift(self, X, t):
-        return self.basis.lift(X, t)
+        Z = self.basis.lift(X, t)
+        return concatenate((X.transpose(),Z),axis=1)
 
     def predict(self,X, U):
         return dot(self.C, dot(self.A,X) + dot(self.B, U))
