@@ -67,7 +67,7 @@ class KoopmanEigenfunctions(BasisFunctions):
         diff_pred = self.diffeomorphism_model(from_numpy(input)).detach().numpy()
         return (q + diff_pred).transpose()
 
-    def build_diffeomorphism_model(self, n_hidden_layers = 2, layer_width=50, l1=0., l2=0., batch_size = 64):
+    def build_diffeomorphism_model(self, n_hidden_layers = 2, layer_width=50, l2=0., batch_size = 64):
         # Set up model architecture for h(x,t):
         N, d_h_in, H, d_h_out = batch_size, self.n + 1, layer_width, self.n
         self.diffeomorphism_model= nn.Sequential(
