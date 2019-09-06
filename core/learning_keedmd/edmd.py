@@ -69,22 +69,18 @@ class Edmd():
         Z = array([self.lift(X_filtered[ii,:,:].transpose(), t_filtered[ii,:]) for ii in range(Ntraj)])  # Lift x
         Z_dot = array([differentiate_vec(Z[ii,:,:],t_filtered[ii,:]) for ii in range(Ntraj)])  #Numerical differentiate lifted state
 
-        # Align data with numerical differentiated data because ends of trajectories "lost" in numerical differentiation
-        clip = int((Z.shape[1]-Z_dot.shape[1])/2)
-        X_filtered = X_filtered[:, clip:-clip, :]
-        Z = Z[:,clip:-clip,:]
-        U_filtered = U_filtered[:,clip:-clip,:]
-        U_nom_filtered = U_nom_filtered[:, clip:-clip, :]
-        t_filtered = t_filtered[:,clip:-clip]
-
         # Vectorize data
         n_data = Z.shape[0]*Z.shape[1]
         self.n_lift = Z.shape[2]
         self.m = U_filtered.shape[2]
+        order = 'F'
 
-        X_filtered, Z, Z_dot, U_filtered, U_nom_filtered, t_filtered = X_filtered.reshape((self.n,n_data)), Z.reshape((self.n_lift,n_data)), \
-                                                        Z_dot.reshape((self.n_lift,n_data)), U_filtered.reshape((self.m,n_data)), \
-                                                        U_nom_filtered.reshape((self.m, n_data)), t_filtered.reshape((1,n_data))
+        X_filtered, Z, Z_dot, U_filtered, U_nom_filtered, t_filtered = X_filtered.transpose().reshape((self.n,n_data),order=order), \
+                                                                        Z.transpose().reshape((self.n_lift,n_data),order=order), \
+                                                                        Z_dot.transpose().reshape((self.n_lift,n_data),order=order), \
+                                                                        U_filtered.transpose().reshape((self.m,n_data),order=order), \
+                                                                        U_nom_filtered.transpose().reshape((self.m, n_data),order=order), \
+                                                                        t_filtered.transpose().reshape((1,n_data),order=order)
 
         return X_filtered, Z, Z_dot, U_filtered, U_nom_filtered, t_filtered
 
@@ -104,9 +100,10 @@ class Edmd():
 
     def lift(self, X, t):
         Z = self.basis.lift(X, t)
-        one_vec = ones((Z.shape[0],1))
-        #return concatenate((X.transpose(),one_vec, Z),axis=1)
-        return X.transpose()
+        if not X.shape[1] == Z.shape[1]:
+            Z = Z.transpose()
+        one_vec = ones((1,Z.shape[1]))
+        return concatenate((X,one_vec, Z),axis=0).transpose()
 
     def predict(self,X, U):
         return dot(self.C, dot(self.A,X) + dot(self.B, U))

@@ -73,16 +73,15 @@ diff_learn_rate_decay = 0.95
 diff_dropout_prob = 0.05
 
 # KEEDMD parameters
-l1_keedmd = 0.#1e-4
-l2_keedmd = 0.#1e-6
+l1_keedmd = 1e-2
+l2_keedmd = 1e-2
 
 # EDMD parameters
 n_lift_edmd = 100
-l1_edmd = 0.#1e-4
-l2_edmd = 0.#1e-4
+l1_edmd = 1e-2
+l2_edmd = 1e-2
 
 #%% ===============================================    COLLECT DATA     ===============================================
-
 # Load trajectories
 traj_origin = 'gen_MPC'
 if (traj_origin == 'gen_MPC'):
