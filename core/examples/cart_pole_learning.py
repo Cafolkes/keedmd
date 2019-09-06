@@ -2,9 +2,9 @@
 from matplotlib.pyplot import figure, grid, legend, plot, show, subplot, suptitle, title, ylim, xlabel, ylabel
 from os import path
 import sys
-from matplotlib.pyplot import figure, grid, legend, plot, show, subplot, suptitle, title
+from matplotlib.pyplot import figure, grid, legend, plot, show, subplot, suptitle, title, fill_between
 import numpy as np
-from numpy import arange, array, concatenate, cos, identity, linspace, ones, sin, tanh, tile, zeros, pi, interp, dot, multiply, asarray
+from numpy import arange, array, concatenate, cos, identity, linspace, ones, sin, tanh, tile, zeros, pi, interp, dot, multiply, asarray, mean, std
 #from numpy.random import uniform
 from scipy.io import loadmat, savemat
 from sys import argv
@@ -77,7 +77,7 @@ l1_keedmd = 1e-2
 l2_keedmd = 1e-2
 
 # EDMD parameters
-n_lift_edmd = 100
+n_lift_edmd = (eigenfunction_max_power+1)**n-1
 l1_edmd = 1e-2
 l2_edmd = 1e-2
 
@@ -85,9 +85,9 @@ l2_edmd = 1e-2
 # Load trajectories
 traj_origin = 'gen_MPC'
 if (traj_origin == 'gen_MPC'):
-    Ntraj = 20
+    Ntraj = 100
     t_d = t_eval
-    traj_bounds = [1,0.2,0.,0.] # x, theta, x_dot, theta_dot
+    traj_bounds = [2,0.2,0.,0.] # x, theta, x_dot, theta_dot
     q_d = zeros((n,Ntraj,N+1))
     Q = sparse.diags([0,0,0,0])
     QN = sparse.diags([100000.,100000.,50000.,10000.])
@@ -190,51 +190,109 @@ edmd_model.fit(xs, us, us_nom, ts)
 
 #%% ==============================================  EVALUATE PERFORMANCE  =============================================
 # Set up trajectory and controller for prediction task:
-q_d_pred = q_d[:,4,:]
+print('Simulating trajectories to evaluate predictive performance...')
 t_pred = t_d.squeeze()
 noise_var_pred = 0.5
-output_pred = CartPoleTrajectory(system_true, q_d_pred,t_pred)
-pd_controller_pred = PDController(output_pred, K_p, K_d, noise_var_pred)
+Ntraj_pred = 10
+t_d = t_eval
+traj_bounds = [2, 0.2, 0., 0.]  # x, theta, x_dot, theta_dot
+q_d_pred = zeros((n, Ntraj_pred, N + 1))
 
-# Simulate true system (baseline):
-x0_pred = q_d_pred[:,0]
-xs_pred, us_pred = system_true.simulate(x0_pred, pd_controller_pred, t_pred)
-xs_pred = xs_pred.transpose()
+for ii in range(Ntraj_pred):
+    x_0 = asarray([random.uniform(-i, i) for i in traj_bounds])
+    mpc_controller.eval(x_0, 0)
+    q_d_pred[:, ii, :] = mpc_controller.parse_result()
 
-# Create systems for each of the learned models and simulate with open loop control signal us_pred:
+# Define KEEDMD and EDMD systems:
 keedmd_sys = LinearSystemDynamics(A=keedmd_model.A, B=keedmd_model.B)
-keedmd_controller = OpenLoopController(keedmd_sys, us_pred, t_pred[:us_pred.shape[0]])
-z0_keedmd = keedmd_model.lift(x0_pred.reshape(x0_pred.shape[0],1), zeros((1,))).squeeze()
-zs_keedmd,_= keedmd_sys.simulate(z0_keedmd,keedmd_controller,t_pred)
-xs_keedmd = dot(keedmd_model.C,zs_keedmd.transpose())
-
 edmd_sys = LinearSystemDynamics(A=edmd_model.A, B=edmd_model.B)
-edmd_controller = OpenLoopController(edmd_sys, us_pred, t_pred[:us_pred.shape[0]])
-z0_edmd = edmd_model.lift(x0_pred.reshape(x0_pred.shape[0],1), zeros((1,))).squeeze()
-zs_edmd,_ = edmd_sys.simulate(z0_edmd,edmd_controller,t_pred)
-xs_edmd = dot(edmd_model.C,zs_edmd.transpose())
 
-nom_controller = OpenLoopController(nominal_sys, us_pred, t_pred[:us_pred.shape[0]])
-xs_nom,_ = nominal_sys.simulate(x0_pred,nom_controller,t_pred)
-xs_nom = xs_nom.transpose()
+#Simulate all different systems
+xs_pred = []
+xs_keedmd = []
+xs_edmd = []
+xs_nom = []
 
-savemat('./core/examples/results/cart_pendulum_prediction.mat', {'t_pred':t_pred, 'xs_pred': xs_pred, 'us_pred':us_pred,
+for ii in range(Ntraj_pred):
+    output_pred = CartPoleTrajectory(system_true, q_d_pred[:,ii,:],t_pred)
+    pd_controller_pred = PDController(output_pred, K_p, K_d, noise_var_pred)
+
+    # Simulate true system (baseline):
+    x0_pred = q_d_pred[:,ii,0].transpose()
+    xs_pred_tmp, us_pred_tmp = system_true.simulate(x0_pred, pd_controller_pred, t_pred)
+    xs_pred_tmp = xs_pred_tmp.transpose()
+
+    # Create systems for each of the learned models and simulate with open loop control signal us_pred:
+    keedmd_controller = OpenLoopController(keedmd_sys, us_pred_tmp, t_pred[:us_pred_tmp.shape[0]])
+    z0_keedmd = keedmd_model.lift(x0_pred.reshape(x0_pred.shape[0],1), zeros((1,))).squeeze()
+    zs_keedmd,_= keedmd_sys.simulate(z0_keedmd,keedmd_controller,t_pred)
+    xs_keedmd_tmp = dot(keedmd_model.C,zs_keedmd.transpose())
+
+    edmd_controller = OpenLoopController(edmd_sys, us_pred_tmp, t_pred[:us_pred_tmp.shape[0]])
+    z0_edmd = edmd_model.lift(x0_pred.reshape(x0_pred.shape[0],1), zeros((1,))).squeeze()
+    zs_edmd,_ = edmd_sys.simulate(z0_edmd,edmd_controller,t_pred)
+    xs_edmd_tmp = dot(edmd_model.C,zs_edmd.transpose())
+
+    nom_controller = OpenLoopController(nominal_sys, us_pred_tmp, t_pred[:us_pred_tmp.shape[0]])
+    xs_nom_tmp,_ = nominal_sys.simulate(x0_pred,nom_controller,t_pred)
+    xs_nom_tmp = xs_nom_tmp.transpose()
+
+    xs_pred.append(xs_pred_tmp)
+    xs_keedmd.append(xs_keedmd_tmp)
+    xs_edmd.append(xs_edmd_tmp)
+    xs_nom.append(xs_nom_tmp)
+
+savemat('./core/examples/results/cart_pendulum_prediction.mat', {'t_pred':t_pred, 'xs_pred': xs_pred,
                                                             'xs_keedmd':xs_keedmd, 'xs_edmd':xs_edmd, 'xs_nom': xs_nom})
+
+# Calculate error statistics
+mse_keedmd = array([(xs_keedmd[ii] - xs_pred[ii])**2 for ii in range(Ntraj_pred)])
+mse_edmd = array([(xs_edmd[ii] - xs_pred[ii])**2 for ii in range(Ntraj_pred)])
+mse_nom = array([(xs_nom[ii] - xs_pred[ii])**2 for ii in range(Ntraj_pred)])
+e_keedmd = array([xs_keedmd[ii] - xs_pred[ii] for ii in range(Ntraj_pred)])
+e_edmd = array([xs_edmd[ii] - xs_pred[ii] for ii in range(Ntraj_pred)])
+e_nom = array([xs_nom[ii] - xs_pred[ii] for ii in range(Ntraj_pred)])
+mse_keedmd = mean(mean(mean(mse_keedmd)))
+mse_edmd = mean(mean(mean(mse_edmd)))
+mse_nom = mean(mean(mean(mse_nom)))
+e_mean_keedmd = mean(e_keedmd, axis=0)
+e_mean_edmd = mean(e_edmd, axis=0)
+e_mean_nom = mean(e_nom, axis=0)
+e_std_keedmd = std(e_keedmd, axis=0)
+e_std_edmd = std(e_edmd, axis=0)
+e_std_nom = std(e_nom, axis=0)
 
 # Plot the first simulated trajectory
 ylabels = ['x', '$\\theta$', '$\\dot{x}$', '$\\dot{\\theta}$']
-figure()
+figure(figsize=(6,9))
 for ii in range(n):
     subplot(4, 1, ii+1)
-    plot(t_pred, xs_pred[ii,:], linewidth=2, label='$true$')
-    plot(t_pred, xs_keedmd[ii,:], linewidth=2, label='$keedmd$')
-    plot(t_pred, xs_edmd[ii,:], linewidth=2, label='$edmd$')
-    plot(t_pred, xs_nom[ii,:], linewidth=2, label='$nom$')
-    ylim(min(xs_pred[ii,:])-0.1,max(xs_pred[ii,:])+0.1)
-    xlabel('Time (sec)')
-    ylabel(ylabels[ii])
+    plot(t_pred, e_mean_nom[ii,:], linewidth=2, label='$nom$')
+    fill_between(t_pred, e_mean_nom[ii,:]-e_std_nom[ii,:], e_mean_nom[ii,:]+e_std_nom[ii,:], alpha=0.1)
+
+    plot(t_pred, e_mean_edmd[ii,:], linewidth=2, label='$edmd$')
+    fill_between(t_pred, e_mean_edmd[ii, :] - e_std_edmd[ii, :], e_mean_edmd[ii, :] + e_std_edmd[ii, :], alpha=0.2)
+
+    plot(t_pred, e_mean_keedmd[ii,:], linewidth=2, label='$keedmd$')
+    fill_between(t_pred, e_mean_keedmd[ii, :] - e_std_keedmd[ii, :], e_mean_keedmd[ii, :] + e_std_keedmd[ii, :], alpha=0.2)
+
+    if ii == 1 or ii == 3:
+        ylim(-0.5, 0.5)
+    else:
+        ylim(-0.1,0.1)
+
+    ylabel('Error ' + ylabels[ii])
     grid()
     if ii == 0:
-        title('Predicted state evolution of different models with open loop control')
-legend(fontsize=10, loc='best')
+        title('Error of predicted state evolution with open loop control')
+        legend(fontsize=10, loc='upper left', ncol=2)
+
+xlabel('Time (sec)')
 show()
+
+print('Mean Squared Error:')
+print('Nominal model: ', format(mse_nom, '08f'))
+print('EDMD: ', format(mse_edmd, '08f'), ', reduction from nominal: ', format((1-mse_edmd/mse_nom)*100, '08f'), '%')
+print('KEEDMD: ', format(mse_keedmd, '08f'), ', reduction from nominal: ', format((1-mse_keedmd/mse_nom)*100, '08f'), '%', ', reduction from EDMD: ', format((1-mse_keedmd/mse_edmd)*100, '08f'), '%')
+print()
+print('Lifting dimension EDMD: ', edmd_model.A.shape[0], ', KEEDMD: ', keedmd_model.A.shape[0])

@@ -1,7 +1,7 @@
 from core.learning import differentiate_vec
 from sklearn import linear_model
 from scipy.linalg import expm
-from numpy import array, concatenate, zeros, dot, linalg, eye, ones
+from numpy import array, concatenate, zeros, dot, linalg, eye, ones, std, where, divide, multiply, tile
 
 class Edmd():
     '''
@@ -43,8 +43,9 @@ class Edmd():
             output = Z_dot.transpose()
             l1_ratio = self.l1/(self.l1+self.l2)
             alpha = self.l1 + self.l2
-            reg_model = linear_model.ElasticNet(alpha=alpha, l1_ratio=l1_ratio, fit_intercept=False, normalize=False, max_iter=1e4)
+            reg_model = linear_model.ElasticNet(alpha=alpha, l1_ratio=l1_ratio, fit_intercept=False, normalize=False, max_iter=1e5)
             reg_model.fit(input,output)
+
             self.A = reg_model.coef_[:self.n_lift,:self.n_lift]
             self.B = reg_model.coef_[:self.n_lift,self.n_lift:]
             if self.override_C:
