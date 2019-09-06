@@ -1,6 +1,6 @@
 from core.learning_keedmd.edmd import Edmd
 from sklearn import linear_model
-from numpy import array, concatenate, zeros, dot, linalg, eye, diag
+from numpy import array, concatenate, zeros, dot, linalg, eye, diag, std, divide, tile, where
 
 
 class Keedmd(Edmd):
@@ -53,13 +53,16 @@ class Keedmd(Edmd):
         else:
             l1_ratio = self.l1 / (self.l1 + self.l2)
             alpha = self.l1 + self.l2
-            reg_model = linear_model.MultiTaskElasticNet(alpha=alpha, l1_ratio=l1_ratio, fit_intercept=False,
-                                                         normalize=True)
+            reg_model = linear_model.ElasticNet(alpha=alpha, l1_ratio=l1_ratio, fit_intercept=False,
+                                                         normalize=False, max_iter=1e5)
 
             # Solve least squares problem to find A and B for velocity terms:
             input_vel = concatenate((Z, U), axis=0).transpose()
             output_vel = Z_dot[int(self.n / 2):self.n, :].transpose()
+
+
             reg_model.fit(input_vel, output_vel)
+
             sol_vel = reg_model.coef_
             A_vel = sol_vel[:, :self.n_lift]
             B_vel = sol_vel[:, self.n_lift:]
