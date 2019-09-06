@@ -67,7 +67,7 @@ class KoopmanEigenfunctions(BasisFunctions):
         diff_pred = self.diffeomorphism_model(from_numpy(input)).detach().numpy()
         return (q + diff_pred).transpose()
 
-    def build_diffeomorphism_model(self, n_hidden_layers = 2, layer_width=50, l2=0., batch_size = 64):
+    def build_diffeomorphism_model(self, n_hidden_layers = 2, layer_width=50, batch_size = 64, dropout_prob=0.1):
         # Set up model architecture for h(x,t):
         N, d_h_in, H, d_h_out = batch_size, self.n + 1, layer_width, self.n
         self.diffeomorphism_model= nn.Sequential(
@@ -78,12 +78,12 @@ class KoopmanEigenfunctions(BasisFunctions):
             self.diffeomorphism_model.add_module('dense_' + str(ii+1), nn.Linear(H,H))
             self.diffeomorphism_model.add_module('relu_' + str(ii + 1), nn.ReLU())
             if ii < n_hidden_layers-1:
-                self.diffeomorphism_model.add_module('dropout_' + str(ii+1), nn.Dropout(p=.1))
+                self.diffeomorphism_model.add_module('dropout_' + str(ii+1), nn.Dropout(p=dropout_prob))
         self.diffeomorphism_model.add_module('output', nn.Linear(H,d_h_out))
 
         self.diffeomorphism_model = self.diffeomorphism_model.double()
 
-    def fit_diffeomorphism_model(self, X, t, X_d, learning_rate=1e-2, learning_decay=0.95, n_epochs=50, train_frac=0.8, l2=1e1):
+    def fit_diffeomorphism_model(self, X, t, X_d, learning_rate=1e-2, learning_decay=0.95, n_epochs=50, train_frac=0.8, l2=1e1, jacobian_penalty=1., batch_size=64):
         X, X_dot, X_d, t = self.process(X=X, t=t, X_d=X_d)
         y_target = X_dot - dot(self.A_cl, X.transpose()).transpose() - dot(self.BK, X_d.transpose()).transpose()
         y_fit = npconcatenate((y_target, zeros(y_target.shape)), axis=1)
@@ -104,13 +104,13 @@ class KoopmanEigenfunctions(BasisFunctions):
         n_val = X.shape[0]-n_train
         train_dataset, val_dataset = random_split(dataset, [n_train, n_val])
         # Builds a loader for each dataset to perform mini-batch gradient descent
-        train_loader = DataLoader(dataset=train_dataset, batch_size=64, shuffle=True)
-        val_loader = DataLoader(dataset=val_dataset, batch_size=64)
+        train_loader = DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=True)
+        val_loader = DataLoader(dataset=val_dataset, batch_size=batch_size)
 
         def diffeomorphism_loss(h_dot, zero_jacobian, y_true, y_pred, is_training):
             h_sum_pred = h_dot - t_transpose(mm(self.A_cl, t_transpose(y_pred, 1, 0)), 1, 0)
             if is_training:
-                loss = mean((y_true-h_sum_pred)**2) + 1e1*mean((zero_jacobian**2))
+                loss = mean((y_true-h_sum_pred)**2) + jacobian_penalty*mean((zero_jacobian**2))
             else:
                 loss = mean((y_true-h_sum_pred)**2)
             return loss
@@ -183,7 +183,9 @@ class KoopmanEigenfunctions(BasisFunctions):
                 return loss.item()
             return train_step
 
+        batch_loss = []
         losses = []
+        batch_val_loss = []
         val_losses = []
         train_step = make_train_step(self.diffeomorphism_model, diffeomorphism_loss, optimizer)
 
@@ -198,8 +200,9 @@ class KoopmanEigenfunctions(BasisFunctions):
                 # Train based on current batch:
                 xt = x_batch[:,:self.n+1]  # [x, t]
                 xdot = x_batch[:,self.n+1:]  # [xdot]
-                loss = train_step(xt, xdot, y_batch)
-                losses.append(loss)
+                batch_loss.append(train_step(xt, xdot, y_batch))
+            losses.append(sum(batch_loss)/len(batch_loss))
+            batch_loss = []
 
             #with no_grad():
                 # Uses loader to fetch one mini-batch for validation
@@ -215,12 +218,13 @@ class KoopmanEigenfunctions(BasisFunctions):
                 #y_z = t_zeros(yhat.shape)
                 #input_z = t_zeros(xt_val.shape)
                 jacobian_xdot_val, zero_jacobian_val = calc_gradients(xt_val, xdot_val, yhat, None, None, self.diffeomorphism_model.training)
-                val_loss = diffeomorphism_loss(jacobian_xdot_val, zero_jacobian_val, y_val, yhat, self.diffeomorphism_model.training)  # Compute validation loss
+                batch_val_loss.append(diffeomorphism_loss(jacobian_xdot_val, zero_jacobian_val, y_val, yhat, self.diffeomorphism_model.training).item()) # Compute validation loss
                 optimizer.zero_grad()
-                val_losses.append(val_loss.item())  # Save validation loss
+            val_losses.append(sum(batch_val_loss)/len(batch_val_loss))  # Save validation loss
+            batch_val_loss = []
 
             scheduler.step(i)
-            print('Epoch: ',i,' Training loss:', format(losses[-1]/128, '08f'), ' Validation loss:', format(val_losses[-1]/128, '08f'))
+            print('Epoch: ',i,' Training loss:', format(losses[-1], '08f'), ' Validation loss:', format(val_losses[-1], '08f'))
 
     def process(self, X, t, X_d):
         # Shift dynamics to make origin a fixed point

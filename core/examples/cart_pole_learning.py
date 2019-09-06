@@ -52,15 +52,16 @@ K_d = -array([[8.0734, 7.4294]])  # Derivative control gains
 nominal_sys = LinearSystemDynamics(A=A_nom, B=B_nom)
 
 # Simulation parameters
-dt = 1.0e-2  # Time step[s]
+plot_traj_gen = False  #Plot trajectories generated for data collection
+dt = 1.0e-2  # Time step
 N = int(2./dt)  # Number of time steps
 t_eval = dt * arange(N + 1) # Simulation time points
-noise_var = 0.25  # Exploration noise to perturb controller
+noise_var = 0.1 # Exploration noise to perturb controller
 
 # Koopman eigenfunction parameters
 eigenfunction_max_power = 3
-l1_diffeomorphism = 1e-4
 l2_diffeomorphism = 1e0
+jacobian_penalty_diffeomorphism = 1e1
 load_diffeomorphism_model = True
 diffeomorphism_model_file = 'diff_model'
 diff_n_epochs = 100
@@ -70,25 +71,25 @@ diff_layer_width = 50
 diff_batch_size = 64
 diff_learn_rate = 1e-2
 diff_learn_rate_decay = 0.95
+diff_dropout_prob = 0.05
 
 # KEEDMD parameters
 l1_keedmd = 1e-2
 l2_keedmd = 1e-2
 
 # EDMD parameters
-n_lift_edmd = 50
+n_lift_edmd = (eigenfunction_max_power+1)**n-1
 l1_edmd = 1e-2
 l2_edmd = 1e-2
 
 #%% ===============================================    COLLECT DATA     ===============================================
-
 # Load trajectories
 traj_origin = 'gen_MPC'
 plot_traj_gen = False
 if (traj_origin == 'gen_MPC'):
-    Ntraj = 10
+    Ntraj = 100
     t_d = t_eval
-    traj_bounds = [1,0.2,1.,1.] # x, theta, x_dot, theta_dot 
+    traj_bounds = [2,0.2,0.,0.] # x, theta, x_dot, theta_dot
     q_d = zeros((n,Ntraj,N+1))
     Q = sparse.diags([0,0,0,0])
     QN = sparse.diags([100000.,100000.,50000.,10000.])
@@ -107,13 +108,13 @@ if (traj_origin == 'gen_MPC'):
                                 R=R, 
                                 QN=QN, 
                                 x0=zeros(n), 
-                                xr=zeros(n) )
+                                xr=zeros(n),
+                                teval=t_eval)
     for ii in range(Ntraj):
         x_0 = asarray([veryrandom.uniform(-i,i)  for i in traj_bounds ])
         mpc_controller.eval(x_0,0)
         q_d[:,ii,:] = mpc_controller.parse_result()
-    
-    
+
     if plot_traj_gen:
         figure()
         title('Input Trajectories')
@@ -171,13 +172,12 @@ print('Constructing Koopman eigenfunction basis....')
 A_cl = A_nom - dot(B_nom,concatenate((K_p, K_d),axis=1))
 BK = dot(B_nom,concatenate((K_p, K_d),axis=1))
 eigenfunction_basis = KoopmanEigenfunctions(n=n, max_power=eigenfunction_max_power, A_cl=A_cl, BK=BK)
-eigenfunction_basis.build_diffeomorphism_model(n_hidden_layers = diff_n_hidden_layers, layer_width=diff_layer_width,
-                                               l2=l2_diffeomorphism, batch_size = diff_batch_size)
+eigenfunction_basis.build_diffeomorphism_model(n_hidden_layers = diff_n_hidden_layers, layer_width=diff_layer_width, batch_size= diff_batch_size, dropout_prob=diff_dropout_prob)
 if load_diffeomorphism_model:
     eigenfunction_basis.load_diffeomorphism_model(diffeomorphism_model_file)
 else:
-    eigenfunction_basis.fit_diffeomorphism_model(X=xs, t=t_eval, X_d=q_d, learning_rate=diff_learn_rate,
-                                                 learning_decay=diff_learn_rate_decay, n_epochs=diff_n_epochs, train_frac=diff_train_frac)
+    eigenfunction_basis.fit_diffeomorphism_model(X=xs, t=t_eval, X_d=q_d, l2=l2_diffeomorphism, jacobian_penalty=jacobian_penalty_diffeomorphism,
+        learning_rate=diff_learn_rate, learning_decay=diff_learn_rate_decay, n_epochs=diff_n_epochs, train_frac=diff_train_frac, batch_size=diff_batch_size)
     eigenfunction_basis.save_diffeomorphism_model(diffeomorphism_model_file)
 eigenfunction_basis.construct_basis(ub=upper_bounds, lb=lower_bounds)
 
@@ -187,7 +187,7 @@ if plot_eigen:
 
 # Fit KEEDMD model:
 print('Fitting KEEDMD model...')
-keedmd_model = Keedmd(eigenfunction_basis, n, l1=l1_keedmd, l2=l2_keedmd)
+keedmd_model = Keedmd(eigenfunction_basis, n, l1=l1_keedmd, l2=l2_keedmd, K_p=K_p, K_d=K_d)
 keedmd_model.fit(xs, us, us_nom, ts)
 
 # Construct basis of RBFs for EDMD:
@@ -218,66 +218,93 @@ edmd_model.fit(xs, us, us_nom, ts)
 """ q_d_pred = q_d[:,4,:]
 t_pred = t_d.squeeze()
 noise_var_pred = 0.5
-output_pred = CartPoleTrajectory(system_true, q_d_pred,t_pred)
-pd_controller_pred = PDController(output_pred, K_p, K_d, noise_var_pred)
+Ntraj_pred = 10
+t_d = t_eval
+traj_bounds = [2, 0.2, 0., 0.]  # x, theta, x_dot, theta_dot
+q_d_pred = zeros((n, Ntraj_pred, N + 1))
 
-# Simulate true system (baseline):
-x0_pred = q_d_pred[:,0]
-xs_pred, us_pred = system_true.simulate(x0_pred, pd_controller_pred, t_pred)
-xs_pred = xs_pred.transpose()
+for ii in range(Ntraj_pred):
+    x_0 = asarray([random.uniform(-i, i) for i in traj_bounds])
+    mpc_controller.eval(x_0, 0)
+    q_d_pred[:, ii, :] = mpc_controller.parse_result()
 
-# Create systems for each of the learned models and simulate with open loop control signal us_pred:
+# Define KEEDMD and EDMD systems:
 keedmd_sys = LinearSystemDynamics(A=keedmd_model.A, B=keedmd_model.B)
-keedmd_controller = OpenLoopController(keedmd_sys, us_pred, t_pred[:us_pred.shape[0]])
-z0_keedmd = keedmd_model.lift(x0_pred.reshape(x0_pred.shape[0],1), zeros((1,))).squeeze()
-zs_keedmd,_= keedmd_sys.simulate(z0_keedmd,keedmd_controller,t_pred)
-xs_keedmd = dot(keedmd_model.C,zs_keedmd.transpose())
-
 edmd_sys = LinearSystemDynamics(A=edmd_model.A, B=edmd_model.B)
-edmd_controller = OpenLoopController(edmd_sys, us_pred, t_pred[:us_pred.shape[0]])
-z0_edmd = edmd_model.lift(x0_pred.reshape(x0_pred.shape[0],1), zeros((1,))).squeeze()
-zs_edmd,_ = edmd_sys.simulate(z0_edmd,edmd_controller,t_pred)
-xs_edmd = dot(edmd_model.C,zs_edmd.transpose())
 
-nom_controller = OpenLoopController(nominal_sys, us_pred, t_pred[:us_pred.shape[0]])
-xs_nom,_ = nominal_sys.simulate(x0_pred,nom_controller,t_pred)
-xs_nom = xs_nom.transpose()
+#Simulate all different systems
+xs_pred = []
+xs_keedmd = []
+xs_edmd = []
+xs_nom = []
 
-savemat('./core/examples/results/cart_pendulum_prediction.mat', {'t_pred':t_pred, 'xs_pred': xs_pred, 'us_pred':us_pred,
+for ii in range(Ntraj_pred):
+    output_pred = CartPoleTrajectory(system_true, q_d_pred[:,ii,:],t_pred)
+    pd_controller_pred = PDController(output_pred, K_p, K_d, noise_var_pred)
+
+    # Simulate true system (baseline):
+    x0_pred = q_d_pred[:,ii,0].transpose()
+    xs_pred_tmp, us_pred_tmp = system_true.simulate(x0_pred, pd_controller_pred, t_pred)
+    xs_pred_tmp = xs_pred_tmp.transpose()
+
+    # Create systems for each of the learned models and simulate with open loop control signal us_pred:
+    keedmd_controller = OpenLoopController(keedmd_sys, us_pred_tmp, t_pred[:us_pred_tmp.shape[0]])
+    z0_keedmd = keedmd_model.lift(x0_pred.reshape(x0_pred.shape[0],1), zeros((1,))).squeeze()
+    zs_keedmd,_= keedmd_sys.simulate(z0_keedmd,keedmd_controller,t_pred)
+    xs_keedmd_tmp = dot(keedmd_model.C,zs_keedmd.transpose())
+
+    edmd_controller = OpenLoopController(edmd_sys, us_pred_tmp, t_pred[:us_pred_tmp.shape[0]])
+    z0_edmd = edmd_model.lift(x0_pred.reshape(x0_pred.shape[0],1), zeros((1,))).squeeze()
+    zs_edmd,_ = edmd_sys.simulate(z0_edmd,edmd_controller,t_pred)
+    xs_edmd_tmp = dot(edmd_model.C,zs_edmd.transpose())
+
+    nom_controller = OpenLoopController(nominal_sys, us_pred_tmp, t_pred[:us_pred_tmp.shape[0]])
+    xs_nom_tmp,_ = nominal_sys.simulate(x0_pred,nom_controller,t_pred)
+    xs_nom_tmp = xs_nom_tmp.transpose()
+
+    xs_pred.append(xs_pred_tmp)
+    xs_keedmd.append(xs_keedmd_tmp)
+    xs_edmd.append(xs_edmd_tmp)
+    xs_nom.append(xs_nom_tmp)
+
+savemat('./core/examples/results/cart_pendulum_prediction.mat', {'t_pred':t_pred, 'xs_pred': xs_pred,
                                                             'xs_keedmd':xs_keedmd, 'xs_edmd':xs_edmd, 'xs_nom': xs_nom})
+
+# Calculate error statistics
+mse_keedmd = array([(xs_keedmd[ii] - xs_pred[ii])**2 for ii in range(Ntraj_pred)])
+mse_edmd = array([(xs_edmd[ii] - xs_pred[ii])**2 for ii in range(Ntraj_pred)])
+mse_nom = array([(xs_nom[ii] - xs_pred[ii])**2 for ii in range(Ntraj_pred)])
+e_keedmd = array([xs_keedmd[ii] - xs_pred[ii] for ii in range(Ntraj_pred)])
+e_edmd = array([xs_edmd[ii] - xs_pred[ii] for ii in range(Ntraj_pred)])
+e_nom = array([xs_nom[ii] - xs_pred[ii] for ii in range(Ntraj_pred)])
+mse_keedmd = mean(mean(mean(mse_keedmd)))
+mse_edmd = mean(mean(mean(mse_edmd)))
+mse_nom = mean(mean(mean(mse_nom)))
+e_mean_keedmd = mean(e_keedmd, axis=0)
+e_mean_edmd = mean(e_edmd, axis=0)
+e_mean_nom = mean(e_nom, axis=0)
+e_std_keedmd = std(e_keedmd, axis=0)
+e_std_edmd = std(e_edmd, axis=0)
+e_std_nom = std(e_nom, axis=0)
 
 # Plot the first simulated trajectory
 ylabels = ['x', '$\\theta$', '$\\dot{x}$', '$\\dot{\\theta}$']
-figure()
+figure(figsize=(6,9))
 for ii in range(n):
     subplot(4, 1, ii+1)
-    plot(t_pred, xs_pred[ii,:], linewidth=2, label='$true$')
-    plot(t_pred, xs_keedmd[ii,:], linewidth=2, label='$keedmd$')
-    plot(t_pred, xs_edmd[ii,:], linewidth=2, label='$edmd$')
-    plot(t_pred, xs_nom[ii,:], linewidth=2, label='$nom$')
-    ylim(min(xs_pred[ii,:])-0.1,max(xs_pred[ii,:])+0.1)
-    xlabel('Time (sec)')
-    ylabel(ylabels[ii])
-    grid()
-    if ii == 0:
-        title('Predicted state evolution of different models with open loop control')
-legend(fontsize=10, loc='best')
-show() """
+    plot(t_pred, e_mean_nom[ii,:], linewidth=2, label='$nom$')
+    fill_between(t_pred, e_mean_nom[ii,:]-e_std_nom[ii,:], e_mean_nom[ii,:]+e_std_nom[ii,:], alpha=0.1)
 
-#%% ==============================================  EVALUATE PERFORMANCE -- CLOSED LOOP =============================================
-# Set up trajectory and controller for prediction task:
-q_d_pred = q_d[:,4,:]
-t_pred = t_d.squeeze()
-noise_var_pred = 0.5
-output_pred = CartPoleTrajectory(system_true, q_d_pred,t_pred)
-pd_controller_pred = PDController(output_pred, K_p, K_d, noise_var_pred)
+    plot(t_pred, e_mean_edmd[ii,:], linewidth=2, label='$edmd$')
+    fill_between(t_pred, e_mean_edmd[ii, :] - e_std_edmd[ii, :], e_mean_edmd[ii, :] + e_std_edmd[ii, :], alpha=0.2)
 
-Q = sparse.diags([100,3,10,1])
-QN = Q
+    plot(t_pred, e_mean_keedmd[ii,:], linewidth=2, label='$keedmd$')
+    fill_between(t_pred, e_mean_keedmd[ii, :] - e_std_keedmd[ii, :], e_mean_keedmd[ii, :] + e_std_keedmd[ii, :], alpha=0.2)
 
-# eDMD
-QDMD = np.transpose(edmd_model.C)*Q*edmd_model.C
-QNDMD = Q
+    if ii == 1 or ii == 3:
+        ylim(-0.5, 0.5)
+    else:
+        ylim(-0.1,0.1)
 
 edmd_sys = LinearSystemDynamics(A=edmd_model.A, B=edmd_model.B)
 edmd_controller = MPCController(affine_dynamics=edmd_sys, 
@@ -340,4 +367,10 @@ for ii in range(n):
         title('Closed loop performance of different models with open loop control')
 legend(fontsize=10, loc='best')
 show()
-savefig('')
+
+print('Mean Squared Error:')
+print('Nominal model: ', format(mse_nom, '08f'))
+print('EDMD: ', format(mse_edmd, '08f'), ', reduction from nominal: ', format((1-mse_edmd/mse_nom)*100, '08f'), '%')
+print('KEEDMD: ', format(mse_keedmd, '08f'), ', reduction from nominal: ', format((1-mse_keedmd/mse_nom)*100, '08f'), '%', ', reduction from EDMD: ', format((1-mse_keedmd/mse_edmd)*100, '08f'), '%')
+print()
+print('Lifting dimension EDMD: ', edmd_model.A.shape[0], ', KEEDMD: ', keedmd_model.A.shape[0])
