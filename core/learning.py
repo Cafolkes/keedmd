@@ -1,8 +1,8 @@
 from core.dynamics import AffineDynamics, ScalarDynamics
-from numpy import array, arange, dot, zeros, reshape
+from numpy import array, arange, dot, zeros, reshape, zeros_like
 from scipy.linalg import solve
 
-def differentiate(xs, ts, L=3):
+def differentiate_old(xs, ts, L=3):
     assert (xs.shape[0] == ts.shape[0])
     half_L = (L - 1) // 2
     b = zeros(L)
@@ -20,8 +20,22 @@ def differentiate(xs, ts, L=3):
 
 def differentiate_vec(xs, ts, L=3):
     assert(xs.shape[0] == ts.shape[0])
-    #TODO: Current implementation is slow, modify implementation to speed up.
-    return array([differentiate(xs[:,ii], ts, L=L) for ii in range(xs.shape[1])]).transpose()
+    return array([differentiate(xs[:,ii], ts) for ii in range(xs.shape[1])]).transpose()
+
+def differentiate(xs, ts):
+    """
+    Compute the discrete derivative of a Python function
+    f on [a,b] using n intervals. Internal points apply
+    a centered difference, while end points apply a one-sided
+    difference. Vectorized version.
+    """
+    dx = zeros_like(xs)                     # dx/dt
+    dt = ts[1] - ts[0]
+    dx[1:-1] = (xs[2:] - xs[:-2])/(2*dt)    # Internal mesh points
+    dx[0]  = (xs[1]  - xs[0])/dt           # End point
+    dx[-1] = (xs[-1] - xs[-2])/dt           # End point
+    return dx
+
 
 class AffineResidualDynamics(AffineDynamics):
     def __init__(self, affine_dynamics, drift_res, act_res):
