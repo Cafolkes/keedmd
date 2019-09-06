@@ -12,13 +12,15 @@ import matplotlib.pyplot as plt
 
 from .controller import Controller
 from core.dynamics.linear_system_dynamics import LinearSystemDynamics
+from .basis_functions import BasisFunctions
+
 
 class MPCController(Controller):
        """Class for controllers MPC.
 
        MPC are solved using osqp.
        """
-       def __init__(self, affine_dynamics, N, dt, umin, umax, xmin, xmax, Q, R, QN, x0, xr, teval, plotMPC=False):
+       def __init__(self, affine_dynamics, N, dt, umin, umax, xmin, xmax, Q, R, QN, x0, xr, plotMPC=False):
               """Create an MPC Controller object.
 
               Inputs:
@@ -46,6 +48,7 @@ class MPCController(Controller):
               self.plotMPC = plotMPC
               self.q_d = xr
               self.Q = Q
+              self.lifting = False
 
               [nx, nu] = self._osqp_Bd.shape
               self.nu = nu
@@ -92,10 +95,17 @@ class MPCController(Controller):
                      plt.xlabel('Time(s)')
                      plt.grid()
                      plt.legend()
-              
+
+       def define_lifting(self, edmd_object):
+              self.edmd_object = edmd_object
+              self.C = edmd_object.C
+              self.lifting = True
 
        def eval(self, x, t):
               
+              if (self.lifting):
+                     x = self.edmd_object.lift(x,t)
+
               N = self._osqp_N
               nu = self.nu
               nx = self.nx
@@ -107,7 +117,11 @@ class MPCController(Controller):
               if self.q_d.ndim==2 and tindex>1:
                      tindex = int(t/self.dt)
                      xr = np.hstack( [self.q_d[:,tindex:],np.transpose(np.tile(self.q_d[:,-1],(tindex,1)))])           
-                     self._osqp_q = np.hstack([np.reshape(-self.Q.dot(xr),((N+1)*nx,)), np.zeros(N*nu)])                      
+                     if (self.lifting):
+                            self._osqp_q = np.hstack([np.reshape(-self.Q.dot(self.C.dot(xr)),((N+1)*nx,)), np.zeros(N*nu)])                      
+                     else:
+                            self._osqp_q = np.hstack([np.reshape(-self.Q.dot(xr),((N+1)*nx,)), np.zeros(N*nu)])                      
+
 
               self._osqp_l[:self.nx] = -x
               self._osqp_u[:self.nx] = -x
