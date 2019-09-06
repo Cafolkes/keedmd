@@ -61,7 +61,7 @@ noise_var = 0.1 # Exploration noise to perturb controller
 eigenfunction_max_power = 3
 l2_diffeomorphism = 1e0
 jacobian_penalty_diffeomorphism = 1e1
-load_diffeomorphism_model = True
+load_diffeomorphism_model = False
 diffeomorphism_model_file = 'diff_model'
 diff_n_epochs = 100
 diff_train_frac = 0.9
@@ -85,7 +85,7 @@ l2_edmd = 1e-2
 # Load trajectories
 traj_origin = 'gen_MPC'
 if (traj_origin == 'gen_MPC'):
-    Ntraj = 100
+    Ntraj = 20
     t_d = t_eval
     traj_bounds = [2,0.2,0.,0.] # x, theta, x_dot, theta_dot
     q_d = zeros((n,Ntraj,N+1))
@@ -169,7 +169,7 @@ else:
         learning_rate=diff_learn_rate, learning_decay=diff_learn_rate_decay, n_epochs=diff_n_epochs, train_frac=diff_train_frac, batch_size=diff_batch_size)
     eigenfunction_basis.save_diffeomorphism_model(diffeomorphism_model_file)
 eigenfunction_basis.construct_basis(ub=upper_bounds, lb=lower_bounds)
-#eigenfunction_basis.plot_eigenfunction_evolution(xs[-1], t_eval)
+eigenfunction_basis.plot_eigenfunction_evolution(xs[-1], q_d[:,-1,:], t_eval)
 
 # Fit KEEDMD model:
 print('Fitting KEEDMD model...')

@@ -12,7 +12,7 @@ from torch.utils.data.dataset import random_split
 from torch.utils.data.dataloader import DataLoader
 from torch.autograd.gradcheck import zero_gradients
 from torchviz import make_dot
-
+from core.learning import differentiate_vec
 
 class KoopmanEigenfunctions(BasisFunctions):
     """
@@ -60,16 +60,17 @@ class KoopmanEigenfunctions(BasisFunctions):
 
         return scale_func
 
-    def diffeomorphism(self, q, t):
+    def diffeomorphism(self, q, q_d):
         q = q.transpose()
+        q_d = q_d.transpose()
         self.diffeomorphism_model.eval()
-        input = npconcatenate((q,t.reshape((1,1))),axis=1)
+        input = npconcatenate((q,q_d),axis=1)
         diff_pred = self.diffeomorphism_model(from_numpy(input)).detach().numpy()
         return (q + diff_pred).transpose()
 
     def build_diffeomorphism_model(self, n_hidden_layers = 2, layer_width=50, batch_size = 64, dropout_prob=0.1):
         # Set up model architecture for h(x,t):
-        N, d_h_in, H, d_h_out = batch_size, self.n + 1, layer_width, self.n
+        N, d_h_in, H, d_h_out = batch_size, 2*self.n, layer_width, self.n
         self.diffeomorphism_model= nn.Sequential(
             nn.Linear(d_h_in,H),
             nn.ReLU()
@@ -85,14 +86,14 @@ class KoopmanEigenfunctions(BasisFunctions):
 
     def fit_diffeomorphism_model(self, X, t, X_d, learning_rate=1e-2, learning_decay=0.95, n_epochs=50, train_frac=0.8, l2=1e1, jacobian_penalty=1., batch_size=64):
         X, X_dot, X_d, t = self.process(X=X, t=t, X_d=X_d)
-        y_target = X_dot - dot(self.A_cl, X.transpose()).transpose() - dot(self.BK, X_d.transpose()).transpose()
-        y_fit = npconcatenate((y_target, zeros(y_target.shape)), axis=1)
+        y_target = X_dot - dot(self.A_cl, X.transpose()).transpose()# - dot(self.BK, X_d.transpose()).transpose()
+        #y_fit = npconcatenate((y_target, zeros(y_target.shape)), axis=1) #TODO: Remove
 
         device = 'cuda' if cuda.is_available() else 'cpu'
 
         # Prepare data for pytorch:
         manual_seed(42)  # Fix seed for reproducibility
-        X_tensor = from_numpy(npconcatenate((X,t.reshape((t.shape[0],1)),X_dot),axis=1)) #[x (1,4), t (1,1), x_dot (1,4)]
+        X_tensor = from_numpy(npconcatenate((X, X_d, X_dot),axis=1)) #[x (1,4), t (1,1), x_dot (1,4)]
         y_tensor = from_numpy(y_target)
         X_tensor.requires_grad_(True)
 
@@ -198,8 +199,8 @@ class KoopmanEigenfunctions(BasisFunctions):
                 y_batch = y_batch.to(device)
 
                 # Train based on current batch:
-                xt = x_batch[:,:self.n+1]  # [x, t]
-                xdot = x_batch[:,self.n+1:]  # [xdot]
+                xt = x_batch[:,:2*self.n]  # [x, x_d]
+                xdot = x_batch[:,2*self.n:]  # [xdot]
                 batch_loss.append(train_step(xt, xdot, y_batch))
             losses.append(sum(batch_loss)/len(batch_loss))
             batch_loss = []
@@ -212,8 +213,8 @@ class KoopmanEigenfunctions(BasisFunctions):
                 y_val = y_val.to(device)
 
                 self.diffeomorphism_model.eval() # Change model model to evaluation
-                xt_val = x_val[:, :self.n + 1]  # [x, t]
-                xdot_val = x_val[:, self.n + 1:]  # [xdot]
+                xt_val = x_val[:, :2*self.n]  # [x, t]
+                xdot_val = x_val[:, 2*self.n:]  # [xdot]
                 yhat = self.diffeomorphism_model(xt_val)  # Predict
                 #y_z = t_zeros(yhat.shape)
                 #input_z = t_zeros(xt_val.shape)
@@ -233,12 +234,12 @@ class KoopmanEigenfunctions(BasisFunctions):
         X_d = array([X_d[:,ii,:].reshape((X_d.shape[2],X_d.shape[0])) - X_f[:, ii] for ii in range(len(X))])
 
         # Calculate numerical derivatives
-        X_dot = array([differentiate(X_shift[ii,:,:],t) for ii in range(len(X))])
+        X_dot = array([differentiate_vec(X_shift[ii,:,:],t) for ii in range(X_shift.shape[0])])
         t = array([t for _ in range(len(X))])
-        clip = int((X_shift.shape[1]-X_dot.shape[1])/2)
-        X_shift = X_shift[:,clip:-clip,:]
-        X_d = X_d[:, clip:-clip, :]
-        t = t[:,clip:-clip]
+        #clip = int((X_shift.shape[1]-X_dot.shape[1])/2)
+        #X_shift = X_shift[:,clip:-clip,:]
+        #X_d = X_d[:, clip:-clip, :]
+        #t = t[:,clip:-clip]
         assert(X_shift.shape == X_dot.shape)
         assert(X_d.shape == X_dot.shape)
         assert(t.shape == X_shift[:,:,0].shape)
@@ -248,6 +249,7 @@ class KoopmanEigenfunctions(BasisFunctions):
         X_dot = X_dot.reshape((X_dot.shape[0] * X_dot.shape[1], X_dot.shape[2]))
         X_d = X_d.reshape((X_d.shape[0] * X_d.shape[1], X_d.shape[2]))
         t = t.reshape((t.shape[0] * t.shape[1],))
+
         return X_shift, X_dot, X_d, t
 
     def save_diffeomorphism_model(self, filename):
@@ -256,16 +258,16 @@ class KoopmanEigenfunctions(BasisFunctions):
     def load_diffeomorphism_model(self, filename):
         self.diffeomorphism_model.load_state_dict(load(filename))
 
-    def plot_eigenfunction_evolution(self, X, t):
+    def plot_eigenfunction_evolution(self, X, X_d, t):
         X = X.transpose()
         eigval_system = LinearSystemDynamics(A=diag(self.Lambda),B=zeros((self.Lambda.shape[0],1)))
         eigval_ctrl = ConstantController(eigval_system,0.)
         x0 = X[:,:1]
-        t0 = array([[0.]])
-        z0 = self.lift(x0, array([[0.]]))
+        x0_d = X_d[:,:1]
+        z0 = self.lift(x0, x0_d)
         eigval_evo, us = eigval_system.simulate(z0.flatten(), eigval_ctrl, t)
         eigval_evo = eigval_evo.transpose()
-        eigfunc_evo = self.lift(X, t.reshape((t.shape[0],1))).transpose()
+        eigfunc_evo = self.lift(X, X_d).transpose()
 
 
         figure()
@@ -278,5 +280,5 @@ class KoopmanEigenfunctions(BasisFunctions):
         legend(fontsize=12)
         show()  # TODO: Create plot of all collected trajectories (subplot with one plot for each state), not mission critical
 
-    def lift(self, q, t):
-        return array([self.basis(q[:,ii].reshape((self.n,1)), t[ii]) for ii in range(q.shape[1])])
+    def lift(self, q, q_d):
+        return array([self.basis(q[:,ii].reshape((self.n,1)), q_d[:,ii].reshape((self.n,1))) for ii in range(q.shape[1])])
