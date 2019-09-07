@@ -13,8 +13,8 @@ class Keedmd(Edmd):
         elif self.K_p is None or self.K_p is None:
             raise Exception('Nominal controller gains not defined.')
 
-    def fit(self, X, U, U_nom, t):
-        X, Z, Z_dot, U, U_nom, t = self.process(X, U, U_nom, t)
+    def fit(self, X, X_d, U, U_nom, t):
+        X, X_d, Z, Z_dot, U, U_nom, t = self.process(X, X_d, U, U_nom, t)
         self.n_lift = Z.shape[0]
 
         if self.l1 == 0. and self.l2 == 0.:
@@ -97,6 +97,6 @@ class Keedmd(Edmd):
 
         self.A[self.n:,:self.n] -= dot(self.B[self.n:,:],concatenate((self.K_p, self.K_d), axis=1))
 
-    def lift(self, X, t):
-        Z = self.basis.lift(X, t)
+    def lift(self, X, X_d):
+        Z = self.basis.lift(X, X_d)
         return concatenate((X.transpose(), Z),axis=1)
