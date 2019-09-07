@@ -158,6 +158,7 @@ class MPCController(Controller):
         nx = self.nx
 
         tindex = int(t/self.dt)
+        print(tindex)
         
         ## Update inequalities
         if self.q_d.ndim==2: 
@@ -196,14 +197,14 @@ class MPCController(Controller):
             raise ValueError('OSQP did not solve the problem!')
 
         if self.plotMPC:
-            self.plot_MPC(t, xr)
+            self.plot_MPC(t, xr, tindex)
         return  self._osqp_result.x[-N*nu:-(N-1)*nu]
 
     def parse_result(self):
         return  np.transpose(np.reshape( self._osqp_result.x[:(self.N+1)*self.nx], (self.N+1,self.nx)))
 
 
-    def plot_MPC(self, current_time, xr):
+    def plot_MPC(self, current_time, xr, tindex):
         '''
         Inputs:
         - current_time, t, float
@@ -224,7 +225,13 @@ class MPCController(Controller):
         # Plot
         pos = current_time/(self.Nqd*self.dt) # position along the trajectory
         time = np.linspace(current_time,current_time+N*self.dt,num=N+1)
-        plt.plot(time,osqp_sim_state[0,:],color=[0,1-pos,pos])
+        if (tindex==0):
+            plt.plot(time,osqp_sim_state[0,:],color=[0,1-pos,pos],label='x_0')
+        elif (tindex==self.Nqd-2):
+            plt.plot(time,osqp_sim_state[0,:],color=[0,1-pos,pos],label='x_f')
+        else:
+            plt.plot(time,osqp_sim_state[0,:],color=[0,1-pos,pos])
+
         #plt.savefig(self.plotMPC_filename)
 
 
