@@ -158,8 +158,8 @@ class MPCController(Controller):
             else:
                 self._osqp_q = np.hstack([np.reshape(-self.Q.dot(xr),((N+1)*nx,)), np.zeros(N*nu)])
 
-            self._osqp_l[:self.nx] = -x
-            self._osqp_u[:self.nx] = -x
+        self._osqp_l[:self.nx] = -x
+        self._osqp_u[:self.nx] = -x
 
 
 
