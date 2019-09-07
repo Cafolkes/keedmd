@@ -69,7 +69,8 @@ class MPCController(Controller):
             # Load eDMD objects
             self.C = edmd_object.C
             self.edmd_object = edmd_object
-            x0 = np.transpose(self.edmd_object.lift(np.reshape(x0,(x0.shape[0],1)),0))[:,0]
+
+            x0 = np.transpose(self.edmd_object.lift(np.reshape(x0,(x0.shape[0],1)),xr[:,:1]))[:,0]
 
             # - quadratic objective
             CQC  = sparse.csc_matrix(np.transpose(edmd_object.C).dot(Q.dot(edmd_object.C)))
@@ -133,18 +134,12 @@ class MPCController(Controller):
 
     def eval(self, x, t):
 
-        if (self.lifting):
-                x = np.transpose(self.edmd_object.lift(np.reshape(x,(x.shape[0],1)),t))[:,0]
-
         N = self._osqp_N
         nu = self.nu
         nx = self.nx
 
         tindex = int(t/self.dt)
         xr = self.q_d
-
-        self._osqp_l[:self.nx] = -x
-        self._osqp_u[:self.nx] = -x
 
         ## Update inequalities
         if self.q_d.ndim==2 and tindex>1:
@@ -159,6 +154,12 @@ class MPCController(Controller):
                 self._osqp_q = np.hstack([np.reshape(-QCT.dot(xr),((N+1)*nx,)), np.zeros(N*nu)])                    
             else:
                 self._osqp_q = np.hstack([np.reshape(-self.Q.dot(xr),((N+1)*nx,)), np.zeros(N*nu)])
+
+        if (self.lifting):
+            x = np.transpose(self.edmd_object.lift(x.reshape((x.shape[0],1)), xr[:,0].reshape((xr.shape[0],1))))[:, 0] #TODO: Ask Daniel: if treatment of xr is consistent with the rest of the MPC code
+
+        self._osqp_l[:self.nx] = -x
+        self._osqp_u[:self.nx] = -x
 
         self.prob.update(q=self._osqp_q, l=self._osqp_l, u=self._osqp_u)
 
