@@ -19,39 +19,55 @@ class MPCController(Controller):
     """Class for controllers MPC.
 
     MPC are solved using osqp.
+
+    Use lifting=True to solve MPC in the lifted space
     """
-    def __init__(self, linear_dynamics, N, dt, umin, umax, xmin, xmax, Q, R, QN, x0, xr, plotMPC=False, lifting=False, edmd_object=Edmd()):
+    def __init__(self, linear_dynamics, N, dt, umin, umax, xmin, xmax, Q, R, QN, xr, plotMPC=False, plotMPC_filename="",lifting=False, edmd_object=Edmd()):
         """Create an MPC Controller object.
 
+        Sizes:
+        - N: number of timesteps for predictions
+        - Nqd: number of timesteps of the desired trajectory
+        - nx: number of states (original or lifted)
+        - ns: number or original states
+        - nu: number of control inputs
+
         Inputs:
-        linear_dynamics,
-        dt,
-        umin,
-        umax,
-        xmin,
-        xmax,
-        Q,
-        R,
-        QN,
-        x0,
-        xr,
-        teval
+        - initilized linear_dynamics, LinearSystemDynamics object. It takes Ac and Bc from it.
+        - number of timesteps, N, integer
+        - time step, dt, float
+        - minimum control,  umin, numpy 1d array [nu,]
+        - maximum control,  umax, numpy 1d array [nu,]
+        - minimum state,    xmin, numpy 1d array [ns,]
+        - maximum state,    xmax, numpy 1d array [ns,]
+        - state cost matrix    Q, sparse numpy 2d array [ns,ns]. In practice it is always diagonal. 
+        - control cost matrix, R, sparse numpy 2d array [nu,nu]. In practice it is always diagonal. 
+        - final state cost matrix,  QN, sparse numpy 2d array [ns,ns]. In practice it is always diagonal. 
+        - reference state trajectory, xr, numpy 2d array [ns,Nqd] OR numpy 1d array [ns,]
+        (Optional)
+        - flag to plot MPC thoughts, plotMPC=False, boolean
+        - filename to save the previosu plot, plotMPC_filename="", string
+        - flag to use or not lifting, lifting=False, boolean
+        - object to store the eDMD data, edmd_object=Edmd(). It has been initialized. s
         """
 
         Controller.__init__(self, linear_dynamics)
 
+        # Load arguments
         Ac, Bc = linear_dynamics.linear_system()
         [nx, nu] = Bc.shape
         self.dt = dt
         self._osqp_Ad = sparse.eye(nx)+Ac*self.dt
         self._osqp_Bd = Bc*self.dt
         self.plotMPC = plotMPC
+        self.plotMPC_filename = plotMPC_filename
         self.q_d = xr
         
+        self.ns = xr.shape[0]
+
         self.Q = Q
         self.lifting = lifting
 
-        [nx, nu] = self._osqp_Bd.shape
         self.nu = nu
         self.nx = nx
 
@@ -61,16 +77,14 @@ class MPCController(Controller):
             xr = self.q_d[:,:N+1]
 
         # Prediction horizon
-        self._osqp_N = N
-
+        self.N = N
+        x0 = np.zeros(nx)
         
         # Cast MPC problem to a QP: x = (x(0),x(1),...,x(N),u(0),...,u(N-1))
         if (self.lifting):
             # Load eDMD objects
             self.C = edmd_object.C
             self.edmd_object = edmd_object
-
-            x0 = np.transpose(self.edmd_object.lift(np.reshape(x0,(x0.shape[0],1)),xr[:,:1]))[:,0]
 
             # - quadratic objective
             CQC  = sparse.csc_matrix(np.transpose(edmd_object.C).dot(Q.dot(edmd_object.C)))
@@ -113,7 +127,7 @@ class MPCController(Controller):
 
         ueq = leq
         self._osqp_q = q
-        # - OSQP constraints
+
         A = sparse.vstack([Aeq, Aineq]).tocsc()
         self._osqp_l = np.hstack([leq, lineq])
         self._osqp_u = np.hstack([ueq, uineq])
@@ -133,35 +147,41 @@ class MPCController(Controller):
 
 
     def eval(self, x, t):
+        '''
+        Inputs:
+        - state, x, numpy 1d array [ns,]
+        - time, t, float
+        '''
 
-        N = self._osqp_N
+        N = self.N
         nu = self.nu
         nx = self.nx
 
         tindex = int(t/self.dt)
-        xr = self.q_d
-
+        
         ## Update inequalities
-        if self.q_d.ndim==2 and tindex>1:
+        if self.q_d.ndim==2 and tindex>1: 
             tindex = int(t/self.dt)
-            if (tindex+N) < self.Nqd:
+            if (tindex+N) < self.Nqd: # if we haven't reach the end of q_d yet
                 xr = self.q_d[:,tindex:tindex+N+1]
-            else:
+            else: # we fill xr with copies of the last q_d
                 xr = np.hstack( [self.q_d[:,tindex:],np.transpose(np.tile(self.q_d[:,-1],(N+1-self.Nqd+tindex,1)))])
 
-            if (self.lifting):
-                x = np.transpose(self.edmd_object.lift(x.reshape((x.shape[0],1)),xr[:,0].reshape((xr.shape[0],1))))[:,0]
 
             if (self.lifting):
                 QCT = np.transpose(self.Q.dot(self.C))                        
                 self._osqp_q = np.hstack([np.reshape(-QCT.dot(xr),((N+1)*nx,)), np.zeros(N*nu)])                    
             else:
                 self._osqp_q = np.hstack([np.reshape(-self.Q.dot(xr),((N+1)*nx,)), np.zeros(N*nu)])
+        else:
+            if (self.lifting):
+                xr = self.q_d[:,:N+1]
 
-            self._osqp_l[:self.nx] = -x
-            self._osqp_u[:self.nx] = -x
-
-
+        if (self.lifting): 
+            x = np.transpose(self.edmd_object.lift(x.reshape((x.shape[0],1)),xr[:,0].reshape((xr.shape[0],1))))[:,0]
+        
+        self._osqp_l[:self.nx] = -x
+        self._osqp_u[:self.nx] = -x
 
         self.prob.update(q=self._osqp_q, l=self._osqp_l, u=self._osqp_u)
 
@@ -177,25 +197,33 @@ class MPCController(Controller):
         return  self._osqp_result.x[-N*nu:-(N-1)*nu]
 
     def parse_result(self):
-        return  np.transpose(np.reshape( self._osqp_result.x[:(self._osqp_N+1)*self.nx], (self._osqp_N+1,self.nx)))
+        return  np.transpose(np.reshape( self._osqp_result.x[:(self.N+1)*self.nx], (self.N+1,self.nx)))
 
 
     def plot_MPC(self, current_time, xr):
+        '''
+        Inputs:
+        - current_time, t, float
+        - local MPC reference trajectory, xr, numpy 2d array [ns,N]
+        '''
+
         # Unpack OSQP results
         nu = self.nu
         nx = self.nx
-        N = self._osqp_N
+        N = self.N
 
         osqp_sim_state = np.reshape( self._osqp_result.x[:(N+1)*nx], (N+1,nx))
-        osqp_sim_forces = np.reshape( self._osqp_result.x[-N*nu:], (N,nu))
+        #osqp_sim_forces = np.reshape( self._osqp_result.x[-N*nu:], (N,nu))
+
+        if self.lifting:
+            osqp_sim_state = dot(self.C,osqp_sim_state)
 
         # Plot
-        pos = current_time/(N*self.dt)
+        pos = current_time/(self.Nqd*self.dt) # position along the trajectory
         time = np.linspace(current_time,current_time+N*self.dt,num=N+1)
         plt.plot(time,osqp_sim_state[:,0],color=[0,1-pos,pos])
-        #plt.show()
-        #plt.savefig('mpc_debugging_z.png')
-        #plt.close(ff)
+        plt.savefig(self.plotMPC_filename)
+
 
         """
         plt.plot(range(N),osqp_sim_forces)

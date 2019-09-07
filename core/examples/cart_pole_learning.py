@@ -42,8 +42,8 @@ class CartPoleTrajectory(CartPole):
 # Define true system
 system_true = CartPole(m_c=.5, m_p=.2, l=.4)
 n, m = 4, 1  # Number of states and actuators
-upper_bounds = array([3.0, pi/3, 2, 2])  # State constraints
-lower_bounds = -upper_bounds  # State constraints
+upper_bounds = array([3.0, pi/3, 2, 2])  # Upper State constraints
+lower_bounds = -upper_bounds  # Lower State constraints
 
 # Define nominal model and nominal controller:
 A_nom = array([[0., 0., 1., 0.], [0., 0., 0., 1.], [0., -3.924, 0., 0.], [0., 34.335, 0., 0.]])  # Linearization of the true system around the origin
@@ -53,7 +53,7 @@ K_d = -array([[8.0734, 7.4294]])  # Derivative control gains
 nominal_sys = LinearSystemDynamics(A=A_nom, B=B_nom)
 
 # Simulation parameters
-plot_traj_gen = False               # Plot trajectories generated for data collection
+plot_traj_gen = True               # Plot trajectories generated for data collection
 Ntraj = 40                          # Number of trajectories to collect data from
 dt = 1.0e-2                         # Time step
 N = int(2./dt)                      # Number of time steps
@@ -84,8 +84,8 @@ l2_keedmd = 1e-2
 # EDMD parameters
 # Best 0.06
 n_lift_edmd = (eigenfunction_max_power+1)**n-1
-l1_edmd = 1e-2
-l2_edmd = 1e-2
+l1_edmd = 0 #1e-2
+l2_edmd = 0 #1e-2
 
 
 #%% ===============================================    COLLECT DATA     ===============================================
@@ -101,20 +101,19 @@ if (traj_origin == 'gen_MPC'):
     Q = sparse.diags([0,0,0,0])
     QN = sparse.diags([100000.,100000.,50000.,10000.])
     R = sparse.eye(m)
-    umax = 5
+    umax_traj_gen = 5
     MPC_horizon = 2 # [s]
 
     mpc_controller = MPCController(linear_dynamics=nominal_sys, 
                                 N=int(MPC_horizon/dt),
                                 dt=dt, 
-                                umin=array([-umax]), 
-                                umax=array([+umax]),
+                                umin=array([-umax_traj_gen]), 
+                                umax=array([+umax_traj_gen]),
                                 xmin=lower_bounds, 
                                 xmax=upper_bounds, 
                                 Q=Q, 
                                 R=R, 
                                 QN=QN, 
-                                x0=zeros(n), 
                                 xr=zeros(n))
     for ii in range(Ntraj):
         x_0 = asarray([veryrandom.uniform(-i,i)  for i in traj_bounds ])
@@ -151,13 +150,14 @@ elif (traj_origin=='load_mat'):
 print('in {:.2f}s'.format(time.process_time()-t0))
 t0 = time.process_time()
 # Simulate system from each initial condition
-print(' - Simulate system with {} trajectories using PD controller'.format(Ntraj), end =" ")
+print('Generated {} trajectories with q_d shape {}'.format(Ntraj,q_d.shape))
+print(' - Simulate system using PD controller..', end =" ")
 save_traj = False
 outputs = [CartPoleTrajectory(system_true, q_d[i,:,:].transpose(), t_d) for i in range(Ntraj)]
 pd_controllers = [PDController(outputs[i], K_p, K_d, noise_var) for i in range(Ntraj)]
 pd_controllers_nom = [PDController(outputs[i], K_p, K_d, 0.) for i in range(Ntraj)]  # Duplicate of controllers with no noise perturbation
 xs, us, us_nom, ts = [], [], [], []
-print(q_d.shape)
+
 for ii in range(Ntraj):
     x_0 = q_d[ii,0,:]
     xs_tmp, us_tmp = system_true.simulate(x_0, pd_controllers[ii], t_eval)
@@ -200,16 +200,17 @@ if plot_eigen:
     eigenfunction_basis.plot_eigenfunction_evolution(xs[-1], t_eval)
 
 print('in {:.2f}s'.format(time.process_time()-t0))
+t0 = time.process_time()
 
 
 # Fit KEEDMD model:
-t0 = time.process_time()
 print(' - Fitting KEEDMD model...', end =" ")
 keedmd_model = Keedmd(eigenfunction_basis, n, l1=l1_keedmd, l2=l2_keedmd, K_p=K_p, K_d=K_d)
 keedmd_model.fit(xs, q_d, us, us_nom, ts)
 
 print('in {:.2f}s'.format(time.process_time()-t0))
 t0 = time.process_time()
+
 # Construct basis of RBFs for EDMD:
 print(' - Constructing RBF basis...', end =" ")
 rbf_center_type = 'random_bounded'
@@ -225,11 +226,13 @@ if rbf_center_type == 'random_subset':
     
 elif rbf_center_type == 'random_bounded':    
     rbf_centers = multiply(random.rand(n_lift_edmd, n),(upper_bounds-lower_bounds))+lower_bounds
+
 rbf_basis = RBF(rbf_centers, n)
 rbf_basis.construct_basis()
 
 print('in {:.2f}s'.format(time.process_time()-t0))
 t0 = time.process_time()
+
 # Fit EDMD model
 print(' - Fitting EDMD model...', end =" ")
 edmd_model = Edmd(rbf_basis, n, l1=l1_edmd, l2=l2_edmd)
@@ -365,49 +368,51 @@ noise_var_pred = 0.5
 output_pred = CartPoleTrajectory(system_true, q_d_pred,t_pred)
 
 # Set up MPC parameters
-Q = sparse.diags([200,10,10,5])
+Q = sparse.diags([20,10,10,5])
 QN = Q
 
-upper_bounds = array([6.0, pi/1.5, 5, 5])  # State constraints
-lower_bounds = -upper_bounds  # State constraints
-umax = 10
-MPC_horizon = 1 # [s]
+upper_bounds_MPC_control = array([10.0, pi, 10, 10])  # State constraints, check they are higher than upper_bounds
+lower_bounds_MPC_control = -upper_bounds_MPC_control  # State constraints
+umax_control = 15  # check it is higher than the control to generate the trajectories
+MPC_horizon = 1.0 # [s]
 
-# eDMD 
+""" # eDMD 
 edmd_sys = LinearSystemDynamics(A=edmd_model.A, B=edmd_model.B)
 edmd_controller = MPCController(linear_dynamics=edmd_sys, 
                                 N=int(MPC_horizon/dt),
                                 dt=dt, 
-                                umin=array([-umax]), 
-                                umax=array([+umax]),
-                                xmin=lower_bounds, 
-                                xmax=upper_bounds, 
+                                umin=array([-umax_control]), 
+                                umax=array([+umax_control]),
+                                xmin=lower_bounds_MPC_control, 
+                                xmax=upper_bounds_MPC_control, 
                                 Q=Q, 
                                 R=R, 
                                 QN=QN, 
-                                x0=zeros(n), 
                                 xr=q_d_pred,
                                 lifting=True,
-                                edmd_object=edmd_model)
+                                plotMPC=True,
+                                plotMPC_filename="eDMD_thoughts.png")
 
 xs_edmd_MPC, us_emdm_MPC = system_true.simulate(x_0, edmd_controller, t_pred)
-xs_edmd_MPC = xs_edmd_MPC.transpose()
+xs_edmd_MPC = xs_edmd_MPC.transpose() """
 
 # Linearized with MPC
-""" linearlize_mpc_controller = MPCController(linear_dynamics=nominal_sys, 
+linearlize_mpc_controller = MPCController(linear_dynamics=nominal_sys, 
                                           N=int(MPC_horizon/dt),
                                           dt=dt, 
-                                          umin=array([-umax]), 
-                                          umax=array([+umax]),
-                                          xmin=lower_bounds, 
-                                          xmax=upper_bounds, 
+                                          umin=array([-umax_control]), 
+                                          umax=array([+umax_control]),
+                                          xmin=lower_bounds_MPC_control, 
+                                          xmax=upper_bounds_MPC_control, 
                                           Q=Q, 
                                           R=R, 
                                           QN=QN, 
-                                          x0=zeros(n), 
-                                          xr=q_d_pred )
+                                          xr=q_d_pred,                
+                                          plotMPC=True,
+                                          plotMPC_filename="LinMPC_thoughts.png")
+
 xs_lin_MPC, us_lin_MPC = system_true.simulate(x_0, linearlize_mpc_controller, t_pred)
-xs_lin_MPC = xs_lin_MPC.transpose() """
+xs_lin_MPC = xs_lin_MPC.transpose()
 
 
 # Linearized with PD
@@ -422,17 +427,18 @@ keedmd_sys = LinearSystemDynamics(A=keedmd_model.A, B=keedmd_model.B)
 keedmd_controller = MPCController(linear_dynamics=keedmd_sys, 
                                 N=int(MPC_horizon/dt),
                                 dt=dt, 
-                                umin=array([-umax]), 
-                                umax=array([+umax]),
+                                umin=array([-umax_control]), 
+                                umax=array([+umax_control]),
                                 xmin=lower_bounds, 
                                 xmax=upper_bounds, 
                                 Q=Q, 
                                 R=R, 
                                 QN=QN, 
-                                x0=zeros(n), 
                                 xr=q_d_pred,
                                 lifting=True,
-                                edmd_object=keedmd_model)
+                                edmd_object=keedmd_model,
+                                plotMPC=True,
+                                plotMPC_filename="KeeDMD_thoughts.png" )
 
 xs_keedmd_MPC, us_keedmd_MPC = system_true.simulate(x_0, keedmd_controller, t_pred)
 xs_keedmd_MPC = xs_keedmd_MPC.transpose()
@@ -452,8 +458,8 @@ for ii in range(n):
     subplot(n, 1, ii+1)
     plot(t_pred, q_d_pred[ii,:], linestyle="--",linewidth=2, label='reference')
     plot(t_pred, xs_edmd_MPC[ii,:], linewidth=2, label='eDMD with MPC')
-    #plot(t_pred, xs_keedmd_MPC[ii,:], linewidth=2, label='KeeDMD with MPC')
-    #plot(t_pred, xs_lin_MPC[ii,:], linewidth=2, label='Linearized dynamics with MPC')
+    plot(t_pred, xs_keedmd_MPC[ii,:], linewidth=2, label='KeeDMD with MPC')
+    plot(t_pred, xs_lin_MPC[ii,:], linewidth=2, label='Linearized dynamics with MPC')
     plot(t_pred, xs_lin_PD[ii,:], linewidth=2, label='Linearized dynamics with PD Controller')
     xlabel('Time (s)')
     ylabel(ylabels[ii])
