@@ -111,7 +111,7 @@ class MPCController(Controller):
             if (xr.ndim==1):
                 q = np.hstack([np.kron(np.ones(N), -Q.dot(xr)), -QN.dot(xr), np.zeros(N*nu)])
             elif (xr.ndim==2):
-                q = np.hstack([np.reshape(-Q.dot(xr),((N+1)*nx,)), np.zeros(N*nu)])
+                q = np.hstack([np.reshape(-Q.dot(xr),((N+1)*nx,),order='F'), np.zeros(N*nu)])  #TODO: Check if reshape is reshaping in the expected order
 
             # - input and state constraints
             Aineq = sparse.eye((N+1)*nx + N*nu)
@@ -179,7 +179,7 @@ class MPCController(Controller):
                 QCT = np.transpose(self.Q.dot(self.C))                        
                 self._osqp_q = np.hstack([np.reshape(-QCT.dot(xr),((N+1)*nx,)), np.zeros(N*nu)])                    
             else:
-                self._osqp_q = np.hstack([np.reshape(-self.Q.dot(xr),((N+1)*nx,)), np.zeros(N*nu)])
+                self._osqp_q = np.hstack([np.reshape(-self.Q.dot(xr),((N+1)*nx,),order='F'), np.zeros(N*nu)])
 
         elif self.q_d.ndim==1:
             # Update the local reference trajectory

@@ -55,7 +55,7 @@ K_d = -array([[8.0734, 7.4294]])  # Derivative control gains
 nominal_sys = LinearSystemDynamics(A=A_nom, B=B_nom)
 
 # Simulation parameters
-plot_traj_gen = True                # Plot trajectories generated for data collection
+plot_traj_gen = False                # Plot trajectories generated for data collection
 Ntraj = 60                          # Number of trajectories to collect data from
 dt = 1.0e-2                         # Time step
 N = int(2./dt)                      # Number of time steps
@@ -92,6 +92,7 @@ l2_edmd = 0 #1e-2
 load_fit = True
 test_open_loop = False
 save_fit = not load_fit
+
 #%% ===============================================    COLLECT DATA     ===============================================
 # Load trajectories
 print("Collect data.")
@@ -393,7 +394,7 @@ noise_var_pred = 0.5
 output_pred = CartPoleTrajectory(system_true, q_d_pred,t_pred)
 
 # Set up MPC parameters
-Q = sparse.diags([20,10,10,5])
+Q = sparse.diags([200,10,1,5])
 QN = Q
 
 
