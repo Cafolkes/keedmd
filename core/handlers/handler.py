@@ -1,6 +1,9 @@
 from numpy import empty, append
 
 class Handler():
+    """
+    Class to handle Episodic Learning. This class is a template only.
+    """
     def __init__(self, n, m, Nlift, Nep, w, initial_controller, pert_noise):
         self.n = n
         self.m = m

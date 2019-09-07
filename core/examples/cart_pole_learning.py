@@ -362,7 +362,7 @@ if plot_open_loop:
 print('in {:.2f}s'.format(time.process_time()-t0))
 
 
-#%% ==============================================  EVALUATE PERFORMANCE -- CLOSED LOOP =============================================
+#%%  ==============================================  EVALUATE PERFORMANCE -- CLOSED LOOP =============================================
 t0 = time.process_time()
 print('Evaluate Performance with closed loop trajectory tracking...', end =" ")
 # Set up trajectory and controller for prediction task:
@@ -380,7 +380,7 @@ lower_bounds = -upper_bounds  # State constraints
 umax = 10
 MPC_horizon = 1 # [s]
 
-# eDMD 
+#* eDMD 
 edmd_sys = LinearSystemDynamics(A=edmd_model.A, B=edmd_model.B)
 edmd_controller = MPCController(linear_dynamics=edmd_sys, 
                                 N=int(MPC_horizon/dt),
@@ -417,14 +417,14 @@ xs_lin_MPC, us_lin_MPC = system_true.simulate(x_0, linearlize_mpc_controller, t_
 xs_lin_MPC = xs_lin_MPC.transpose() """
 
 
-# Linearized with PD
+#* Linearized with PD
 output_pred = CartPoleTrajectory(system_true, q_d_pred,t_pred)
 linearlize_PD_controller = PDController(output_pred, K_p, K_d, noise_var_pred)
 xs_lin_PD, us_lin_PD = system_true.simulate(x_0, linearlize_PD_controller, t_pred)
 xs_lin_PD = xs_lin_PD.transpose()
 
 
-# KeeDMD
+#* KeeDMD
 keedmd_sys = LinearSystemDynamics(A=keedmd_model.A, B=keedmd_model.B)
 keedmd_controller = MPCController(linear_dynamics=keedmd_sys, 
                                 N=int(MPC_horizon/dt),
@@ -452,7 +452,7 @@ if save_traj:
     savemat('./core/examples/results/cart_pendulum_prediction.mat', {'t_pred':t_pred, 'xs_pred': xs_pred, 'us_pred':us_pred,
                                                             'xs_keedmd':xs_keedmd, 'xs_edmd':xs_edmd, 'xs_nom': xs_nom})
 
-# Plot the closed loop trajectory
+#! Plot the closed loop trajectory
 ylabels = ['$x$', '$\\theta$', '$\\dot{x}$', '$\\dot{\\theta}$']
 figure()
 for ii in range(n):
