@@ -22,8 +22,7 @@ class Edmd():
         self.override_C = override_C
         self.acceleration_bounds = acceleration_bounds #(nx1)
 
-    def fit(self, X, X_d, U, U_nom, t):
-        X, X_d, Z, Z_dot, U, U_nom, t = self.process(X, X_d, U, U_nom, t)
+    def fit(self, X, X_d, Z, Z_dot, U, U_nom):
         if self.l1 == 0. and self.l2 == 0.:
             # Construct EDMD matrices as described in M. Korda, I. Mezic, "Linear predictors for nonlinear dynamical systems: Koopman operator meets model predictive control":
             W = concatenate((Z_dot, X), axis=0)

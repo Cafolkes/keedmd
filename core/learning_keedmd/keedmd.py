@@ -4,8 +4,9 @@ from numpy import array, concatenate, zeros, dot, linalg, eye, diag, std, divide
 import numpy as np
 
 class Keedmd(Edmd):
-    def __init__(self, basis, system_dim, l1=0., l2=0., acceleration_bounds=None, override_C=True, K_p = None, K_d = None):
+    def __init__(self, basis, system_dim, l1=0., l2=0., acceleration_bounds=None, override_C=True, K_p = None, K_d = None, episodic=False):
         super().__init__(basis, system_dim, l1=l1, l2=l2, acceleration_bounds=acceleration_bounds, override_C=override_C)
+        self.episodic = episodic
         self.K_p = K_d
         self.K_d = K_d
         if self.basis.Lambda is None:
@@ -13,8 +14,7 @@ class Keedmd(Edmd):
         elif self.K_p is None or self.K_p is None:
             raise Exception('Nominal controller gains not defined.')
 
-    def fit(self, X, X_d, U, U_nom, t):
-        X, X_d, Z, Z_dot, U, U_nom, t = self.process(X, X_d, U, U_nom, t)
+    def fit(self, X, X_d, Z, Z_dot, U, U_nom):
         self.n_lift = Z.shape[0]
 
         if self.l1 == 0. and self.l2 == 0.:
@@ -95,7 +95,8 @@ class Keedmd(Edmd):
             else:
                 raise Exception('Warning: Learning of C not implemented for structured regression.')
 
-        self.A[self.n:,:self.n] -= dot(self.B[self.n:,:],concatenate((self.K_p, self.K_d), axis=1))
+        if not self.episodic:
+            self.A[self.n:,:self.n] -= dot(self.B[self.n:,:],concatenate((self.K_p, self.K_d), axis=1))
 
     def lift(self, X, X_d):
         Z = self.basis.lift(X, X_d)

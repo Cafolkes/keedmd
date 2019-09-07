@@ -161,8 +161,6 @@ class MPCController(Controller):
         self._osqp_l[:self.nx] = -x
         self._osqp_u[:self.nx] = -x
 
-
-
         self.prob.update(q=self._osqp_q, l=self._osqp_l, u=self._osqp_u)
 
         ## Solve MPC Instance

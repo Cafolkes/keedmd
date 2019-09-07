@@ -54,7 +54,7 @@ nominal_sys = LinearSystemDynamics(A=A_nom, B=B_nom)
 
 # Simulation parameters (data collection)
 plot_traj_gen = False               # Plot trajectories generated for data collection
-traj_origin = 'load_mat'            # gen_MPC - solve MPC to generate desired trajectories, load_mat - load saved trajectories
+traj_origin = 'gen_MPC'            # gen_MPC - solve MPC to generate desired trajectories, load_mat - load saved trajectories
 Ntraj = 50                          # Number of trajectories to collect data from
 dt = 1.0e-2                         # Time step
 N = int(2./dt)                      # Number of time steps
@@ -89,7 +89,7 @@ l1_edmd = 1e-2
 l2_edmd = 1e-2
 
 # Simulation parameters (evaluate performance)
-plot_open_loop=False
+plot_open_loop=True
 
 
 #%% ===============================================    COLLECT DATA     ===============================================
@@ -123,6 +123,9 @@ if (traj_origin == 'gen_MPC'):
         x_0 = asarray([veryrandom.uniform(-i,i)  for i in traj_bounds ])
         mpc_controller.eval(x_0,0)
         q_d[ii,:,:] = mpc_controller.parse_result().transpose()
+
+    q_d = q_d[:5,:,:] #TODO: Remove after debug
+    Ntraj = q_d.shape[0]
 
     savemat('./core/examples/cart_pole_d.mat', {'t_d': t_d, 'q_d': q_d})
 
@@ -209,7 +212,8 @@ print('in {:.2f}s'.format(time.process_time()-t0))
 t0 = time.process_time()
 print(' - Fitting KEEDMD model...', end =" ")
 keedmd_model = Keedmd(eigenfunction_basis, n, l1=l1_keedmd, l2=l2_keedmd, K_p=K_p, K_d=K_d)
-keedmd_model.fit(xs, q_d, us, us_nom, ts)
+X, X_d, Z, Z_dot, U, U_nom, t = keedmd_model.process(xs, q_d, us, us_nom, ts)
+keedmd_model.fit(X, X_d, Z, Z_dot, U, U_nom)
 
 print('in {:.2f}s'.format(time.process_time()-t0))
 t0 = time.process_time()
@@ -236,7 +240,8 @@ t0 = time.process_time()
 # Fit EDMD model
 print(' - Fitting EDMD model...', end =" ")
 edmd_model = Edmd(rbf_basis, n, l1=l1_edmd, l2=l2_edmd)
-edmd_model.fit(xs, q_d, us, us_nom, ts)
+X, X_d, Z, Z_dot, U, U_nom, t = edmd_model.process(xs, q_d, us, us_nom, ts)
+edmd_model.fit(X, X_d, Z, Z_dot, U, U_nom)
 
 
 #%% ==============================================  EVALUATE PERFORMANCE -- OPEN LOOP =========================================
