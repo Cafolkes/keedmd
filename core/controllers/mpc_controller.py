@@ -72,7 +72,7 @@ class MPCController(Controller):
         self.nx = nx
 
         # Total desired path
-        if self.q_d.ndim>1:
+        if self.q_d.ndim==2:
             self.Nqd = self.q_d.shape[1]
             xr = self.q_d[:,:N+1]
 
@@ -142,8 +142,8 @@ class MPCController(Controller):
             # Figure to plot MPC thoughts
             self.ff = plt.figure()
             plt.xlabel('Time(s)')
+            plt.ylabel('Position(m)')
             plt.grid()
-            plt.legend()
 
 
     def eval(self, x, t):
@@ -160,23 +160,26 @@ class MPCController(Controller):
         tindex = int(t/self.dt)
         
         ## Update inequalities
-        if self.q_d.ndim==2 and tindex>1: 
-            tindex = int(t/self.dt)
+        if self.q_d.ndim==2: 
+            
+            # Update the local reference trajectory
             if (tindex+N) < self.Nqd: # if we haven't reach the end of q_d yet
                 xr = self.q_d[:,tindex:tindex+N+1]
             else: # we fill xr with copies of the last q_d
                 xr = np.hstack( [self.q_d[:,tindex:],np.transpose(np.tile(self.q_d[:,-1],(N+1-self.Nqd+tindex,1)))])
 
-
+            # Construct the new _osqp_q objects
             if (self.lifting):
                 QCT = np.transpose(self.Q.dot(self.C))                        
                 self._osqp_q = np.hstack([np.reshape(-QCT.dot(xr),((N+1)*nx,)), np.zeros(N*nu)])                    
             else:
                 self._osqp_q = np.hstack([np.reshape(-self.Q.dot(xr),((N+1)*nx,)), np.zeros(N*nu)])
-        else:
-            if (self.lifting):
-                xr = self.q_d[:,:N+1]
 
+        elif self.q_d.ndim==1:
+            # Update the local reference trajectory
+            xr = np.transpose(np.tile(self.q_d,N+1))
+
+        # Lift the current state if necessary
         if (self.lifting): 
             x = np.transpose(self.edmd_object.lift(x.reshape((x.shape[0],1)),xr[:,0].reshape((xr.shape[0],1))))[:,0]
         
@@ -192,7 +195,7 @@ class MPCController(Controller):
         if self._osqp_result.info.status != 'solved':
             raise ValueError('OSQP did not solve the problem!')
 
-        if self.plotMPC and tindex>1:
+        if self.plotMPC:
             self.plot_MPC(t, xr)
         return  self._osqp_result.x[-N*nu:-(N-1)*nu]
 
@@ -212,7 +215,7 @@ class MPCController(Controller):
         nx = self.nx
         N = self.N
 
-        osqp_sim_state = np.reshape( self._osqp_result.x[:(N+1)*nx], (N+1,nx))
+        osqp_sim_state = np.transpose(np.reshape( self._osqp_result.x[:(N+1)*nx], (N+1,nx)))
         #osqp_sim_forces = np.reshape( self._osqp_result.x[-N*nu:], (N,nu))
 
         if self.lifting:
@@ -221,8 +224,8 @@ class MPCController(Controller):
         # Plot
         pos = current_time/(self.Nqd*self.dt) # position along the trajectory
         time = np.linspace(current_time,current_time+N*self.dt,num=N+1)
-        plt.plot(time,osqp_sim_state[:,0],color=[0,1-pos,pos])
-        plt.savefig(self.plotMPC_filename)
+        plt.plot(time,osqp_sim_state[0,:],color=[0,1-pos,pos])
+        #plt.savefig(self.plotMPC_filename)
 
 
         """

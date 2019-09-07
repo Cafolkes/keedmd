@@ -401,9 +401,10 @@ upper_bounds_MPC_control = array([10.0, pi, 10, 10])  # State constraints, check
 lower_bounds_MPC_control = -upper_bounds_MPC_control  # State constraints
 umax_control = 15  # check it is higher than the control to generate the trajectories
 MPC_horizon = 1.0 # [s]
+plotMPC = True
 
 # eDMD 
-edmd_sys = LinearSystemDynamics(A=edmd_model.A, B=edmd_model.B)
+""" edmd_sys = LinearSystemDynamics(A=edmd_model.A, B=edmd_model.B)
 edmd_controller = MPCController(linear_dynamics=edmd_sys, 
                                 N=int(MPC_horizon/dt),
                                 dt=dt, 
@@ -417,11 +418,14 @@ edmd_controller = MPCController(linear_dynamics=edmd_sys,
                                 xr=q_d_pred,
                                 lifting=True,
                                 edmd_object=edmd_model,
-                                plotMPC=True,
-                                plotMPC_filename="eDMD_thoughts.png")
+                                plotMPC=plotMPC)
 
 xs_edmd_MPC, us_emdm_MPC = system_true.simulate(x_0, edmd_controller, t_pred)
 xs_edmd_MPC = xs_edmd_MPC.transpose()
+
+if plotMPC:
+    plot(t_pred, xs_edmd_MPC[0,:], linewidth=2, label='$x$', color=[1,0,0])
+    savefig("eDMD_thoughts.png") """
 
 # Linearized with MPC
 linearlize_mpc_controller = MPCController(linear_dynamics=nominal_sys, 
@@ -435,12 +439,16 @@ linearlize_mpc_controller = MPCController(linear_dynamics=nominal_sys,
                                           R=R, 
                                           QN=QN, 
                                           xr=q_d_pred,                
-                                          plotMPC=True,
-                                          plotMPC_filename="LinMPC_thoughts.png")
+                                          plotMPC=True)
 
 xs_lin_MPC, us_lin_MPC = system_true.simulate(x_0, linearlize_mpc_controller, t_pred)
 xs_lin_MPC = xs_lin_MPC.transpose()
 
+if plotMPC:
+    plot(t_pred, q_d_pred[0,:], linewidth=2, label='$x_d$', color=[1,0,0])
+    plot(t_pred, xs_lin_MPC[0,:], linewidth=2, label='$x_{LIN\,MPC}$', color=[0,0,0])
+    legend(fontsize=10, loc='best')
+    savefig("LinMPC_thoughts.png")
 
 # Linearized with PD
 linearlize_PD_controller = PDController(output_pred, K_p, K_d, noise_var=0)
@@ -448,7 +456,7 @@ xs_lin_PD, us_lin_PD = system_true.simulate(x_0, linearlize_PD_controller, t_pre
 xs_lin_PD = xs_lin_PD.transpose()
 
 
-# KeeDMD
+""" # KeeDMD
 keedmd_sys = LinearSystemDynamics(A=keedmd_model.A, B=keedmd_model.B)
 keedmd_controller = MPCController(linear_dynamics=keedmd_sys, 
                                 N=int(MPC_horizon/dt),
@@ -463,13 +471,15 @@ keedmd_controller = MPCController(linear_dynamics=keedmd_sys,
                                 xr=q_d_pred,
                                 lifting=True,
                                 edmd_object=keedmd_model,
-                                plotMPC=True,
-                                plotMPC_filename="KeeDMD_thoughts.png" )
+                                plotMPC=True)
 
 xs_keedmd_MPC, us_keedmd_MPC = system_true.simulate(x_0, keedmd_controller, t_pred)
 xs_keedmd_MPC = xs_keedmd_MPC.transpose()
 
-
+if plotMPC:
+    plot(t_pred, xs_keedmd_MPC[0,:], linewidth=2, label='$x$', color=[1,0,0])
+    savefig("KeeDMD_thoughts.png")
+ """
 print('in {:.2f}s'.format(time.process_time()-t0))
 t0 = time.process_time()
 
@@ -484,8 +494,8 @@ figure()
 for ii in range(n):
     subplot(n, 1, ii+1)
     plot(t_pred, q_d_pred[ii,:], linestyle="--",linewidth=2, label='reference')
-    plot(t_pred, xs_edmd_MPC[ii,:], linewidth=2, label='eDMD with MPC')
-    plot(t_pred, xs_keedmd_MPC[ii,:], linewidth=2, label='KeeDMD with MPC')
+    #plot(t_pred, xs_edmd_MPC[ii,:], linewidth=2, label='eDMD with MPC')
+    #plot(t_pred, xs_keedmd_MPC[ii,:], linewidth=2, label='KeeDMD with MPC')
     plot(t_pred, xs_lin_MPC[ii,:], linewidth=2, label='Linearized dynamics with MPC')
     plot(t_pred, xs_lin_PD[ii,:], linewidth=2, label='Linearized dynamics with PD Controller')
     xlabel('Time (s)')
@@ -496,11 +506,11 @@ for ii in range(n):
 legend(fontsize=10, loc='best')
 show()
 
-print('Mean Squared Error:')
+""" print('Mean Squared Error:')
 print('Nominal model: ', format(mse_nom, '08f'))
 print('EDMD: ', format(mse_edmd, '08f'), ', reduction from nominal: ', format((1-mse_edmd/mse_nom)*100, '08f'), '%')
 print('KEEDMD: ', format(mse_keedmd, '08f'), ', reduction from nominal: ', format((1-mse_keedmd/mse_nom)*100, '08f'), '%', ', reduction from EDMD: ', format((1-mse_keedmd/mse_edmd)*100, '08f'), '%')
 print()
-print('Lifting dimension EDMD: ', edmd_model.A.shape[0], ', KEEDMD: ', keedmd_model.A.shape[0])
+print('Lifting dimension EDMD: ', edmd_model.A.shape[0], ', KEEDMD: ', keedmd_model.A.shape[0]) """
 
 #%%
