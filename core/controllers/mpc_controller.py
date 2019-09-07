@@ -192,7 +192,7 @@ class MPCController(Controller):
         if self._osqp_result.info.status != 'solved':
             raise ValueError('OSQP did not solve the problem!')
 
-        if self.plotMPC:
+        if self.plotMPC and tindex>1:
             self.plot_MPC(t, xr)
         return  self._osqp_result.x[-N*nu:-(N-1)*nu]
 
@@ -216,7 +216,7 @@ class MPCController(Controller):
         #osqp_sim_forces = np.reshape( self._osqp_result.x[-N*nu:], (N,nu))
 
         if self.lifting:
-            osqp_sim_state = dot(self.C,osqp_sim_state)
+            osqp_sim_state = np.dot(self.C,osqp_sim_state)
 
         # Plot
         pos = current_time/(self.Nqd*self.dt) # position along the trajectory

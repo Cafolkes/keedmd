@@ -54,7 +54,7 @@ nominal_sys = LinearSystemDynamics(A=A_nom, B=B_nom)
 
 # Simulation parameters
 plot_traj_gen = True               # Plot trajectories generated for data collection
-Ntraj = 40                          # Number of trajectories to collect data from
+Ntraj = 100                          # Number of trajectories to collect data from
 dt = 1.0e-2                         # Time step
 N = int(2./dt)                      # Number of time steps
 t_eval = dt * arange(N + 1)         # Simulation time points
@@ -84,8 +84,8 @@ l2_keedmd = 1e-2
 # EDMD parameters
 # Best 0.06
 n_lift_edmd = (eigenfunction_max_power+1)**n-1
-l1_edmd = 0 #1e-2
-l2_edmd = 0 #1e-2
+l1_edmd = 1e-2
+l2_edmd = 1e-2
 
 
 #%% ===============================================    COLLECT DATA     ===============================================
