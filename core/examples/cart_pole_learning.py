@@ -54,13 +54,14 @@ nominal_sys = LinearSystemDynamics(A=A_nom, B=B_nom)
 
 # Simulation parameters
 plot_traj_gen = False               # Plot trajectories generated for data collection
-Ntraj = 20                          # Number of trajectories to collect data from
+Ntraj = 40                          # Number of trajectories to collect data from
 dt = 1.0e-2                         # Time step
 N = int(2./dt)                      # Number of time steps
 t_eval = dt * arange(N + 1)         # Simulation time points
 noise_var = 0.1                     # Exploration noise to perturb controller
 
 # Koopman eigenfunction parameters
+plot_eigen = False
 eigenfunction_max_power = 3
 l2_diffeomorphism = 5e0
 jacobian_penalty_diffeomorphism = 2e0
@@ -85,6 +86,7 @@ l2_keedmd = 1e-2
 n_lift_edmd = (eigenfunction_max_power+1)**n-1
 l1_edmd = 1e-2
 l2_edmd = 1e-2
+
 
 #%% ===============================================    COLLECT DATA     ===============================================
 # Load trajectories
@@ -175,9 +177,10 @@ if plot_traj:
         plot_trajectory(xs[ii], q_d[:,ii,:].transpose(), us[ii], us_nom[ii], ts[ii])  # Plot simulated trajectory if desired
 
 
+#%% ===============================================     FIT MODELS      ===============================================
 print('in {:.2f}s'.format(time.process_time()-t0))
 t0 = time.process_time()
-#%% ===============================================     FIT MODELS      ===============================================
+
 print("Fitting models:")
 # Construct basis of Koopman eigenfunctions for KEEDMD:
 print(' - Constructing Koopman eigenfunction basis....', end =" ")
@@ -193,7 +196,6 @@ else:
     eigenfunction_basis.save_diffeomorphism_model(diffeomorphism_model_file)
 eigenfunction_basis.construct_basis(ub=upper_bounds, lb=lower_bounds)
 
-plot_eigen = False
 if plot_eigen:
     eigenfunction_basis.plot_eigenfunction_evolution(xs[-1], t_eval)
 
@@ -233,9 +235,11 @@ print(' - Fitting EDMD model...', end =" ")
 edmd_model = Edmd(rbf_basis, n, l1=l1_edmd, l2=l2_edmd)
 edmd_model.fit(xs, q_d, us, us_nom, ts)
 
+
+#%% ==============================================  EVALUATE PERFORMANCE -- OPEN LOOP =========================================
 print('in {:.2f}s'.format(time.process_time()-t0))
 t0 = time.process_time()
-#%% ==============================================  EVALUATE PERFORMANCE -- OPEN LOOP =========================================
+
 # Set up trajectory and controller for prediction task:
 print('Evaluate Performance with open loop prediction...', end =" ")
 q_d_pred = q_d[:,4,:]

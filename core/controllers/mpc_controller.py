@@ -150,16 +150,18 @@ class MPCController(Controller):
                 xr = np.hstack( [self.q_d[:,tindex:],np.transpose(np.tile(self.q_d[:,-1],(N+1-self.Nqd+tindex,1)))])
 
             if (self.lifting):
+                x = np.transpose(self.edmd_object.lift(x.reshape((x.shape[0],1)),xr[:,0].reshape((xr.shape[0],1))))[:,0]
+
+            if (self.lifting):
                 QCT = np.transpose(self.Q.dot(self.C))                        
                 self._osqp_q = np.hstack([np.reshape(-QCT.dot(xr),((N+1)*nx,)), np.zeros(N*nu)])                    
             else:
                 self._osqp_q = np.hstack([np.reshape(-self.Q.dot(xr),((N+1)*nx,)), np.zeros(N*nu)])
 
-        if (self.lifting):
-            x = np.transpose(self.edmd_object.lift(x.reshape((x.shape[0],1)), xr[:,0].reshape((xr.shape[0],1))))[:, 0] #TODO: Ask Daniel: if treatment of xr is consistent with the rest of the MPC code
+            self._osqp_l[:self.nx] = -x
+            self._osqp_u[:self.nx] = -x
 
-        self._osqp_l[:self.nx] = -x
-        self._osqp_u[:self.nx] = -x
+
 
         self.prob.update(q=self._osqp_q, l=self._osqp_l, u=self._osqp_u)
 
