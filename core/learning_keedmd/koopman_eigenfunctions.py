@@ -87,7 +87,6 @@ class KoopmanEigenfunctions(BasisFunctions):
     def fit_diffeomorphism_model(self, X, t, X_d, learning_rate=1e-2, learning_decay=0.95, n_epochs=50, train_frac=0.8, l2=1e1, jacobian_penalty=1., batch_size=64):
         X, X_dot, X_d, t = self.process(X=X, t=t, X_d=X_d)
         y_target = X_dot - dot(self.A_cl, X.transpose()).transpose()# - dot(self.BK, X_d.transpose()).transpose()
-        #y_fit = npconcatenate((y_target, zeros(y_target.shape)), axis=1) #TODO: Remove
 
         device = 'cuda' if cuda.is_available() else 'cpu'
 
@@ -238,7 +237,7 @@ class KoopmanEigenfunctions(BasisFunctions):
     def process(self, X, t, X_d):
         # Shift dynamics to make origin a fixed point
         X_f = X_d[:,-1,:]
-        X_shift = array([X[ii] - X_f[ii,:] for ii in range(len(X))])
+        X_shift = array([X[ii,:,:] - X_f[ii,:] for ii in range(len(X))])
         X_d = array([X_d[ii,:,:].reshape((X_d.shape[1],X_d.shape[2])) - X_f[ii,:] for ii in range(len(X))])
 
         # Calculate numerical derivatives
@@ -268,14 +267,15 @@ class KoopmanEigenfunctions(BasisFunctions):
 
     def plot_eigenfunction_evolution(self, X, X_d, t):
         X = X.transpose()
+        X_d = X_d.transpose()
         eigval_system = LinearSystemDynamics(A=diag(self.Lambda),B=zeros((self.Lambda.shape[0],1)))
         eigval_ctrl = ConstantController(eigval_system,0.)
         x0 = X[:,:1]
-        x0_d = X_d[:1,:].transpose()
+        x0_d = X_d[:,:1]
         z0 = self.lift(x0, x0_d)
         eigval_evo, us = eigval_system.simulate(z0.flatten(), eigval_ctrl, t)
         eigval_evo = eigval_evo.transpose()
-        eigfunc_evo = self.lift(X, X_d.transpose()).transpose()
+        eigfunc_evo = self.lift(X, X_d).transpose()
 
 
         figure()

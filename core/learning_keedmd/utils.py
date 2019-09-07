@@ -2,6 +2,7 @@ from matplotlib.pyplot import figure, grid, legend, plot, show, subplot, suptitl
 
 def plot_trajectory(X, X_d, U, U_nom, t):
     # Plot the first simulated trajectory
+    print('plotting.', X.shape, X_d.shape)
     figure()
     subplot(2, 1, 1)
     plot(t, X[:,0], linewidth=2, label='$x$')
