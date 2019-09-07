@@ -1,7 +1,7 @@
 from core.learning_keedmd.edmd import Edmd
 from sklearn import linear_model
 from numpy import array, concatenate, zeros, dot, linalg, eye, diag, std, divide, tile, where
-
+import numpy as np
 
 class Keedmd(Edmd):
     def __init__(self, basis, system_dim, l1=0., l2=0., acceleration_bounds=None, override_C=True, K_p = None, K_d = None):

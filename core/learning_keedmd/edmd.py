@@ -2,13 +2,14 @@ from core.learning import differentiate_vec
 from sklearn import linear_model
 from scipy.linalg import expm
 from numpy import array, concatenate, zeros, dot, linalg, eye, ones, std, where, divide, multiply, tile
+from core.learning_keedmd import BasisFunctions
 
 class Edmd():
     '''
     Base class for edmd-type methods. Implements baseline edmd with the possible addition of l1 and/or l2 regularization.
     Overload fit for more specific methods.
     '''
-    def __init__(self, basis, system_dim, l1=0., l2=0., acceleration_bounds=None, override_C=True):
+    def __init__(self, basis=BasisFunctions(0,0), system_dim=0, l1=0., l2=0., acceleration_bounds=None, override_C=True):
         self.A = None
         self.B = None
         self.C = None

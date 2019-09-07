@@ -1,6 +1,6 @@
 from sklearn.metrics.pairwise import rbf_kernel
 from .basis_functions import BasisFunctions
-from numpy import array, atleast_2d, tile, diag
+from numpy import array, atleast_2d, tile, diag, reshape
 
 class RBF(BasisFunctions):
     """
@@ -38,8 +38,10 @@ class RBF(BasisFunctions):
         basis applied to q
         """
         #return atleast_2d(array([self.basis(q[:, ii].reshape((self.n, 1)), t[ii]) for ii in range(q.shape[1])]).squeeze())
-        a = atleast_2d(self.basis(q,t).squeeze())
-        return a
+        if q.ndim == 1:
+            q = reshape(q,(q.shape[0],1))
+
+        return atleast_2d(self.basis(q,t).squeeze())
 
     def construct_basis(self):
         if self.type == 'gaussian':
