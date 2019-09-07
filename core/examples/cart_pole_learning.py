@@ -55,21 +55,20 @@ nominal_sys = LinearSystemDynamics(A=A_nom, B=B_nom)
 # Simulation parameters (data collection)
 plot_traj_gen = False               # Plot trajectories generated for data collection
 traj_origin = 'load_mat'            # gen_MPC - solve MPC to generate desired trajectories, load_mat - load saved trajectories
-Ntraj = 20                          # Number of trajectories to collect data from
+Ntraj = 50                          # Number of trajectories to collect data from
 dt = 1.0e-2                         # Time step
 N = int(2./dt)                      # Number of time steps
 t_eval = dt * arange(N + 1)         # Simulation time points
 noise_var = 0.1                     # Exploration noise to perturb controller
 
 # Koopman eigenfunction parameters
-#train: 1.76 val: 0.5
-plot_eigen = True
+plot_eigen = False
 eigenfunction_max_power = 3
 l2_diffeomorphism = 1e0                 #Fix for current architecture
 jacobian_penalty_diffeomorphism = 5e0   #Fix for current architecture
-load_diffeomorphism_model = False
+load_diffeomorphism_model = True
 diffeomorphism_model_file = 'diff_model'
-diff_n_epochs = 50
+diff_n_epochs = 100
 diff_train_frac = 0.9
 diff_n_hidden_layers = 2
 diff_layer_width = 100
@@ -90,7 +89,7 @@ l1_edmd = 1e-2
 l2_edmd = 1e-2
 
 # Simulation parameters (evaluate performance)
-plot_open_loop=True
+plot_open_loop=False
 
 
 #%% ===============================================    COLLECT DATA     ===============================================
@@ -98,13 +97,13 @@ plot_open_loop=True
 print("Collect data.")
 print(" - Generate optimal desired path..", end =" ")
 t0 = time.process_time()
+R = sparse.eye(m)
 if (traj_origin == 'gen_MPC'):
     t_d = t_eval
     traj_bounds = [2,0.25,0.05,0.05] # x, theta, x_dot, theta_dot
     q_d = zeros((Ntraj,N+1,n))
     Q = sparse.diags([0,0,0,0])
     QN = sparse.diags([100000.,100000.,50000.,10000.])
-    R = sparse.eye(m)
     umax = 5
     MPC_horizon = 2 # [s]
 
@@ -141,6 +140,7 @@ elif (traj_origin=='load_mat'):
     res = loadmat('./core/examples/cart_pole_d.mat') # Tensor (n, Ntraj, Ntime)
     q_d = res['q_d']  # Desired states
     t_d = res['t_d']  # Time points
+    q_d = q_d[:5,:,:] # TODO: Remove after debugging
     Ntraj = q_d.shape[0]  # Number of trajectories to execute
 
     if plot_traj_gen:
