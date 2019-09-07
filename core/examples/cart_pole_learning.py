@@ -403,6 +403,13 @@ umax_control = 15  # check it is higher than the control to generate the traject
 MPC_horizon = 1.0 # [s]
 plotMPC = True
 
+# Linearized with PD
+linearlize_PD_controller = PDController(output_pred, K_p, K_d, noise_var=0)
+xs_lin_PD, us_lin_PD = system_true.simulate(x_0, linearlize_PD_controller, t_pred)
+xs_lin_PD = xs_lin_PD.transpose()
+us_lin_PD = us_lin_PD.transpose()
+
+
 # eDMD 
 """ edmd_sys = LinearSystemDynamics(A=edmd_model.A, B=edmd_model.B)
 edmd_controller = MPCController(linear_dynamics=edmd_sys, 
@@ -443,17 +450,20 @@ linearlize_mpc_controller = MPCController(linear_dynamics=nominal_sys,
 
 xs_lin_MPC, us_lin_MPC = system_true.simulate(x_0, linearlize_mpc_controller, t_pred)
 xs_lin_MPC = xs_lin_MPC.transpose()
+us_lin_MPC = us_lin_MPC.transpose()
 
 if plotMPC:
-    plot(t_pred, q_d_pred[0,:], linewidth=2, label='$x_d$', color=[1,0,0])
-    plot(t_pred, xs_lin_MPC[0,:], linewidth=2, label='$x_{LIN\,MPC}$', color=[0,0,0])
-    legend(fontsize=10, loc='best')
+    for ii in range(n):
+        linearlize_mpc_controller.axs[ii].plot(t_pred, q_d_pred[ii,:], linewidth=2, label='$x_d$', color=[1,0,0])
+        linearlize_mpc_controller.axs[ii].plot(t_pred, xs_lin_MPC[ii,:], linewidth=2, label='$x$', color=[0,0,0])
+        linearlize_mpc_controller.axs[ii].legend(fontsize=10, loc='best')
+    for ii in range(m):
+        linearlize_mpc_controller.axs[ii+n].plot(t_pred[:-1],us_lin_MPC[ii,:],label='$u$',color=[0,0,0])
+        linearlize_mpc_controller.axs[ii+n].plot(t_pred[:-1],us_lin_PD[ii,:],label='$u_{PD}$',color=[0,1,1])
+        linearlize_mpc_controller.axs[ii+n].legend(fontsize=10, loc='best')
     savefig("LinMPC_thoughts.png")
 
-# Linearized with PD
-linearlize_PD_controller = PDController(output_pred, K_p, K_d, noise_var=0)
-xs_lin_PD, us_lin_PD = system_true.simulate(x_0, linearlize_PD_controller, t_pred)
-xs_lin_PD = xs_lin_PD.transpose()
+
 
 
 """ # KeeDMD

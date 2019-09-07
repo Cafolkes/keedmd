@@ -140,10 +140,16 @@ class MPCController(Controller):
 
         if self.plotMPC:
             # Figure to plot MPC thoughts
-            self.ff = plt.figure()
-            plt.xlabel('Time(s)')
-            plt.ylabel('Position(m)')
-            plt.grid()
+            fig, self.axs = plt.subplots(self.ns+self.nu)
+            ylabels = ['$x$', '$\\theta$', '$\\dot{x}$', '$\\dot{\\theta}$']
+            for ii in range(self.ns):
+                self.axs[ii].set(xlabel='Time(s)',ylabel=ylabels[ii])
+                self.axs[ii].grid()
+            for ii in range(self.ns,self.ns+self.nu):
+                self.axs[ii].set(xlabel='Time(s)',ylabel='u')
+                self.axs[ii].grid()
+
+
 
 
     def eval(self, x, t):
@@ -158,7 +164,6 @@ class MPCController(Controller):
         nx = self.nx
 
         tindex = int(t/self.dt)
-        print(tindex)
         
         ## Update inequalities
         if self.q_d.ndim==2: 
@@ -217,7 +222,7 @@ class MPCController(Controller):
         N = self.N
 
         osqp_sim_state = np.transpose(np.reshape( self._osqp_result.x[:(N+1)*nx], (N+1,nx)))
-        #osqp_sim_forces = np.reshape( self._osqp_result.x[-N*nu:], (N,nu))
+        osqp_sim_forces = np.transpose(np.reshape( self._osqp_result.x[-N*nu:], (N,nu)))
 
         if self.lifting:
             osqp_sim_state = np.dot(self.C,osqp_sim_state)
@@ -225,16 +230,21 @@ class MPCController(Controller):
         # Plot
         pos = current_time/(self.Nqd*self.dt) # position along the trajectory
         time = np.linspace(current_time,current_time+N*self.dt,num=N+1)
-        if (tindex==0):
-            plt.plot(time,osqp_sim_state[0,:],color=[0,1-pos,pos],label='x_0')
-        elif (tindex==self.Nqd-2):
-            plt.plot(time,osqp_sim_state[0,:],color=[0,1-pos,pos],label='x_f')
-        else:
-            plt.plot(time,osqp_sim_state[0,:],color=[0,1-pos,pos])
+        timeu = np.linspace(current_time,current_time+N*self.dt,num=N)
 
-        #plt.savefig(self.plotMPC_filename)
+        
+        for ii in range(self.ns):
+            if (tindex==0):
+                self.axs[ii].plot(time,osqp_sim_state[ii,:],color=[0,1-pos,pos],label='x_0')
+            elif (tindex==self.Nqd-2):
+                self.axs[ii].plot(time,osqp_sim_state[ii,:],color=[0,1-pos,pos],label='x_f')
+            else:
+                self.axs[ii].plot(time,osqp_sim_state[ii,:],color=[0,1-pos,pos])
+        for ii in range(self.nu):
+            self.axs[ii+self.ns].plot(timeu,osqp_sim_forces[ii,:],color=[0,1-pos,pos])
+            
 
-
+        
         """
         plt.plot(range(N),osqp_sim_forces)
         #plt.plot(range(nsim),np.ones(nsim)*umin[1],label='U_{min}',linestyle='dashed', linewidth=1.5, color='black')
