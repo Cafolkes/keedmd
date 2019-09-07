@@ -140,7 +140,6 @@ elif (traj_origin=='load_mat'):
     res = loadmat('./core/examples/cart_pole_d.mat') # Tensor (n, Ntraj, Ntime)
     q_d = res['q_d']  # Desired states
     t_d = res['t_d']  # Time points
-    q_d = q_d[:5,:,:] # TODO: Remove after debugging
     Ntraj = q_d.shape[0]  # Number of trajectories to execute
 
     if plot_traj_gen:
