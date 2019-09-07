@@ -21,8 +21,8 @@ class Edmd():
         self.override_C = override_C
         self.acceleration_bounds = acceleration_bounds #(nx1)
 
-    def fit(self, X, U, U_nom, t):
-        X, Z, Z_dot, U, U_nom, t = self.process(X, U, U_nom, t)
+    def fit(self, X, X_d, U, U_nom, t):
+        X, X_d, Z, Z_dot, U, U_nom, t = self.process(X, X_d, U, U_nom, t)
         if self.l1 == 0. and self.l2 == 0.:
             # Construct EDMD matrices as described in M. Korda, I. Mezic, "Linear predictors for nonlinear dynamical systems: Koopman operator meets model predictive control":
             W = concatenate((Z_dot, X), axis=0)
@@ -54,20 +54,21 @@ class Edmd():
             else:
                 raise Exception('Warning: Learning of C not implemented for regularized regression.')
 
-    def process(self, X, U, U_nom, t):
+    def process(self, X, X_d, U, U_nom, t):
         # Remove points where not every input is available:
         if U.shape[1] < X.shape[1]:
             X = X[:,:U.shape[1],:]
+            X_d = X_d[:, :U.shape[1], :]
             t = t[:,:U.shape[1]]
 
         # Filter data to exclude non-continuous dynamics:
         if self.acceleration_bounds is not None:
-            X_filtered, U_filtered, U_nom_filtered, t_filtered = self.filter_input(X, U, U_nom, t)
+            X_filtered, X_d_filtered, U_filtered, U_nom_filtered, t_filtered = self.filter_input(X, X_d, U, U_nom, t)
         else:
-            X_filtered, U_filtered, U_nom_filtered, t_filtered = X, U, U_nom, t
+            X_filtered, X_d_filtered, U_filtered, U_nom_filtered, t_filtered = X, X_d, U, U_nom, t
 
         Ntraj = X_filtered.shape[0]  # Number of trajectories in dataset
-        Z = array([self.lift(X_filtered[ii,:,:].transpose(), t_filtered[ii,:]) for ii in range(Ntraj)])  # Lift x
+        Z = array([self.lift(X_filtered[ii,:,:].transpose(), X_d_filtered[ii,:,:].transpose()) for ii in range(Ntraj)])  # Lift x
         Z_dot = array([differentiate_vec(Z[ii,:,:],t_filtered[ii,:]) for ii in range(Ntraj)])  #Numerical differentiate lifted state
 
         # Vectorize data
@@ -76,16 +77,17 @@ class Edmd():
         self.m = U_filtered.shape[2]
         order = 'F'
 
-        X_filtered, Z, Z_dot, U_filtered, U_nom_filtered, t_filtered = X_filtered.transpose().reshape((self.n,n_data),order=order), \
-                                                                        Z.transpose().reshape((self.n_lift,n_data),order=order), \
+        X_filtered, X_d_filtered, Z, Z_dot, U_filtered, U_nom_filtered, t_filtered = X_filtered.transpose().reshape((self.n,n_data),order=order), \
+                                                                       X_d_filtered.transpose().reshape((self.n, n_data),order=order), \
+                                                                       Z.transpose().reshape((self.n_lift,n_data),order=order), \
                                                                         Z_dot.transpose().reshape((self.n_lift,n_data),order=order), \
                                                                         U_filtered.transpose().reshape((self.m,n_data),order=order), \
                                                                         U_nom_filtered.transpose().reshape((self.m, n_data),order=order), \
                                                                         t_filtered.transpose().reshape((1,n_data),order=order)
 
-        return X_filtered, Z, Z_dot, U_filtered, U_nom_filtered, t_filtered
+        return X_filtered, X_d_filtered, Z, Z_dot, U_filtered, U_nom_filtered, t_filtered
 
-    def filter_input(self, X, U, U_nom, t):
+    def filter_input(self, X, X_d, U, U_nom, t):
         '''
         Calculates the numerical derivative of the data and removes points that lie outside of the accepted acceleration
         interval (used to filter out data points corresponding to impacts with the environment)
@@ -94,13 +96,14 @@ class Edmd():
         :return:
         '''
         X_filtered = X
+        X_d_filtered = X_d
         U_filtered = U
         U_nom_filtered = U_nom
         t_filtered = t
-        return X_filtered, U_filtered, U_nom_filtered, t_filtered
+        return X_filtered, X_d_filtered, U_filtered, U_nom_filtered, t_filtered
 
-    def lift(self, X, t):
-        Z = self.basis.lift(X, t)
+    def lift(self, X, X_d):
+        Z = self.basis.lift(X, X_d)
         if not X.shape[1] == Z.shape[1]:
             Z = Z.transpose()
         one_vec = ones((1,Z.shape[1]))

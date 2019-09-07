@@ -190,6 +190,14 @@ class KoopmanEigenfunctions(BasisFunctions):
         val_losses = []
         train_step = make_train_step(self.diffeomorphism_model, diffeomorphism_loss, optimizer)
 
+        # Initialize model weights:
+        def init_normal(m):
+            if type(m) == nn.Linear:
+                nn.init.xavier_normal_(m.weight)
+
+        # use the modules apply function to recursively apply the initialization
+        self.diffeomorphism_model.apply(init_normal)
+
         # Training loop
         for i in range(n_epochs):
             # Uses loader to fetch one mini-batch for training
@@ -229,9 +237,9 @@ class KoopmanEigenfunctions(BasisFunctions):
 
     def process(self, X, t, X_d):
         # Shift dynamics to make origin a fixed point
-        X_f = X_d[:,:,-1]
-        X_shift = array([X[ii] - X_f[:,ii] for ii in range(len(X))])
-        X_d = array([X_d[:,ii,:].reshape((X_d.shape[2],X_d.shape[0])) - X_f[:, ii] for ii in range(len(X))])
+        X_f = X_d[:,-1,:]
+        X_shift = array([X[ii] - X_f[ii,:] for ii in range(len(X))])
+        X_d = array([X_d[ii,:,:].reshape((X_d.shape[1],X_d.shape[2])) - X_f[ii,:] for ii in range(len(X))])
 
         # Calculate numerical derivatives
         X_dot = array([differentiate_vec(X_shift[ii,:,:],t) for ii in range(X_shift.shape[0])])
@@ -263,11 +271,11 @@ class KoopmanEigenfunctions(BasisFunctions):
         eigval_system = LinearSystemDynamics(A=diag(self.Lambda),B=zeros((self.Lambda.shape[0],1)))
         eigval_ctrl = ConstantController(eigval_system,0.)
         x0 = X[:,:1]
-        x0_d = X_d[:,:1]
+        x0_d = X_d[:1,:].transpose()
         z0 = self.lift(x0, x0_d)
         eigval_evo, us = eigval_system.simulate(z0.flatten(), eigval_ctrl, t)
         eigval_evo = eigval_evo.transpose()
-        eigfunc_evo = self.lift(X, X_d).transpose()
+        eigfunc_evo = self.lift(X, X_d.transpose()).transpose()
 
 
         figure()
