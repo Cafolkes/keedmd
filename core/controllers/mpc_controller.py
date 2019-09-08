@@ -16,7 +16,8 @@ from core.learning_keedmd import BasisFunctions, Edmd
 
 
 class MPCController(Controller):
-    """Class for controllers MPC.
+    """
+    Class for controllers MPC.
 
     MPC are solved using osqp.
 
@@ -86,6 +87,18 @@ class MPCController(Controller):
             self.C = edmd_object.C
             self.edmd_object = edmd_object
 
+            """ import seaborn as sns
+            plt.figure()
+            sns.heatmap(self.C, linewidth=0.00)
+            plt.show()
+
+            plt.figure()
+            for i in range(self.C.shape[0]):
+                plt.plot(self.C[i,:])
+            plt.show()
+                        """
+
+
             # - quadratic objective
             CQC  = sparse.csc_matrix(np.transpose(edmd_object.C).dot(Q.dot(edmd_object.C)))
             CQNC = sparse.csc_matrix(np.transpose(edmd_object.C).dot(QN.dot(edmd_object.C)))
@@ -98,14 +111,20 @@ class MPCController(Controller):
             if (xr.ndim==1):
                 q = np.hstack([np.kron(np.ones(N), -QCT.dot(xr)), -QNCT.dot(xr), np.zeros(N*nu)])
             elif (xr.ndim==2):
-                q = np.hstack([np.reshape(-QCT.dot(xr),((N+1)*nx,)), np.zeros(N*nu)])
+                q = np.hstack([np.reshape(-QCT.dot(xr),((N+1)*nx,),order='F'), np.zeros(N*nu)])
 
             # - input and state constraints
-                Aineq = sparse.block_diag([edmd_object.C for i in range(N+1)]+[np.eye(N*nu)]).shape
+            Aineq = sparse.block_diag([edmd_object.C for i in range(N+1)]+[np.eye(N*nu)])
+
+
+            import seaborn as sns
+            plt.figure()
+            sns.heatmap(Aineq.toarray(), linewidth=0.00)
+            plt.show()
 
         else:
             # - quadratic objective
-            P = sparse.block_diag([sparse.kron(sparse.eye(N), Q), QN,
+            P =  sparse.block_diag([sparse.kron(sparse.eye(N), Q), QN,
                                 sparse.kron(sparse.eye(N), R)]).tocsc()
             # - linear objective
             if (xr.ndim==1):
@@ -115,6 +134,9 @@ class MPCController(Controller):
 
             # - input and state constraints
             Aineq = sparse.eye((N+1)*nx + N*nu)
+
+
+
 
         # - linear dynamics
         Ax = sparse.kron(sparse.eye(N+1),-sparse.eye(nx)) + sparse.kron(sparse.eye(N+1, k=-1), self._osqp_Ad)
@@ -136,11 +158,11 @@ class MPCController(Controller):
         self.prob = osqp.OSQP()
 
         # Setup workspace
-        self.prob.setup(P, q, A, self._osqp_l, self._osqp_u, warm_start=True, verbose=False)
+        self.prob.setup(P, q, A, self._osqp_l, self._osqp_u, warm_start=True, verbose=True)
 
         if self.plotMPC:
             # Figure to plot MPC thoughts
-            fig, self.axs = plt.subplots(self.ns+self.nu)
+            self.fig, self.axs = plt.subplots(self.ns+self.nu)
             ylabels = ['$x$', '$\\theta$', '$\\dot{x}$', '$\\dot{\\theta}$']
             for ii in range(self.ns):
                 self.axs[ii].set(xlabel='Time(s)',ylabel=ylabels[ii])
@@ -154,8 +176,8 @@ class MPCController(Controller):
 
     def eval(self, x, t):
         '''
-        Inputs:
-        - state, x, numpy 1d array [ns,]
+        Args:
+        - x, numpy 1d array [ns,]
         - time, t, float
         '''
 
@@ -177,12 +199,10 @@ class MPCController(Controller):
             # Construct the new _osqp_q objects
             if (self.lifting):
                 QCT = np.transpose(self.Q.dot(self.C))                        
-                self._osqp_q = np.hstack([np.reshape(-QCT.dot(xr),((N+1)*nx,)), np.zeros(N*nu)])                    
+                self._osqp_q = np.hstack([np.reshape(-QCT.dot(xr),((N+1)*nx,),order='F'), np.zeros(N*nu)])                    
             else:
                 self._osqp_q = np.hstack([np.reshape(-self.Q.dot(xr),((N+1)*nx,),order='F'), np.zeros(N*nu)])
 
-        self._osqp_l[:self.nx] = -x
-        self._osqp_u[:self.nx] = -x
 
         if self.q_d.ndim==1:
             # Update the local reference trajectory
@@ -201,8 +221,8 @@ class MPCController(Controller):
         self._osqp_result = self.prob.solve()
 
         # Check solver status
-        if self._osqp_result.info.status != 'solved':
-            raise ValueError('OSQP did not solve the problem!')
+        #if self._osqp_result.info.status != 'solved':
+        #    raise ValueError('OSQP did not solve the problem!')
 
         if self.plotMPC:
             self.plot_MPC(t, xr, tindex)
@@ -215,11 +235,14 @@ class MPCController(Controller):
         return np.transpose(np.reshape( self._osqp_result.x[-self.N*self.nu:], (self.N,self.nu)))
 
     def plot_MPC(self, current_time, xr, tindex):
-        '''
-        Inputs:
-        - current_time, t, float
-        - local MPC reference trajectory, xr, numpy 2d array [ns,N]
-        '''
+        """plot mpc
+        
+       
+        - current_time (float): time now
+        - xr (2darray [N,ns]): local reference trajectory
+        - tindex (int): index of the current time
+        """
+
 
         # Unpack OSQP results
         nu = self.nu
@@ -248,18 +271,28 @@ class MPCController(Controller):
         for ii in range(self.nu):
             self.axs[ii+self.ns].plot(timeu,osqp_sim_forces[ii,:],color=[0,1-pos,pos])
             
-
-        
+    def finish_plot(self, x, u, u_pd, time_vector, filename):
         """
-        plt.plot(range(N),osqp_sim_forces)
-        #plt.plot(range(nsim),np.ones(nsim)*umin[1],label='U_{min}',linestyle='dashed', linewidth=1.5, color='black')
-        #plt.plot(range(nsim),np.ones(nsim)*umax[1],label='U_{max}',linestyle='dashed', linewidth=1.5, color='black')
-        plt.xlabel('Time(s)')
-        plt.grid()
-        plt.legend(['fx','fy','fz'])
-        plt.show()
-        plt.savefig('mpc_debugging_fz.png')
+        Call this function to plot extra lines.
+
+        - x: state, numpy 2darray [Nqd,n] 
+        - u, input from this controller [Nqd-1,n] 
+        - u_pd, input from a PD controller [Nqd-1,n] 
+        - time_vector, 1d array [Nqd
+        - filename, string
         """
+        self.fig.suptitle(filename[:-4], fontsize=16)
+        for ii in range(self.ns):
+            self.axs[ii].plot(time_vector, self.q_d[ii,:], linewidth=2, label='$x_d$', color=[1,0,0])
+            self.axs[ii].plot(time_vector, x[ii,:], linewidth=2, label='$x$', color=[0,0,0])
+            self.axs[ii].legend(fontsize=10, loc='best')
+        for ii in range(self.nu):
+            self.axs[ii+self.ns].plot(time_vector[:-1],u[ii,:],label='$u$',color=[0,0,0])
+            self.axs[ii+self.ns].plot(time_vector[:-1],u_pd[ii,:],label='$u_{PD}$',color=[0,1,1])
+            self.axs[ii+self.ns].legend(fontsize=10, loc='best')
+        self.fig.savefig(filename)
+        #plt.close(self.fig)
 
 
 
+ 
