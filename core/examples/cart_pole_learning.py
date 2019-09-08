@@ -58,7 +58,7 @@ nominal_sys = LinearSystemDynamics(A=A_nom, B=B_nom)
 # Simulation parameters (data collection)
 plot_traj_gen = False               # Plot trajectories generated for data collection
 traj_origin = 'gen_MPC'            # gen_MPC - solve MPC to generate desired trajectories, load_mat - load saved trajectories
-Ntraj = 50                          # Number of trajectories to collect data from
+Ntraj = 200                          # Number of trajectories to collect data from
 
 dt = 1.0e-2                         # Time step
 N = int(2./dt)                      # Number of time steps
@@ -89,16 +89,18 @@ l2_keedmd = 1e-2
 # EDMD parameters
 # Best 0.06
 n_lift_edmd = (eigenfunction_max_power+1)**n-1
-l1_edmd = 0 #1e-2
-l2_edmd = 0 #1e-2
+l1_edmd = 1e-2
+l2_edmd = 1e-2
 
 # Simulation parameters (evaluate performance)
-load_fit = True
+load_fit = False
 test_open_loop = True
-plot_open_loop=True
+plot_open_loop = True
 save_fit = not load_fit
 Ntraj_pred = 20
-
+dill_filename = 'models_traj.dat'
+open_filename = 'open_loop.png'
+closed_filename = 'closed_loop.png'
 
 #%% 
 #! ===============================================    COLLECT DATA     ===============================================
@@ -128,7 +130,6 @@ if not load_fit:
                                     Q=Q, 
                                     R=R, 
                                     QN=QN, 
-                                    x0=zeros(n), 
                                     xr=zeros(n))
         for ii in range(Ntraj):
             x_0 = asarray([veryrandom.uniform(-i,i)  for i in traj_bounds ])
@@ -219,17 +220,16 @@ if not load_fit:
     t0 = time.process_time()
 
 
-
     # Fit KEEDMD model:
     t0 = time.process_time()
     print(' - Fitting KEEDMD model...', end =" ")
     keedmd_model = Keedmd(eigenfunction_basis, n, l1=l1_keedmd, l2=l2_keedmd, K_p=K_p, K_d=K_d)
     X, X_d, Z, Z_dot, U, U_nom, t = keedmd_model.process(xs, q_d, us, us_nom, ts)
     keedmd_model.fit(X, X_d, Z, Z_dot, U, U_nom)
-
     print('in {:.2f}s'.format(time.process_time()-t0))
-    t0 = time.process_time()
+    
     # Construct basis of RBFs for EDMD:
+    t0 = time.process_time()
     print(' - Constructing RBF basis...', end =" ")
     rbf_center_type = 'random_bounded'
     if rbf_center_type == 'random_subset':
@@ -246,39 +246,35 @@ if not load_fit:
         rbf_centers = multiply(random.rand(n_lift_edmd, n),(upper_bounds-lower_bounds))+lower_bounds
     rbf_basis = RBF(rbf_centers, n)
     rbf_basis.construct_basis()
-
     print('in {:.2f}s'.format(time.process_time()-t0))
-    t0 = time.process_time()
+    
     # Fit EDMD model
+    t0 = time.process_time()
     print(' - Fitting EDMD model...', end =" ")
     edmd_model = Edmd(rbf_basis, n, l1=l1_edmd, l2=l2_edmd)
     X, X_d, Z, Z_dot, U, U_nom, t = edmd_model.process(xs, q_d, us, us_nom, ts)
     edmd_model.fit(X, X_d, Z, Z_dot, U, U_nom)
+    print('in {:.2f}s'.format(time.process_time()-t0))
 
 
 #%%
 #!  ==============================================  EVALUATE PERFORMANCE -- OPEN LOOP =========================================
-print('in {:.2f}s'.format(time.process_time()-t0))
-t0 = time.process_time()
-
-
-### Save and Load data
-filename = 'temp_sim.data'
 
 if save_fit:    
     data_list = [ q_d, t_d, edmd_model, keedmd_model, R, K_p, K_d]
-    outfile = open(filename,'wb')
+    outfile = open(dill_filename,'wb')
     dill.dump(data_list,outfile)
     outfile.close()
 
 
 if load_fit:
-    infile = open(filename,'rb')
+    infile = open(dill_filename,'rb')
     [ q_d, t_d, edmd_model, keedmd_model, R, K_p, K_d] = dill.load(infile)
     infile.close()
 
 
 if test_open_loop:
+    t0 = time.process_time()
     # Set up trajectory and controller for prediction task:
     print('Evaluate Performance with open loop prediction...', end =" ")
     q_d_pred = q_d[:,4,:]
@@ -294,7 +290,6 @@ if test_open_loop:
     xs_keedmd = []
     xs_edmd = []
     xs_nom = []
-
 
     for ii in range(Ntraj_pred):
         output_pred = CartPoleTrajectory(system_true, q_d_pred[:,ii,:],t_pred)
@@ -371,7 +366,7 @@ if test_open_loop:
             if ii == 0:
                 title('Predicted state evolution of different models with open loop control')
         legend(fontsize=10, loc='best')
-        show()
+        savefig(open_filename)
 
     print('in {:.2f}s'.format(time.process_time()-t0))
 
@@ -395,7 +390,7 @@ QN = Q
 upper_bounds_MPC_control = array([10.0, pi, 10, 10])  # State constraints, check they are higher than upper_bounds
 lower_bounds_MPC_control = -upper_bounds_MPC_control  # State constraints
 umax_control = 15  # check it is higher than the control to generate the trajectories
-MPC_horizon = .05 # [s]
+MPC_horizon = 1.5 # [s]
 plotMPC = True
 
 # Linearized with PD
@@ -427,10 +422,10 @@ xs_edmd_MPC = xs_edmd_MPC.transpose()
 us_emdm_MPC = us_emdm_MPC.transpose()
     
 if plotMPC:
-    linearlize_mpc_controller.finish_plot(xs_edmd_MPC, us_emdm_MPC, us_lin_PD, t_pred,"eDMD_thoughts.png") """
+    linearlize_mpc_controller.finish_plot(xs_edmd_MPC, us_emdm_MPC, us_lin_PD, t_pred,"eDMD_thoughts.png") 
 
 # Linearized with MPC
-""" linearlize_mpc_controller = MPCController(linear_dynamics=nominal_sys, 
+linearlize_mpc_controller = MPCController(linear_dynamics=nominal_sys, 
                                           N=int(MPC_horizon/dt),
                                           dt=dt, 
                                           umin=array([-umax_control]), 
@@ -447,7 +442,7 @@ xs_lin_MPC, us_lin_MPC = system_true.simulate(x_0, linearlize_mpc_controller, t_
 xs_lin_MPC = xs_lin_MPC.transpose()
 us_lin_MPC = us_lin_MPC.transpose()
 if plotMPC:
-    linearlize_mpc_controller.finish_plot(xs_lin_MPC,us_lin_MPC, us_lin_PD, t_pred,"LinMPC_thoughts.png") """
+    linearlize_mpc_controller.finish_plot(xs_lin_MPC,us_lin_MPC, us_lin_PD, t_pred,"LinMPC_thoughts.png") 
 
 
 #* Linearized with PD
@@ -505,4 +500,4 @@ for ii in range(n):
     if ii == 0:
         title('Closed loop performance of different models with open loop control')
 legend(fontsize=10, loc='best')
-show()
+savefig(closed_filename)
