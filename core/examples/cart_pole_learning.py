@@ -56,7 +56,7 @@ nominal_sys = LinearSystemDynamics(A=A_nom, B=B_nom)
 
 # Simulation parameters (data collection)
 plot_traj_gen = False               # Plot trajectories generated for data collection
-traj_origin = 'load_mat'            # gen_MPC - solve MPC to generate desired trajectories, load_mat - load saved trajectories
+traj_origin = 'gen_MPC'            # gen_MPC - solve MPC to generate desired trajectories, load_mat - load saved trajectories
 Ntraj = 50                          # Number of trajectories to collect data from
 
 dt = 1.0e-2                         # Time step
@@ -93,10 +93,14 @@ l2_edmd = 0 #1e-2
 
 # Simulation parameters (evaluate performance)
 plot_open_loop=True
+<<<<<<< HEAD
+
+=======
 load_fit = True
 test_open_loop = True
 save_fit = not load_fit
 Ntraj_pred = 20
+>>>>>>> master
 
 #%% ===============================================    COLLECT DATA     ===============================================
 # Load trajectories
@@ -129,6 +133,8 @@ if (traj_origin == 'gen_MPC'):
         x_0 = asarray([veryrandom.uniform(-i,i)  for i in traj_bounds ])
         mpc_controller.eval(x_0,0)
         q_d[ii,:,:] = mpc_controller.parse_result().transpose()
+
+    Ntraj = q_d.shape[0]
 
     savemat('./core/examples/cart_pole_d.mat', {'t_d': t_d, 'q_d': q_d})
 
@@ -211,14 +217,16 @@ if not load_fit:
     t0 = time.process_time()
 
 
+
     # Fit KEEDMD model:
+    t0 = time.process_time()
     print(' - Fitting KEEDMD model...', end =" ")
     keedmd_model = Keedmd(eigenfunction_basis, n, l1=l1_keedmd, l2=l2_keedmd, K_p=K_p, K_d=K_d)
-    keedmd_model.fit(xs, q_d, us, us_nom, ts)
+    X, X_d, Z, Z_dot, U, U_nom, t = keedmd_model.process(xs, q_d, us, us_nom, ts)
+    keedmd_model.fit(X, X_d, Z, Z_dot, U, U_nom)
 
     print('in {:.2f}s'.format(time.process_time()-t0))
     t0 = time.process_time()
-
     # Construct basis of RBFs for EDMD:
     print(' - Constructing RBF basis...', end =" ")
     rbf_center_type = 'random_bounded'
@@ -231,20 +239,19 @@ if not load_fit:
         scatter(rbf_centers_vector[0,:],rbf_centers_vector[2,:],color='red')
         grid()
         show()
-        
-    elif rbf_center_type == 'random_bounded':    
-        rbf_centers = multiply(random.rand(n_lift_edmd, n),(upper_bounds-lower_bounds))+lower_bounds
 
+    elif rbf_center_type == 'random_bounded':
+        rbf_centers = multiply(random.rand(n_lift_edmd, n),(upper_bounds-lower_bounds))+lower_bounds
     rbf_basis = RBF(rbf_centers, n)
     rbf_basis.construct_basis()
 
     print('in {:.2f}s'.format(time.process_time()-t0))
     t0 = time.process_time()
-
     # Fit EDMD model
     print(' - Fitting EDMD model...', end =" ")
     edmd_model = Edmd(rbf_basis, n, l1=l1_edmd, l2=l2_edmd)
-    edmd_model.fit(xs, q_d, us, us_nom, ts)
+    X, X_d, Z, Z_dot, U, U_nom, t = edmd_model.process(xs, q_d, us, us_nom, ts)
+    edmd_model.fit(X, X_d, Z, Z_dot, U, U_nom)
 
 
 #%% ==============================================  EVALUATE PERFORMANCE -- OPEN LOOP =========================================
@@ -380,7 +387,7 @@ if test_open_loop:
 
 
 
-#%% ==============================================  EVALUATE PERFORMANCE -- CLOSED LOOP =============================================
+#%%  ==============================================  EVALUATE PERFORMANCE -- CLOSED LOOP =============================================
 t0 = time.process_time()
 print('Evaluate Performance with closed loop trajectory tracking...', end =" ")
 # Set up trajectory and controller for prediction task:
@@ -408,8 +415,13 @@ xs_lin_PD = xs_lin_PD.transpose()
 us_lin_PD = us_lin_PD.transpose()
 
 
+<<<<<<< HEAD
+#* eDMD 
+edmd_sys = LinearSystemDynamics(A=edmd_model.A, B=edmd_model.B)
+=======
 # eDMD 
 """ edmd_sys = LinearSystemDynamics(A=edmd_model.A, B=edmd_model.B)
+>>>>>>> master
 edmd_controller = MPCController(linear_dynamics=edmd_sys, 
                                 N=int(MPC_horizon/dt),
                                 dt=dt, 
@@ -462,9 +474,20 @@ if plotMPC:
     savefig("LinMPC_thoughts.png")
 
 
+<<<<<<< HEAD
+#* Linearized with PD
+output_pred = CartPoleTrajectory(system_true, q_d_pred,t_pred)
+linearlize_PD_controller = PDController(output_pred, K_p, K_d, noise_var_pred)
+xs_lin_PD, us_lin_PD = system_true.simulate(x_0, linearlize_PD_controller, t_pred)
+xs_lin_PD = xs_lin_PD.transpose()
+
+
+#* KeeDMD
+=======
 
 
 """ # KeeDMD
+>>>>>>> master
 keedmd_sys = LinearSystemDynamics(A=keedmd_model.A, B=keedmd_model.B)
 keedmd_controller = MPCController(linear_dynamics=keedmd_sys, 
                                 N=int(MPC_horizon/dt),
@@ -496,7 +519,7 @@ if save_traj:
     savemat('./core/examples/results/cart_pendulum_prediction.mat', {'t_pred':t_pred, 'xs_pred': xs_pred, 'us_pred':us_pred,
                                                             'xs_keedmd':xs_keedmd, 'xs_edmd':xs_edmd, 'xs_nom': xs_nom})
 
-# Plot the closed loop trajectory
+#! Plot the closed loop trajectory
 ylabels = ['$x$', '$\\theta$', '$\\dot{x}$', '$\\dot{\\theta}$']
 figure()
 for ii in range(n):

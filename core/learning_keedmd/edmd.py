@@ -22,8 +22,8 @@ class Edmd():
         self.override_C = override_C
         self.acceleration_bounds = acceleration_bounds #(nx1)
 
-    def fit(self, X, X_d, U, U_nom, t):
-        """ 
+    def fit(self, X, X_d, Z, Z_dot, U, U_nom):
+        """
         Fit a EDMD object with the given basis function
 
         Sizes:
@@ -33,14 +33,15 @@ class Edmd():
         - nu: number of control inputs
 
         Inputs:
-        - X: state with all trajectories, numpy 3d array [Ntraj, N, ns] 
-        - X_d: desired state with all trajectories, numpy 3d array [Ntraj, N, ns] 
-        - U: control input, numpy 3d array [Ntraj, N, nu]
-        - U_nom: nominal control input, numpy 3d array [Ntraj, N, nu]
+        - X: state with all trajectories, numpy 3d array [NtrajxN, ns]
+        - X_d: desired state with all trajectories, numpy 3d array [NtrajxN, ns]
+        - Z: lifted state with all trajectories, numpy[NtrajxN, ns]
+        - Z: derivative of lifted state with all trajectories, numpy[NtrajxN, ns]
+        - U: control input, numpy 3d array [NtrajxN, nu]
+        - U_nom: nominal control input, numpy 3d array [NtrajxN, nu]
         - t: time, numpy 2d array [Ntraj, N]
         """
 
-        X, X_d, Z, Z_dot, U, U_nom, t = self.process(X, X_d, U, U_nom, t)
         if self.l1 == 0. and self.l2 == 0.:
             # Construct EDMD matrices as described in M. Korda, I. Mezic, "Linear predictors for nonlinear dynamical systems: Koopman operator meets model predictive control":
             W = concatenate((Z_dot, X), axis=0)

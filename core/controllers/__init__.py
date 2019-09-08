@@ -7,5 +7,6 @@ from .lqr_controller import LQRController
 from .pd_controller import PDController
 from .qp_controller import QPController
 from .mpc_controller import MPCController
+from .aggregated_mpc_controller import AggregatedMpcController
 from .random_controller import RandomController
 from .openloop_controller import OpenLoopController

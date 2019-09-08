@@ -4,22 +4,23 @@ from numpy import array, concatenate, zeros, dot, linalg, eye, diag, std, divide
 import numpy as np
 
 class Keedmd(Edmd):
-    def __init__(self, basis, system_dim, l1=0., l2=0., acceleration_bounds=None, override_C=True, K_p = None, K_d = None):
+    def __init__(self, basis, system_dim, l1=0., l2=0., acceleration_bounds=None, override_C=True, K_p = None, K_d = None, episodic=False):
         super().__init__(basis, system_dim, l1=l1, l2=l2, acceleration_bounds=acceleration_bounds, override_C=override_C)
-        self.K_p = K_d
+        self.episodic = episodic
+        self.K_p = K_p
         self.K_d = K_d
         if self.basis.Lambda is None:
             raise Exception('Basis provided is not an Koopman eigenfunction basis')
-        elif self.K_p is None or self.K_p is None:
-            raise Exception('Nominal controller gains not defined.')
 
-    def fit(self, X, X_d, U, U_nom, t):
-        X, X_d, Z, Z_dot, U, U_nom, t = self.process(X, X_d, U, U_nom, t)
+    def fit(self, X, X_d, Z, Z_dot, U, U_nom):
         self.n_lift = Z.shape[0]
 
         if self.l1 == 0. and self.l2 == 0.:
             # Solve least squares problem to find A and B for velocity terms:
-            input_vel = concatenate((Z,U),axis=0).transpose()
+            if self.episodic:
+                input_vel = concatenate((Z,U-U_nom),axis=0).transpose()
+            else:
+                input_vel = concatenate((Z, U), axis=0).transpose()
             output_vel = Z_dot[int(self.n/2):self.n,:].transpose()
             sol_vel = dot(linalg.pinv(input_vel),output_vel).transpose()
             A_vel = sol_vel[:,:self.n_lift]
@@ -32,7 +33,10 @@ class Keedmd(Edmd):
             self.A[self.n:,self.n:] = diag(self.basis.Lambda)
 
             # Solve least squares problem to find B for position terms:
-            input_pos = U.transpose()
+            if self.episodic:
+                input_pos = (U-U_nom).transpose()
+            else:
+                input_pos = U.transpose()
             output_pos = (Z_dot[:int(self.n/2),:]-dot(self.A[:int(self.n/2),:],Z)).transpose()
             B_pos = dot(linalg.pinv(input_pos),output_pos).transpose()
 
@@ -57,7 +61,10 @@ class Keedmd(Edmd):
                                                          normalize=False, max_iter=1e5)
 
             # Solve least squares problem to find A and B for velocity terms:
-            input_vel = concatenate((Z, U), axis=0).transpose()
+            if self.episodic:
+                input_vel = concatenate((Z, U-U_nom), axis=0).transpose()
+            else:
+                input_vel = concatenate((Z, U), axis=0).transpose()
             output_vel = Z_dot[int(self.n / 2):self.n, :].transpose()
 
 
@@ -74,7 +81,10 @@ class Keedmd(Edmd):
             self.A[self.n:, self.n:] = diag(self.basis.Lambda)
 
             # Solve least squares problem to find B for position terms:
-            input_pos = U.transpose()
+            if self.episodic:
+                input_pos = (U-U_nom).transpose()
+            else:
+                input_pos = U.transpose()
             output_pos = (Z_dot[:int(self.n / 2), :] - dot(self.A[:int(self.n / 2), :], Z)).transpose()
             reg_model.fit(input_pos, output_pos)
             B_pos = reg_model.coef_
@@ -95,7 +105,10 @@ class Keedmd(Edmd):
             else:
                 raise Exception('Warning: Learning of C not implemented for structured regression.')
 
-        self.A[self.n:,:self.n] -= dot(self.B[self.n:,:],concatenate((self.K_p, self.K_d), axis=1))
+        if not self.episodic:
+            if self.K_p is None or self.K_p is None:
+                raise Exception('Nominal controller gains not defined.')
+            self.A[self.n:,:self.n] -= dot(self.B[self.n:,:],concatenate((self.K_p, self.K_d), axis=1))
 
     def lift(self, X, X_d):
         Z = self.basis.lift(X, X_d)

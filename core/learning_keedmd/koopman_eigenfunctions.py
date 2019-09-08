@@ -84,7 +84,7 @@ class KoopmanEigenfunctions(BasisFunctions):
 
         self.diffeomorphism_model = self.diffeomorphism_model.double()
 
-    def fit_diffeomorphism_model(self, X, t, X_d, learning_rate=1e-2, learning_decay=0.95, n_epochs=50, train_frac=0.8, l2=1e1, jacobian_penalty=1., batch_size=64):
+    def fit_diffeomorphism_model(self, X, t, X_d, learning_rate=1e-2, learning_decay=0.95, n_epochs=50, train_frac=0.8, l2=1e1, jacobian_penalty=1., batch_size=64, initialize=True, verbose=True):
         X, X_dot, X_d, t = self.process(X=X, t=t, X_d=X_d)
         y_target = X_dot - dot(self.A_cl, X.transpose()).transpose()# - dot(self.BK, X_d.transpose()).transpose()
 
@@ -194,8 +194,8 @@ class KoopmanEigenfunctions(BasisFunctions):
             if type(m) == nn.Linear:
                 nn.init.xavier_normal_(m.weight)
 
-        # use the modules apply function to recursively apply the initialization
-        self.diffeomorphism_model.apply(init_normal)
+        if initialize:
+            self.diffeomorphism_model.apply(init_normal)
 
         # Training loop
         for i in range(n_epochs):
@@ -232,7 +232,8 @@ class KoopmanEigenfunctions(BasisFunctions):
             batch_val_loss = []
 
             scheduler.step(i)
-            print('Epoch: ',i,' Training loss:', format(losses[-1], '08f'), ' Validation loss:', format(val_losses[-1], '08f'))
+            if verbose:
+                print('Epoch: ',i,' Training loss:', format(losses[-1], '08f'), ' Validation loss:', format(val_losses[-1], '08f'))
 
     def process(self, X, t, X_d):
         # Shift dynamics to make origin a fixed point
