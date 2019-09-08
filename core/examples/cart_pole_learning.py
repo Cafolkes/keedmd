@@ -57,8 +57,8 @@ nominal_sys = LinearSystemDynamics(A=A_nom, B=B_nom)
 
 # Simulation parameters (data collection)
 plot_traj_gen = False               # Plot trajectories generated for data collection
-traj_origin = 'gen_MPC'            # gen_MPC - solve MPC to generate desired trajectories, load_mat - load saved trajectories
-Ntraj = 200                          # Number of trajectories to collect data from
+traj_origin = 'load_mat'            # gen_MPC - solve MPC to generate desired trajectories, load_mat - load saved trajectories
+Ntraj = 20                          # Number of trajectories to collect data from
 
 dt = 1.0e-2                         # Time step
 N = int(2./dt)                      # Number of time steps
@@ -93,9 +93,10 @@ l1_edmd = 1e-2
 l2_edmd = 1e-2
 
 # Simulation parameters (evaluate performance)
-load_fit = False
+load_fit = True
 test_open_loop = True
 plot_open_loop = True
+save_traj = False
 save_fit = not load_fit
 Ntraj_pred = 20
 dill_filename = 'models_traj.dat'
@@ -277,9 +278,27 @@ if test_open_loop:
     t0 = time.process_time()
     # Set up trajectory and controller for prediction task:
     print('Evaluate Performance with open loop prediction...', end =" ")
-    q_d_pred = q_d[:,4,:]
     t_pred = t_d.squeeze()
     noise_var_pred = 0.5
+
+    if (traj_origin == 'gen_MPC'):
+        Ntraj_pred = 40
+        t_d = t_eval
+        traj_bounds = [2, 0.5, 0.1, 0.1]  # x, theta, x_dot, theta_dot
+        q_d_pred = zeros((Ntraj_pred, N + 1, n))
+
+        for ii in range(Ntraj_pred):
+            x_0 = asarray([random.uniform(-i, i) for i in traj_bounds])
+            mpc_controller.eval(x_0, 0)
+            q_d_pred[ii,:, :] = mpc_controller.parse_result().transpose()
+
+        savemat('./core/examples/cart_pole_pred_d.mat', {'t_d': t_d, 'q_d_pred': q_d_pred})
+
+    elif (traj_origin == 'load_mat'):
+        res = loadmat('./core/examples/cart_pole_pred_d.mat')  # Tensor (n, Ntraj, Ntime)
+        q_d_pred = res['q_d_pred']  # Desired states
+        t_d = res['t_d']  # Time points
+        Ntraj_pred = q_d.shape[0]  # Number of trajectories to execute
 
     # Define KEEDMD and EDMD systems:
     keedmd_sys = LinearSystemDynamics(A=keedmd_model.A, B=keedmd_model.B)
@@ -292,17 +311,17 @@ if test_open_loop:
     xs_nom = []
 
     for ii in range(Ntraj_pred):
-        output_pred = CartPoleTrajectory(system_true, q_d_pred[:,ii,:],t_pred)
+        output_pred = CartPoleTrajectory(system_true, q_d_pred[ii,:,:].transpose(),t_pred)
         pd_controller_pred = PDController(output_pred, K_p, K_d, noise_var_pred)
 
         # Simulate true system (baseline):
-        x0_pred = q_d_pred[:,ii,0].transpose()
+        x0_pred = q_d_pred[ii,0,:]
         xs_pred_tmp, us_pred_tmp = system_true.simulate(x0_pred, pd_controller_pred, t_pred)
         xs_pred_tmp = xs_pred_tmp.transpose()
 
         # Create systems for each of the learned models and simulate with open loop control signal us_pred:
         keedmd_controller = OpenLoopController(keedmd_sys, us_pred_tmp, t_pred[:us_pred_tmp.shape[0]])
-        z0_keedmd = keedmd_model.lift(x0_pred.reshape(x0_pred.shape[0],1), q_d_pred[:,ii,:1]).squeeze()
+        z0_keedmd = keedmd_model.lift(x0_pred.reshape(x0_pred.shape[0],1), q_d_pred[ii,:1,:].transpose()).squeeze()
         zs_keedmd,_= keedmd_sys.simulate(z0_keedmd,keedmd_controller,t_pred)
         xs_keedmd_tmp = dot(keedmd_model.C,zs_keedmd.transpose())
 
