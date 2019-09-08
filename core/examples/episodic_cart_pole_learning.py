@@ -160,6 +160,7 @@ initialize_NN = True  #  Initializes the weights of the NN when set to true
 
 track_error = []
 ctrl_effort = []
+
 print('Starting episodic learning...')
 for ep in range(Nep):
     X, Xd, U, Upert, t = handler.run()
@@ -174,7 +175,7 @@ for ep in range(Nep):
     handler.aggregate_data(X,Xd,U,Unom,t,keedmd_ep)
     keedmd_ep.fit(handler.X_agg, handler.Xd_agg, handler.Z_agg, handler.Zdot_agg, handler.U_agg, handler.Unom_agg)
     keedmd_sys = LinearSystemDynamics(A=keedmd_ep.A, B=keedmd_ep.B)
-    mpc_ep = MPCController(linear_dynamics=keedmd_sys,
+    mpc_ep = MPCController(linear_dynamics=nominal_sys,
                                     N=int(MPC_horizon / dt),
                                     dt=dt,
                                     umin=array([-umax]),
@@ -185,8 +186,8 @@ for ep in range(Nep):
                                     R=R,
                                     QN=QN,
                                     xr=q_d,
-                                    lifting=True,
-                                    edmd_object=keedmd_ep)
+                                    lifting=False)
+                                    #edmd_object=keedmd_ep)  #TODO: Update to KEEDMD_MPC when lifted MPC controller is functional
     handler.aggregate_ctrl(mpc_ep)
     initialize_NN = False  # Warm start NN after first episode
 

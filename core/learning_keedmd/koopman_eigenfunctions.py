@@ -1,5 +1,5 @@
 from matplotlib.pyplot import figure, grid, legend, plot, show, subplot, suptitle, title
-from numpy import array, linalg, transpose, math, diag, dot, ones, zeros, reshape, unique, power, prod, exp, log, divide, linspace, square
+from numpy import array, linalg, transpose, math, diag, dot, ones, zeros, reshape, unique, power, prod, exp, log, divide, linspace, square, ndarray
 from numpy import concatenate as npconcatenate
 from itertools import combinations_with_replacement, permutations
 from core.learning import differentiate
@@ -85,6 +85,7 @@ class KoopmanEigenfunctions(BasisFunctions):
         self.diffeomorphism_model.add_module('output', nn.Linear(H,d_h_out))
 
         self.diffeomorphism_model = self.diffeomorphism_model.double()
+        self.A_cl = from_numpy(self.A_cl)
 
     def fit_diffeomorphism_model(self, X, t, X_d, learning_rate=1e-2, learning_decay=0.95, n_epochs=50, train_frac=0.8, l2=1e1, jacobian_penalty=1., batch_size=64, initialize=True, verbose=True):
         X, X_dot, X_d, t = self.process(X=X, t=t, X_d=X_d)
@@ -121,7 +122,6 @@ class KoopmanEigenfunctions(BasisFunctions):
         optimizer = optim.Adam(self.diffeomorphism_model.parameters(),lr=learning_rate,weight_decay=l2)
         lambda1 = lambda epoch: learning_decay ** epoch
         scheduler = optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda1)
-        self.A_cl = from_numpy(self.A_cl)
 
         def calc_gradients(xt, xdot, yhat, zero_input, yzero, is_training):
             xt.retain_grad()
