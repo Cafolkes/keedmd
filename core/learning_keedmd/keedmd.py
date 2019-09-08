@@ -17,7 +17,10 @@ class Keedmd(Edmd):
 
         if self.l1 == 0. and self.l2 == 0.:
             # Solve least squares problem to find A and B for velocity terms:
-            input_vel = concatenate((Z,U),axis=0).transpose()
+            if self.episodic:
+                input_vel = concatenate((Z,U-U_nom),axis=0).transpose()
+            else:
+                input_vel = concatenate((Z, U), axis=0).transpose()
             output_vel = Z_dot[int(self.n/2):self.n,:].transpose()
             sol_vel = dot(linalg.pinv(input_vel),output_vel).transpose()
             A_vel = sol_vel[:,:self.n_lift]
@@ -30,7 +33,10 @@ class Keedmd(Edmd):
             self.A[self.n:,self.n:] = diag(self.basis.Lambda)
 
             # Solve least squares problem to find B for position terms:
-            input_pos = U.transpose()
+            if self.episodic:
+                input_pos = (U-U_nom).transpose()
+            else:
+                input_pos = U.transpose()
             output_pos = (Z_dot[:int(self.n/2),:]-dot(self.A[:int(self.n/2),:],Z)).transpose()
             B_pos = dot(linalg.pinv(input_pos),output_pos).transpose()
 
@@ -55,7 +61,10 @@ class Keedmd(Edmd):
                                                          normalize=False, max_iter=1e5)
 
             # Solve least squares problem to find A and B for velocity terms:
-            input_vel = concatenate((Z, U), axis=0).transpose()
+            if self.episodic:
+                input_vel = concatenate((Z, U-U_nom), axis=0).transpose()
+            else:
+                input_vel = concatenate((Z, U), axis=0).transpose()
             output_vel = Z_dot[int(self.n / 2):self.n, :].transpose()
 
 
@@ -72,7 +81,10 @@ class Keedmd(Edmd):
             self.A[self.n:, self.n:] = diag(self.basis.Lambda)
 
             # Solve least squares problem to find B for position terms:
-            input_pos = U.transpose()
+            if self.episodic:
+                input_pos = (U-U_nom).transpose()
+            else:
+                input_pos = U.transpose()
             output_pos = (Z_dot[:int(self.n / 2), :] - dot(self.A[:int(self.n / 2), :], Z)).transpose()
             reg_model.fit(input_pos, output_pos)
             B_pos = reg_model.coef_
@@ -96,7 +108,6 @@ class Keedmd(Edmd):
         if not self.episodic:
             if self.K_p is None or self.K_p is None:
                 raise Exception('Nominal controller gains not defined.')
-
             self.A[self.n:,:self.n] -= dot(self.B[self.n:,:],concatenate((self.K_p, self.K_d), axis=1))
 
     def lift(self, X, X_d):

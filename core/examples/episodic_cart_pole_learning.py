@@ -3,7 +3,7 @@ from matplotlib.pyplot import figure, grid, legend, plot, show, subplot, suptitl
     fill_between
 from os import path
 import sys
-from matplotlib.pyplot import figure, grid, legend, plot, show, subplot, suptitle, title, scatter, savefig
+from matplotlib.pyplot import figure, grid, legend, plot, show, subplot, suptitle, title, scatter, savefig, text
 from numpy import arange, array, concatenate, cos, identity
 from numpy import linspace, ones, sin, tanh, tile, zeros, pi, random, interp, dot
 import numpy as np
@@ -13,7 +13,7 @@ from sys import argv
 from core.systems import CartPole
 from core.dynamics import LinearSystemDynamics
 from core.controllers import PDController, OpenLoopController, MPCController
-from core.learning_keedmd import KoopmanEigenfunctions, RBF, Edmd, Keedmd, plot_trajectory
+from core.learning_keedmd import KoopmanEigenfunctions, RBF, Edmd, Keedmd, plot_trajectory_ep
 import time
 
 import random as veryrandom
@@ -47,7 +47,7 @@ class CartPoleTrajectory(CartPole):
 # Define true system
 system_true = CartPole(m_c=.5, m_p=.2, l=.4)
 n, m = 4, 1  # Number of states and actuators
-upper_bounds = array([3.0, pi / 3, 2, 2])  # State constraints
+upper_bounds = array([3.0, pi / 3, 2.5, 2.5])  # State constraints
 lower_bounds = -upper_bounds  # State constraints
 
 
@@ -83,7 +83,7 @@ diff_n_hidden_layers = 2
 diff_layer_width = 100
 diff_batch_size = 16
 diff_learn_rate = 1e-3  # Fix for current architecture
-diff_learn_rate_decay = 0.95  # Fix for current architecture
+diff_learn_rate_decay = 0.995  # Fix for current architecture
 diff_dropout_prob = 0.5
 
 # KEEDMD parameters
@@ -100,9 +100,10 @@ l2_edmd = 1e-2
 # Learning loop parameters:
 Nep = 5
 w = concatenate((ones((1,)), linspace(0,1,Nep)),axis=0)
+plot_episode = True
 
 # MPC controller parameters:
-Q = sparse.diags([10., 10., 5., 5.])
+Q = sparse.diags([1000., 100., 50., 50.])
 R = sparse.eye(m)
 QN = sparse.diags([0., 0., 0., 0.])
 umax = 15
@@ -118,9 +119,8 @@ mpc_controller = MPCController(linear_dynamics=nominal_sys,
                                xmin=lower_bounds,
                                xmax=upper_bounds,
                                Q=sparse.diags([0., 0., 0., 0.]),
-                               R=R,
-                               QN=sparse.diags([100., 100., 100., 100.]),
-                               x0=zeros(n),
+                               R=sparse.eye(m),
+                               QN=sparse.diags([1e5, 1e5, 1e5, 1e5]),
                                xr=zeros(n))
 
 x_0 = array([2., 0.1, 0.05, 0.05])
@@ -150,23 +150,25 @@ initial_controller = MPCController(linear_dynamics=nominal_sys,
                        Q=Q,
                        R=R,
                        QN=QN,
-                       x0=zeros(n),
                        xr=q_d,
                        lifting=False)
 eigenfunction_basis = KoopmanEigenfunctions(n=n, max_power=eigenfunction_max_power, A_cl=A_cl, BK=BK)
 eigenfunction_basis.build_diffeomorphism_model(n_hidden_layers=diff_n_hidden_layers, layer_width=diff_layer_width,
                                                batch_size=diff_batch_size, dropout_prob=diff_dropout_prob)
 handler = SimulationHandler(n,m,Nlift,Nep,w,initial_controller,noise_var,system_true,q_d, t_eval)
+initialize_NN = True  #  Initializes the weights of the NN when set to true
 
+track_error = []
+ctrl_effort = []
+print('Starting episodic learning...')
 for ep in range(Nep):
-    X, Xd, U, Unom, t = handler.run()
-    #Run handler.process() if data from handler.run() is not in desired format
-    #TODO: Enable warm start of NN with weights from previous epsiode (wait until loop can run without warm start to implement)
+    X, Xd, U, Upert, t = handler.run()
+    X, Xd, U, Unom, t = handler.process(X,Xd,U,Upert,t)
     eigenfunction_basis.fit_diffeomorphism_model(X=array([X]), t=t, X_d=array([Xd]), l2=l2_diffeomorphism,
                                                  jacobian_penalty=jacobian_penalty_diffeomorphism,
                                                  learning_rate=diff_learn_rate, learning_decay=diff_learn_rate_decay,
                                                  n_epochs=diff_n_epochs, train_frac=diff_train_frac,
-                                                 batch_size=diff_batch_size)
+                                                 batch_size=diff_batch_size,initialize=initialize_NN, verbose=False)
     eigenfunction_basis.construct_basis(ub=upper_bounds, lb=lower_bounds)
     keedmd_ep = Keedmd(eigenfunction_basis,n,l1=l1_keedmd,l2=l2_keedmd,episodic=True)
     handler.aggregate_data(X,Xd,U,Unom,t,keedmd_ep)
@@ -182,12 +184,19 @@ for ep in range(Nep):
                                     Q=Q,
                                     R=R,
                                     QN=QN,
-                                    x0=zeros(n),
                                     xr=q_d,
                                     lifting=True,
                                     edmd_object=keedmd_ep)
     handler.aggregate_ctrl(mpc_ep)
+    initialize_NN = False  # Warm start NN after first episode
 
-    #TODO: Implement plotting and calculate stats for episode
+    # Plot experiment and report performance:
+    track_error.append(sum((X-Xd)**2/X.shape[1]))
+    ctrl_effort.append(sum(Unom**2)/X.shape[1])
+    print('Episode ', ep, ': Average MSE: ',format(float(sum(track_error[-1])/4)), ', control effort: ',format(float(ctrl_effort[-1]), '08f'))
+    if plot_episode:
+        fname = './core/examples/results/episodic_tracking_cart_pole/tracking_ep_' + str(ep)
+        plot_trajectory_ep(X, Xd, U, Unom, t, display=True, save=True, filename=fname, episode=ep)
 
 # %% ========================================    PLOT AND ANALYZE RESULTS     ========================================
+
