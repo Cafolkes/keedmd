@@ -124,7 +124,6 @@ if (traj_origin == 'gen_MPC'):
         mpc_controller.eval(x_0,0)
         q_d[ii,:,:] = mpc_controller.parse_result().transpose()
 
-    q_d = q_d[:5,:,:] #TODO: Remove after debug
     Ntraj = q_d.shape[0]
 
     savemat('./core/examples/cart_pole_d.mat', {'t_d': t_d, 'q_d': q_d})

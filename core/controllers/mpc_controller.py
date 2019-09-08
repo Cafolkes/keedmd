@@ -177,6 +177,8 @@ class MPCController(Controller):
     def parse_result(self):
         return  np.transpose(np.reshape( self._osqp_result.x[:(self._osqp_N+1)*self.nx], (self._osqp_N+1,self.nx)))
 
+    def get_control_prediction(self):
+        return np.reshape( self._osqp_result.x[-self._osqp_N*self.nu:], (self._osqp_N,self.nu))
 
     def plot_MPC(self, current_time, xr):
         # Unpack OSQP results

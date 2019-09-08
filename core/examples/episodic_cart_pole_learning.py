@@ -5,7 +5,7 @@ from os import path
 import sys
 from matplotlib.pyplot import figure, grid, legend, plot, show, subplot, suptitle, title, scatter, savefig
 from numpy import arange, array, concatenate, cos, identity
-from numpy import linspace, ones, sin, tanh, tile, zeros, pi, random, interp, dot, multiply, asarray
+from numpy import linspace, ones, sin, tanh, tile, zeros, pi, random, interp, dot
 import numpy as np
 # from numpy.random import uniform
 from scipy.io import loadmat, savemat
@@ -62,18 +62,17 @@ A_cl = A_nom - dot(B_nom, concatenate((K_p, K_d), axis=1))
 BK = dot(B_nom, concatenate((K_p, K_d), axis=1))
 
 # Simulation parameters (data collection)
-plot_traj_gen = False  # Plot trajectories generated for data collection
 traj_origin = 'load_mat'  # gen_MPC - solve MPC to generate desired trajectories, load_mat - load saved trajectories
 Ntraj = 50  # Number of trajectories to collect data from
 dt = 1.0e-2  # Time step
-N = int(2. / dt)  # Number of time steps
+N = int(2. / dt)  # Number of time steps        #TODO: Remove?
 t_eval = dt * arange(N + 1)  # Simulation time points
 noise_var = 0.1  # Exploration noise to perturb controller
 
 # Koopman eigenfunction parameters
 plot_eigen = False
 eigenfunction_max_power = 3
-Nlift = (eigenfunction_max_power+1)**n-1 + n
+Nlift = (eigenfunction_max_power+1)**n + n
 l2_diffeomorphism = 1e0  # Fix for current architecture
 jacobian_penalty_diffeomorphism = 5e0  # Fix for current architecture
 load_diffeomorphism_model = True
@@ -100,73 +99,95 @@ l2_edmd = 1e-2
 
 # Learning loop parameters:
 Nep = 5
-w = linspace(0,1,Nep)
+w = concatenate((ones((1,)), linspace(0,1,Nep)),axis=0)
+
+# MPC controller parameters:
+Q = sparse.diags([10., 10., 5., 5.])
+R = sparse.eye(m)
+QN = sparse.diags([0., 0., 0., 0.])
+umax = 15
+MPC_horizon = 1.0  # [s]
+plot_traj_gen = False  # Plot desired trajectory
 
 # Load trajectories
-print("Collect data.")
-print(" - Generate optimal desired path..", end=" ")
-t0 = time.process_time()
-R = sparse.eye(m)
-
-t_d = t_eval
-Q = sparse.diags([0, 0, 0, 0])
-QN = sparse.diags([100000., 100000., 50000., 10000.])
-umax = 5
-MPC_horizon = 2  # [s]
-
 mpc_controller = MPCController(linear_dynamics=nominal_sys,
-                               N=int(MPC_horizon / dt),
+                               N=int(t_eval[-1] / dt),
                                dt=dt,
                                umin=array([-umax]),
                                umax=array([+umax]),
                                xmin=lower_bounds,
                                xmax=upper_bounds,
-                               Q=Q,
+                               Q=sparse.diags([0., 0., 0., 0.]),
                                R=R,
-                               QN=QN,
+                               QN=sparse.diags([100., 100., 100., 100.]),
                                x0=zeros(n),
                                xr=zeros(n))
 
 x_0 = array([2., 0.1, 0.05, 0.05])
 mpc_controller.eval(x_0, 0)
-q_d = mpc_controller.parse_result().transpose()
-
-savemat('./core/examples/cart_pole_d.mat', {'t_d': t_d, 'q_d': q_d})
+q_d = mpc_controller.parse_result()
+savemat('./core/examples/episodic_cart_pole_d.mat', {'t_d': t_eval, 'q_d': q_d})
 
 if plot_traj_gen:
     figure()
     title('Input Trajectories')
     for j in range(n):
         subplot(n, 1, j + 1)
-        [plot(t_eval, q_d[ii, :, j], linewidth=2) for ii in range(Ntraj)]
+        plot(t_eval, q_d[j,:], linewidth=2)
         grid()
     show()
 
 # %% ===========================================    MAIN LEARNING LOOP     ===========================================
 
-output = CartPoleTrajectory(system_true, q_d.transpose(), t_d)  # Trajectory tracking object
-initial_controller = PDController(output, K_p, K_d, noise_var)  # Initial controller #TODO: Change to MPC when MPC is functional
+output = CartPoleTrajectory(system_true, q_d.transpose(), t_eval)  # Trajectory tracking object
+initial_controller = MPCController(linear_dynamics=nominal_sys,
+                       N=int(MPC_horizon / dt),
+                       dt=dt,
+                       umin=array([-umax]),
+                       umax=array([+umax]),
+                       xmin=lower_bounds,
+                       xmax=upper_bounds,
+                       Q=Q,
+                       R=R,
+                       QN=QN,
+                       x0=zeros(n),
+                       xr=q_d,
+                       lifting=False)
 eigenfunction_basis = KoopmanEigenfunctions(n=n, max_power=eigenfunction_max_power, A_cl=A_cl, BK=BK)
 eigenfunction_basis.build_diffeomorphism_model(n_hidden_layers=diff_n_hidden_layers, layer_width=diff_layer_width,
                                                batch_size=diff_batch_size, dropout_prob=diff_dropout_prob)
-
-handler = SimulationHandler(n,m,Nlift,Nep,w,initial_controller,noise_var,system_true)
+handler = SimulationHandler(n,m,Nlift,Nep,w,initial_controller,noise_var,system_true,q_d, t_eval)
 
 for ep in range(Nep):
     X, Xd, U, Unom, t = handler.run()
     #Run handler.process() if data from handler.run() is not in desired format
-    #TODO: Enable warm start of NN with weights from previous epsiode
-    eigenfunction_basis.fit_diffeomorphism_model(X=X, t=t, X_d=Xd, l2=l2_diffeomorphism,
+    #TODO: Enable warm start of NN with weights from previous epsiode (wait until loop can run without warm start to implement)
+    eigenfunction_basis.fit_diffeomorphism_model(X=array([X]), t=t, X_d=array([Xd]), l2=l2_diffeomorphism,
                                                  jacobian_penalty=jacobian_penalty_diffeomorphism,
                                                  learning_rate=diff_learn_rate, learning_decay=diff_learn_rate_decay,
                                                  n_epochs=diff_n_epochs, train_frac=diff_train_frac,
                                                  batch_size=diff_batch_size)
     eigenfunction_basis.construct_basis(ub=upper_bounds, lb=lower_bounds)
-    keedmd_ep = Keedmd(eigenfunction_basis,n=n,l1=l1_keedmd,l2=l2_keedmd,episodic=True)
+    keedmd_ep = Keedmd(eigenfunction_basis,n,l1=l1_keedmd,l2=l2_keedmd,episodic=True)
     handler.aggregate_data(X,Xd,U,Unom,t,keedmd_ep)
     keedmd_ep.fit(handler.X_agg, handler.Xd_agg, handler.Z_agg, handler.Zdot_agg, handler.U_agg, handler.Unom_agg)
-    mpc_ep = None #TODO: design MPC controller based on keedmd_ep
+    keedmd_sys = LinearSystemDynamics(A=keedmd_ep.A, B=keedmd_ep.B)
+    mpc_ep = MPCController(linear_dynamics=keedmd_sys,
+                                    N=int(MPC_horizon / dt),
+                                    dt=dt,
+                                    umin=array([-umax]),
+                                    umax=array([+umax]),
+                                    xmin=lower_bounds,
+                                    xmax=upper_bounds,
+                                    Q=Q,
+                                    R=R,
+                                    QN=QN,
+                                    x0=zeros(n),
+                                    xr=q_d,
+                                    lifting=True,
+                                    edmd_object=keedmd_ep)
     handler.aggregate_ctrl(mpc_ep)
 
+    #TODO: Implement plotting and calculate stats for episode
 
 # %% ========================================    PLOT AND ANALYZE RESULTS     ========================================
