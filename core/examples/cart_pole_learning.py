@@ -322,7 +322,7 @@ if test_open_loop:
         # Create systems for each of the learned models and simulate with open loop control signal us_pred:
         keedmd_controller = OpenLoopController(keedmd_sys, us_pred_tmp, t_pred[:us_pred_tmp.shape[0]])
         z0_keedmd = keedmd_model.lift(x0_pred.reshape(x0_pred.shape[0],1), q_d_pred[ii,:1,:].transpose()).squeeze()
-        zs_keedmd,_= keedmd_sys.simulate(z0_keedmd,keedmd_controller,t_pred)
+        zs_keedmd,_ = keedmd_sys.simulate(z0_keedmd,keedmd_controller,t_pred)
         xs_keedmd_tmp = dot(keedmd_model.C,zs_keedmd.transpose())
 
         edmd_controller = OpenLoopController(edmd_sys, us_pred_tmp, t_pred[:us_pred_tmp.shape[0]])
@@ -385,6 +385,7 @@ if test_open_loop:
             if ii == 0:
                 title('Predicted state evolution of different models with open loop control')
         legend(fontsize=10, loc='best')
+        show()
         savefig(open_filename)
 
     print('in {:.2f}s'.format(time.process_time()-t0))
