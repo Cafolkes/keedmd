@@ -39,7 +39,8 @@ class CartPoleTrajectory(CartPole):
     def act(self, q, t):
         return self.robotic_dynamics.act(q, t)
 
-#%% ===============================================   SET PARAMETERS    ===============================================
+#%% 
+#! ===============================================   SET PARAMETERS    ===============================================
 
 # Define true system
 system_true = CartPole(m_c=.5, m_p=.2, l=.4)
@@ -97,95 +98,99 @@ load_fit = True
 test_open_loop = False
 save_fit = not load_fit
 
-#%% ===============================================    COLLECT DATA     ===============================================
-# Load trajectories
+#%% 
+#! ===============================================    COLLECT DATA     ===============================================
+#* Load trajectories
 print("Collect data.")
 print(" - Generate optimal desired path..", end =" ")
 t0 = time.process_time()
 
 R = sparse.eye(m)
-if (traj_origin == 'gen_MPC'):
-    t_d = t_eval
-    traj_bounds = [2,0.25,0.05,0.05] # x, theta, x_dot, theta_dot
-    q_d = zeros((Ntraj,N+1,n))
-    Q = sparse.diags([0,0,0,0])
-    QN = sparse.diags([100000.,100000.,50000.,10000.])
-    umax = 5
-    MPC_horizon = 2 # [s]
 
-    mpc_controller = MPCController(linear_dynamics=nominal_sys, 
-                                N=int(MPC_horizon/dt),
-                                dt=dt, 
-                                umin=array([-umax]), 
-                                umax=array([+umax]),
-                                xmin=lower_bounds, 
-                                xmax=upper_bounds, 
-                                Q=Q, 
-                                R=R, 
-                                QN=QN, 
-                                x0=zeros(n), 
-                                xr=zeros(n))
-    for ii in range(Ntraj):
-        x_0 = asarray([veryrandom.uniform(-i,i)  for i in traj_bounds ])
-        mpc_controller.eval(x_0,0)
-        q_d[ii,:,:] = mpc_controller.parse_result().transpose()
+if not load_fit:
+    if (traj_origin == 'gen_MPC'):
+        t_d = t_eval
+        traj_bounds = [2,0.25,0.05,0.05] # x, theta, x_dot, theta_dot
+        q_d = zeros((Ntraj,N+1,n))
+        Q = sparse.diags([0,0,0,0])
+        QN = sparse.diags([100000.,100000.,50000.,10000.])
+        umax = 5
+        MPC_horizon = 2 # [s]
 
-    savemat('./core/examples/cart_pole_d.mat', {'t_d': t_d, 'q_d': q_d})
+        mpc_controller = MPCController(linear_dynamics=nominal_sys, 
+                                    N=int(MPC_horizon/dt),
+                                    dt=dt, 
+                                    umin=array([-umax]), 
+                                    umax=array([+umax]),
+                                    xmin=lower_bounds, 
+                                    xmax=upper_bounds, 
+                                    Q=Q, 
+                                    R=R, 
+                                    QN=QN, 
+                                    x0=zeros(n), 
+                                    xr=zeros(n))
+        for ii in range(Ntraj):
+            x_0 = asarray([veryrandom.uniform(-i,i)  for i in traj_bounds ])
+            mpc_controller.eval(x_0,0)
+            q_d[ii,:,:] = mpc_controller.parse_result().transpose()
 
-    if plot_traj_gen:
-        figure()
-        title('Input Trajectories')
-        for j in range(n):
-            subplot(n,1,j+1)
-            [plot(t_eval, q_d[ii,:,j] , linewidth=2) for ii in range(Ntraj)]
-            grid()
-        show()
+        savemat('./core/examples/cart_pole_d.mat', {'t_d': t_d, 'q_d': q_d})
+
+        if plot_traj_gen:
+            figure()
+            title('Input Trajectories')
+            for j in range(n):
+                subplot(n,1,j+1)
+                [plot(t_eval, q_d[ii,:,j] , linewidth=2) for ii in range(Ntraj)]
+                grid()
+            show()
+                
             
-        
-elif (traj_origin=='load_mat'):
-    res = loadmat('./core/examples/cart_pole_d.mat') # Tensor (n, Ntraj, Ntime)
-    q_d = res['q_d']  # Desired states
-    t_d = res['t_d']  # Time points
-    Ntraj = q_d.shape[0]  # Number of trajectories to execute
+    elif (traj_origin=='load_mat'):
+        res = loadmat('./core/examples/cart_pole_d.mat') # Tensor (n, Ntraj, Ntime)
+        q_d = res['q_d']  # Desired states
+        t_d = res['t_d']  # Time points
+        Ntraj = q_d.shape[0]  # Number of trajectories to execute
 
-    if plot_traj_gen:
-        figure()
-        title('Input Trajectories')
-        for j in range(n):
-            subplot(n,1,j+1)
-            [plot(t_eval, q_d[ii,:,j] , linewidth=2) for ii in range(Ntraj)]
-            grid()
-        show()
+        if plot_traj_gen:
+            figure()
+            title('Input Trajectories')
+            for j in range(n):
+                subplot(n,1,j+1)
+                [plot(t_eval, q_d[ii,:,j] , linewidth=2) for ii in range(Ntraj)]
+                grid()
+            show()
 
-print('in {:.2f}s'.format(time.process_time()-t0))
-t0 = time.process_time()
-# Simulate system from each initial condition
-print(' - Simulate system with {} trajectories using PD controller'.format(Ntraj), end =" ")
-save_traj = False
-outputs = [CartPoleTrajectory(system_true, q_d[i,:,:].transpose(), t_d) for i in range(Ntraj)]
-pd_controllers = [PDController(outputs[i], K_p, K_d, noise_var) for i in range(Ntraj)]
-pd_controllers_nom = [PDController(outputs[i], K_p, K_d, 0.) for i in range(Ntraj)]  # Duplicate of controllers with no noise perturbation
-xs, us, us_nom, ts = [], [], [], []
-for ii in range(Ntraj):
-    x_0 = q_d[ii,0,:]
-    xs_tmp, us_tmp = system_true.simulate(x_0, pd_controllers[ii], t_eval)
-    us_nom_tmp = pd_controllers_nom[ii].eval(xs_tmp.transpose(), t_eval).transpose()
-    xs.append(xs_tmp)
-    us.append(us_tmp)
-    us_nom.append(us_nom_tmp[:us_tmp.shape[0],:])
-    ts.append(t_eval)
-
-    if save_traj:
-        savemat('./core/examples/results/cart_pendulum_pd_data.mat', {'xs': xs, 't_eval': t_eval, 'us': us, 'us_nom':us_nom})
-    xs, us, us_nom, ts = array(xs), array(us), array(us_nom), array(ts)
-
-plot_traj = False
-if plot_traj:
+    print('in {:.2f}s'.format(time.process_time()-t0))
+    t0 = time.process_time()
+    # Simulate system from each initial condition
+    print(' - Simulate system with {} trajectories using PD controller'.format(Ntraj), end =" ")
+    save_traj = False
+    outputs = [CartPoleTrajectory(system_true, q_d[i,:,:].transpose(), t_d) for i in range(Ntraj)]
+    pd_controllers = [PDController(outputs[i], K_p, K_d, noise_var) for i in range(Ntraj)]
+    pd_controllers_nom = [PDController(outputs[i], K_p, K_d, 0.) for i in range(Ntraj)]  # Duplicate of controllers with no noise perturbation
+    xs, us, us_nom, ts = [], [], [], []
     for ii in range(Ntraj):
-        plot_trajectory(xs[ii], q_d[ii], us[ii], us_nom[ii], ts[ii])  # Plot simulated trajectory if desired
+        x_0 = q_d[ii,0,:]
+        xs_tmp, us_tmp = system_true.simulate(x_0, pd_controllers[ii], t_eval)
+        us_nom_tmp = pd_controllers_nom[ii].eval(xs_tmp.transpose(), t_eval).transpose()
+        xs.append(xs_tmp)
+        us.append(us_tmp)
+        us_nom.append(us_nom_tmp[:us_tmp.shape[0],:])
+        ts.append(t_eval)
+
+        if save_traj:
+            savemat('./core/examples/results/cart_pendulum_pd_data.mat', {'xs': xs, 't_eval': t_eval, 'us': us, 'us_nom':us_nom})
+        xs, us, us_nom, ts = array(xs), array(us), array(us_nom), array(ts)
+
+    plot_traj = False
+    if plot_traj:
+        for ii in range(Ntraj):
+            plot_trajectory(xs[ii], q_d[ii], us[ii], us_nom[ii], ts[ii])  # Plot simulated trajectory if desired
 
 
-#%% ===============================================     FIT MODELS      ===============================================
+#%%
+#!  ===============================================     FIT MODELS      ===============================================
 print('in {:.2f}s'.format(time.process_time()-t0))
 t0 = time.process_time()
 if not load_fit:
@@ -247,7 +252,8 @@ if not load_fit:
     edmd_model.fit(xs, q_d, us, us_nom, ts)
 
 
-#%% ==============================================  EVALUATE PERFORMANCE -- OPEN LOOP =========================================
+#%%
+#!  ==============================================  EVALUATE PERFORMANCE -- OPEN LOOP =========================================
 print('in {:.2f}s'.format(time.process_time()-t0))
 t0 = time.process_time()
 
@@ -276,35 +282,35 @@ if test_open_loop:
     noise_var_pred = 0.5
 
 
-elif (traj_origin == 'load_mat'):
-    res = loadmat('./core/examples/cart_pole_pred_d.mat')  # Tensor (n, Ntraj, Ntime)
-    q_d_pred = res['q_d_pred']  # Desired states
-    t_d = res['t_d']  # Time points
-    Ntraj_pred = q_d.shape[0]  # Number of trajectories to execute
+"""     elif (traj_origin == 'load_mat'):
+        res = loadmat('./core/examples/cart_pole_pred_d.mat')  # Tensor (n, Ntraj, Ntime)
+        q_d_pred = res['q_d_pred']  # Desired states
+        t_d = res['t_d']  # Time points
+        Ntraj_pred = q_d.shape[0]  # Number of trajectories to execute
 
         for ii in range(Ntraj_pred):
             x_0 = asarray([random.uniform(-i, i) for i in traj_bounds])
             mpc_controller.eval(x_0, 0)
             q_d_pred[:, ii, :] = mpc_controller.parse_result()
 
-        savemat('./core/examples/cart_pole_pred_d.mat', {'t_d': t_d, 'q_d_pred': q_d_pred})
+        savemat('./core/examples/cart_pole_pred_d.mat', {'t_d': t_d, 'q_d_pred': q_d_pred}) """
 
-# Calculate error statistics
-mse_keedmd = array([(xs_keedmd[ii] - xs_pred[ii])**2 for ii in range(Ntraj_pred)])
-mse_edmd = array([(xs_edmd[ii] - xs_pred[ii])**2 for ii in range(Ntraj_pred)])
-mse_nom = array([(xs_nom[ii] - xs_pred[ii])**2 for ii in range(Ntraj_pred)])
-e_keedmd = array([xs_keedmd[ii] - xs_pred[ii] for ii in range(Ntraj_pred)])
-e_edmd = array([xs_edmd[ii] - xs_pred[ii] for ii in range(Ntraj_pred)])
-e_nom = array([xs_nom[ii] - xs_pred[ii] for ii in range(Ntraj_pred)])
-mse_keedmd = np.mean(np.mean(np.mean(mse_keedmd)))
-mse_edmd = np.mean(np.mean(np.mean(mse_edmd)))
-mse_nom = np.mean(np.mean(np.mean(mse_nom)))
-e_mean_keedmd = np.mean(e_keedmd, axis=0)
-e_mean_edmd = np.mean(e_edmd, axis=0)
-e_mean_nom = np.mean(e_nom, axis=0)
-e_std_keedmd = np.std(e_keedmd, axis=0)
-e_std_edmd = np.std(e_edmd, axis=0)
-e_std_nom = np.std(e_nom, axis=0)
+    # Calculate error statistics
+"""         mse_keedmd = array([(xs_keedmd[ii] - xs_pred[ii])**2 for ii in range(Ntraj_pred)])
+        mse_edmd = array([(xs_edmd[ii] - xs_pred[ii])**2 for ii in range(Ntraj_pred)])
+        mse_nom = array([(xs_nom[ii] - xs_pred[ii])**2 for ii in range(Ntraj_pred)])
+        e_keedmd = array([xs_keedmd[ii] - xs_pred[ii] for ii in range(Ntraj_pred)])
+        e_edmd = array([xs_edmd[ii] - xs_pred[ii] for ii in range(Ntraj_pred)])
+        e_nom = array([xs_nom[ii] - xs_pred[ii] for ii in range(Ntraj_pred)])
+        mse_keedmd = np.mean(np.mean(np.mean(mse_keedmd)))
+        mse_edmd = np.mean(np.mean(np.mean(mse_edmd)))
+        mse_nom = np.mean(np.mean(np.mean(mse_nom)))
+        e_mean_keedmd = np.mean(e_keedmd, axis=0)
+        e_mean_edmd = np.mean(e_edmd, axis=0)
+        e_mean_nom = np.mean(e_nom, axis=0)
+        e_std_keedmd = np.std(e_keedmd, axis=0)
+        e_std_edmd = np.std(e_edmd, axis=0)
+        e_std_nom = np.std(e_nom, axis=0) """
 
 # Plot errors of different models and statistics
 if plot_open_loop:
@@ -406,7 +412,8 @@ if plot_open_loop:
 
 
 
-#%% ==============================================  EVALUATE PERFORMANCE -- CLOSED LOOP =============================================
+#%%
+#! ==============================================  EVALUATE PERFORMANCE -- CLOSED LOOP =============================================
 t0 = time.process_time()
 print('Evaluate Performance with closed loop trajectory tracking...', end =" ")
 # Set up trajectory and controller for prediction task:
@@ -424,7 +431,7 @@ QN = Q
 upper_bounds_MPC_control = array([10.0, pi, 10, 10])  # State constraints, check they are higher than upper_bounds
 lower_bounds_MPC_control = -upper_bounds_MPC_control  # State constraints
 umax_control = 15  # check it is higher than the control to generate the trajectories
-MPC_horizon = 1.0 # [s]
+MPC_horizon = .05 # [s]
 plotMPC = True
 
 # Linearized with PD
@@ -453,13 +460,13 @@ edmd_controller = MPCController(linear_dynamics=edmd_sys,
 
 xs_edmd_MPC, us_emdm_MPC = system_true.simulate(x_0, edmd_controller, t_pred)
 xs_edmd_MPC = xs_edmd_MPC.transpose()
-
+us_emdm_MPC = us_emdm_MPC.transpose()
+    
 if plotMPC:
-    plot(t_pred, xs_edmd_MPC[0,:], linewidth=2, label='$x$', color=[1,0,0])
-    savefig("eDMD_thoughts.png") """
+    linearlize_mpc_controller.finish_plot(xs_edmd_MPC, us_emdm_MPC, us_lin_PD, t_pred,"eDMD_thoughts.png") """
 
 # Linearized with MPC
-linearlize_mpc_controller = MPCController(linear_dynamics=nominal_sys, 
+""" linearlize_mpc_controller = MPCController(linear_dynamics=nominal_sys, 
                                           N=int(MPC_horizon/dt),
                                           dt=dt, 
                                           umin=array([-umax_control]), 
@@ -470,27 +477,17 @@ linearlize_mpc_controller = MPCController(linear_dynamics=nominal_sys,
                                           R=R, 
                                           QN=QN, 
                                           xr=q_d_pred,                
-                                          plotMPC=True)
+                                          plotMPC=plotMPC)
 
 xs_lin_MPC, us_lin_MPC = system_true.simulate(x_0, linearlize_mpc_controller, t_pred)
 xs_lin_MPC = xs_lin_MPC.transpose()
 us_lin_MPC = us_lin_MPC.transpose()
-
 if plotMPC:
-    for ii in range(n):
-        linearlize_mpc_controller.axs[ii].plot(t_pred, q_d_pred[ii,:], linewidth=2, label='$x_d$', color=[1,0,0])
-        linearlize_mpc_controller.axs[ii].plot(t_pred, xs_lin_MPC[ii,:], linewidth=2, label='$x$', color=[0,0,0])
-        linearlize_mpc_controller.axs[ii].legend(fontsize=10, loc='best')
-    for ii in range(m):
-        linearlize_mpc_controller.axs[ii+n].plot(t_pred[:-1],us_lin_MPC[ii,:],label='$u$',color=[0,0,0])
-        linearlize_mpc_controller.axs[ii+n].plot(t_pred[:-1],us_lin_PD[ii,:],label='$u_{PD}$',color=[0,1,1])
-        linearlize_mpc_controller.axs[ii+n].legend(fontsize=10, loc='best')
-    savefig("LinMPC_thoughts.png")
+    linearlize_mpc_controller.finish_plot(xs_lin_MPC,us_lin_MPC, us_lin_PD, t_pred,"LinMPC_thoughts.png") """
 
 
 
-
-""" # KeeDMD
+# KeeDMD
 keedmd_sys = LinearSystemDynamics(A=keedmd_model.A, B=keedmd_model.B)
 keedmd_controller = MPCController(linear_dynamics=keedmd_sys, 
                                 N=int(MPC_horizon/dt),
@@ -505,15 +502,16 @@ keedmd_controller = MPCController(linear_dynamics=keedmd_sys,
                                 xr=q_d_pred,
                                 lifting=True,
                                 edmd_object=keedmd_model,
-                                plotMPC=True)
+                                plotMPC=plotMPC)
 
 xs_keedmd_MPC, us_keedmd_MPC = system_true.simulate(x_0, keedmd_controller, t_pred)
 xs_keedmd_MPC = xs_keedmd_MPC.transpose()
+us_keedmd_MPC = us_keedmd_MPC.transpose()
 
 if plotMPC:
-    plot(t_pred, xs_keedmd_MPC[0,:], linewidth=2, label='$x$', color=[1,0,0])
-    savefig("KeeDMD_thoughts.png")
- """
+    linearlize_mpc_controller.finish_plot(xs_keedmd_MPC,us_keedmd_MPC, us_lin_PD, t_pred,"KeeDMD_thoughts.png")
+
+
 print('in {:.2f}s'.format(time.process_time()-t0))
 t0 = time.process_time()
 
@@ -529,7 +527,7 @@ for ii in range(n):
     subplot(n, 1, ii+1)
     plot(t_pred, q_d_pred[ii,:], linestyle="--",linewidth=2, label='reference')
     #plot(t_pred, xs_edmd_MPC[ii,:], linewidth=2, label='eDMD with MPC')
-    #plot(t_pred, xs_keedmd_MPC[ii,:], linewidth=2, label='KeeDMD with MPC')
+    plot(t_pred, xs_keedmd_MPC[ii,:], linewidth=2, label='KeeDMD with MPC')
     plot(t_pred, xs_lin_MPC[ii,:], linewidth=2, label='Linearized dynamics with MPC')
     plot(t_pred, xs_lin_PD[ii,:], linewidth=2, label='Linearized dynamics with PD Controller')
     xlabel('Time (s)')
@@ -539,12 +537,3 @@ for ii in range(n):
         title('Closed loop performance of different models with open loop control')
 legend(fontsize=10, loc='best')
 show()
-
-""" print('Mean Squared Error:')
-print('Nominal model: ', format(mse_nom, '08f'))
-print('EDMD: ', format(mse_edmd, '08f'), ', reduction from nominal: ', format((1-mse_edmd/mse_nom)*100, '08f'), '%')
-print('KEEDMD: ', format(mse_keedmd, '08f'), ', reduction from nominal: ', format((1-mse_keedmd/mse_nom)*100, '08f'), '%', ', reduction from EDMD: ', format((1-mse_keedmd/mse_edmd)*100, '08f'), '%')
-print()
-print('Lifting dimension EDMD: ', edmd_model.A.shape[0], ', KEEDMD: ', keedmd_model.A.shape[0]) """
-
-#%%
