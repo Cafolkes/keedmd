@@ -92,15 +92,12 @@ l1_edmd = 0 #1e-2
 l2_edmd = 0 #1e-2
 
 # Simulation parameters (evaluate performance)
-plot_open_loop=True
-<<<<<<< HEAD
-
-=======
 load_fit = True
 test_open_loop = True
+plot_open_loop=True
 save_fit = not load_fit
 Ntraj_pred = 20
->>>>>>> master
+
 
 #%% ===============================================    COLLECT DATA     ===============================================
 # Load trajectories
@@ -415,10 +412,9 @@ xs_lin_PD = xs_lin_PD.transpose()
 us_lin_PD = us_lin_PD.transpose()
 
 
-<<<<<<< HEAD
 #* eDMD 
-edmd_sys = LinearSystemDynamics(A=edmd_model.A, B=edmd_model.B)
-=======
+#edmd_sys = LinearSystemDynamics(A=edmd_model.A, B=edmd_model.B)
+
 # eDMD 
 """ edmd_sys = LinearSystemDynamics(A=edmd_model.A, B=edmd_model.B)
 >>>>>>> master
@@ -474,16 +470,11 @@ if plotMPC:
     savefig("LinMPC_thoughts.png")
 
 
-<<<<<<< HEAD
 #* Linearized with PD
 output_pred = CartPoleTrajectory(system_true, q_d_pred,t_pred)
 linearlize_PD_controller = PDController(output_pred, K_p, K_d, noise_var_pred)
 xs_lin_PD, us_lin_PD = system_true.simulate(x_0, linearlize_PD_controller, t_pred)
 xs_lin_PD = xs_lin_PD.transpose()
-
-
-#* KeeDMD
-=======
 
 
 """ # KeeDMD
