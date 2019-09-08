@@ -111,7 +111,11 @@ class MPCController(Controller):
             if (xr.ndim==1):
                 q = np.hstack([np.kron(np.ones(N), -Q.dot(xr)), -QN.dot(xr), np.zeros(N*nu)])
             elif (xr.ndim==2):
+<<<<<<< HEAD
                 q = np.hstack([np.reshape(-Q.dot(xr),((N+1)*nx,),order='F'), np.zeros(N*nu)])
+=======
+                q = np.hstack([np.reshape(-Q.dot(xr),((N+1)*nx,),order='F'), np.zeros(N*nu)])  #TODO: Check if reshape is reshaping in the expected order
+>>>>>>> master
 
             # - input and state constraints
             Aineq = sparse.eye((N+1)*nx + N*nu)
