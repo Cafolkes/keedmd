@@ -204,7 +204,7 @@ class MPCController(Controller):
                 self._osqp_q = np.hstack([np.reshape(-self.Q.dot(xr),((N+1)*nx,),order='F'), np.zeros(N*nu)])
 
 
-        elif self.q_d.ndim==1:
+        if self.q_d.ndim==1:
             # Update the local reference trajectory
             xr = np.transpose(np.tile(self.q_d,N+1))
 
@@ -231,6 +231,8 @@ class MPCController(Controller):
     def parse_result(self):
         return  np.transpose(np.reshape( self._osqp_result.x[:(self.N+1)*self.nx], (self.N+1,self.nx)))
 
+    def get_control_prediction(self):
+        return np.transpose(np.reshape( self._osqp_result.x[-self.N*self.nu:], (self.N,self.nu)))
 
     def plot_MPC(self, current_time, xr, tindex):
         """plot mpc
