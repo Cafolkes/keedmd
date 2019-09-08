@@ -117,10 +117,10 @@ class MPCController(Controller):
             Aineq = sparse.block_diag([edmd_object.C for i in range(N+1)]+[np.eye(N*nu)])
 
 
-            import seaborn as sns
+            """ import seaborn as sns
             plt.figure()
             sns.heatmap(Aineq.toarray(), linewidth=0.00)
-            plt.show()
+            plt.show() """
 
         else:
             # - quadratic objective
@@ -186,6 +186,7 @@ class MPCController(Controller):
         nx = self.nx
 
         tindex = int(t/self.dt)
+        print("iteration {}".format(tindex))
         
         ## Update inequalities
         if self.q_d.ndim==2: 

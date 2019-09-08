@@ -94,7 +94,7 @@ l2_edmd = 1e-2
 
 # Simulation parameters (evaluate performance)
 load_fit = True
-test_open_loop = True
+test_open_loop = False
 plot_open_loop = True
 save_fit = not load_fit
 Ntraj_pred = 20
@@ -401,7 +401,7 @@ us_lin_PD = us_lin_PD.transpose()
 
 
 #* eDMD 
-#edmd_sys = LinearSystemDynamics(A=edmd_model.A, B=edmd_model.B)
+""" edmd_sys = LinearSystemDynamics(A=edmd_model.A, B=edmd_model.B)
 edmd_controller = MPCController(linear_dynamics=edmd_sys, 
                                 N=int(MPC_horizon/dt),
                                 dt=dt, 
@@ -422,7 +422,7 @@ xs_edmd_MPC = xs_edmd_MPC.transpose()
 us_emdm_MPC = us_emdm_MPC.transpose()
     
 if plotMPC:
-    linearlize_mpc_controller.finish_plot(xs_edmd_MPC, us_emdm_MPC, us_lin_PD, t_pred,"eDMD_thoughts.png") 
+    linearlize_mpc_controller.finish_plot(xs_edmd_MPC, us_emdm_MPC, us_lin_PD, t_pred,"eDMD_thoughts.png")  """
 
 # Linearized with MPC
 linearlize_mpc_controller = MPCController(linear_dynamics=nominal_sys, 
