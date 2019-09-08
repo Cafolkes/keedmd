@@ -23,6 +23,23 @@ class Edmd():
         self.acceleration_bounds = acceleration_bounds #(nx1)
 
     def fit(self, X, X_d, U, U_nom, t):
+        """ 
+        Fit a EDMD object with the given basis function
+
+        Sizes:
+        - Ntraj: number of trajectories
+        - N: number of timesteps
+        - ns: number or original states
+        - nu: number of control inputs
+
+        Inputs:
+        - X: state with all trajectories, numpy 3d array [Ntraj, N, ns] 
+        - X_d: desired state with all trajectories, numpy 3d array [Ntraj, N, ns] 
+        - U: control input, numpy 3d array [Ntraj, N, nu]
+        - U_nom: nominal control input, numpy 3d array [Ntraj, N, nu]
+        - t: time, numpy 2d array [Ntraj, N]
+        """
+
         X, X_d, Z, Z_dot, U, U_nom, t = self.process(X, X_d, U, U_nom, t)
         if self.l1 == 0. and self.l2 == 0.:
             # Construct EDMD matrices as described in M. Korda, I. Mezic, "Linear predictors for nonlinear dynamical systems: Koopman operator meets model predictive control":
@@ -40,6 +57,7 @@ class Edmd():
                 self.C[:self.n,:self.n] = eye(self.n)
 
         else:
+            # Construct EDMD matrices using Elastic Net L1 and L2 regularization
             input = concatenate((Z.transpose(),U.transpose()),axis=1)
             output = Z_dot.transpose()
             l1_ratio = self.l1/(self.l1+self.l2)
