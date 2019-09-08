@@ -10,6 +10,7 @@ def plot_trajectory(X, X_d, U, U_nom, t):
     - nominal control input U_nom, numpy 2d array [number of time steps, number of inputs]
     - time t, numpy 1d array [number of time steps 'N']
     """
+  
     figure()
     subplot(2, 1, 1)
     plot(t, X[:,0], linewidth=2, label='$x$')

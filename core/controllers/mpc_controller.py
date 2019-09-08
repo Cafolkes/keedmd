@@ -181,6 +181,9 @@ class MPCController(Controller):
             else:
                 self._osqp_q = np.hstack([np.reshape(-self.Q.dot(xr),((N+1)*nx,),order='F'), np.zeros(N*nu)])
 
+        self._osqp_l[:self.nx] = -x
+        self._osqp_u[:self.nx] = -x
+
         elif self.q_d.ndim==1:
             # Update the local reference trajectory
             xr = np.transpose(np.tile(self.q_d,N+1))
