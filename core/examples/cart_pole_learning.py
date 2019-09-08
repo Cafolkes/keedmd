@@ -93,7 +93,7 @@ l1_edmd = 1e-2
 l2_edmd = 1e-2
 
 # Simulation parameters (evaluate performance)
-load_fit = False
+load_fit = True
 test_open_loop = True
 plot_open_loop = True
 save_fit = not load_fit
