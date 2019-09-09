@@ -67,7 +67,7 @@ noise_var = 0.1                     # Exploration noise to perturb controller
 
 # Koopman eigenfunction parameters
 plot_eigen = False
-eigenfunction_max_power = 3
+eigenfunction_max_power = 1             #TODO: Remove when MPC debug finalized
 l2_diffeomorphism = 1e0                 #Fix for current architecture
 jacobian_penalty_diffeomorphism = 5e0   #Fix for current architecture
 load_diffeomorphism_model = True
