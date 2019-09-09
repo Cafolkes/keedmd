@@ -2,7 +2,7 @@ from matplotlib.pyplot import figure, grid, legend, plot, show, subplot, suptitl
 from numpy import array, linalg, transpose, math, diag, dot, ones, zeros, reshape, unique, power, prod, exp, log, divide, linspace, square, ndarray
 from numpy import concatenate as npconcatenate
 from itertools import combinations_with_replacement, permutations
-from core.learning_keedmd.utils import differentiate_vec
+from core.learning_keedmd import utils
 from core.learning_keedmd.basis_functions import BasisFunctions
 from core.dynamics.linear_system_dynamics import LinearSystemDynamics
 from core.controllers.constant_controller import ConstantController
@@ -243,7 +243,7 @@ class KoopmanEigenfunctions(BasisFunctions):
         X_d = array([X_d[ii,:,:].reshape((X_d.shape[1],X_d.shape[2])) - X_f[ii,:] for ii in range(len(X))])
 
         # Calculate numerical derivatives
-        X_dot = array([differentiate_vec(X_shift[ii,:,:],t) for ii in range(X_shift.shape[0])])
+        X_dot = array([utils.differentiate_vec(X_shift[ii,:,:],t) for ii in range(X_shift.shape[0])])
         t = array([t for _ in range(len(X))])
         #clip = int((X_shift.shape[1]-X_dot.shape[1])/2)
         #X_shift = X_shift[:,clip:-clip,:]
