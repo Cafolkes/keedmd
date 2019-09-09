@@ -151,8 +151,8 @@ class KoopmanEigenfunctions(BasisFunctions):
 
             num_classes = output.size()[1]
 
-            jacobian = t_zeros((num_classes, *inputs.size())).double()
-            grad_output = t_zeros((*output.size(),)).double()
+            jacobian = t_zeros((num_classes, inputs.size())).double()
+            grad_output = t_zeros((output.size(),)).double()
             if inputs.is_cuda:
                 grad_output = grad_output.cuda()
                 jacobian = jacobian.cuda()
