@@ -1,5 +1,5 @@
 from .handler import Handler
-from core.controllers import AggregatedMpcController
+from ..controllers import AggregatedMpcController
 from numpy import array, random
 
 class SimulationHandler(Handler):

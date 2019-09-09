@@ -19,8 +19,8 @@ class Handler():
         self.controller_list = []
         self.weights = w
         self.pert_noise = pert_noise
+        self.initial_controller = initial_controller
 
-        self.controller_list.append(initial_controller)
 
     def run(self):
         pass
