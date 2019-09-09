@@ -2,7 +2,7 @@ from matplotlib.pyplot import figure, grid, legend, plot, show, subplot, suptitl
 from numpy import array, linalg, transpose, math, diag, dot, ones, zeros, reshape, unique, power, prod, exp, log, divide, linspace, square, ndarray
 from numpy import concatenate as npconcatenate
 from itertools import combinations_with_replacement, permutations
-from core.learning import differentiate
+from core.learning_keedmd.utils import differentiate_vec
 from core.learning_keedmd.basis_functions import BasisFunctions
 from core.dynamics.linear_system_dynamics import LinearSystemDynamics
 from core.controllers.constant_controller import ConstantController
@@ -12,7 +12,6 @@ from torch.utils.data.dataset import random_split
 from torch.utils.data.dataloader import DataLoader
 from torch.autograd.gradcheck import zero_gradients
 from torchviz import make_dot
-from core.learning import differentiate_vec
 
 class KoopmanEigenfunctions(BasisFunctions):
     """

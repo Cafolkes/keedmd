@@ -1,4 +1,4 @@
-from core.learning import differentiate_vec
+from core.learning_keedmd.utils import differentiate_vec
 from sklearn import linear_model
 from scipy.linalg import expm
 from numpy import array, concatenate, zeros, dot, linalg, eye, ones, std, where, divide, multiply, tile

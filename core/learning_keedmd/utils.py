@@ -1,4 +1,5 @@
 from matplotlib.pyplot import figure, grid, legend, plot, show, subplot, suptitle, title, savefig, ylim, ylabel, xlabel
+from numpy import array, zeros_like
 
 def plot_trajectory(X, X_d, U, U_nom, t, display=True, save=False, filename=''):
     """ Plots the position, velocity and control input
@@ -63,3 +64,21 @@ def plot_trajectory_ep(X, X_d, U, U_nom, t, display=True, save=False, filename='
         savefig(filename)
     if display:
         show()
+
+def differentiate_vec(xs, ts, L=3):
+    assert(xs.shape[0] == ts.shape[0])
+    return array([differentiate(xs[:,ii], ts) for ii in range(xs.shape[1])]).transpose()
+
+def differentiate(xs, ts):
+    """
+    Compute the discrete derivative of a Python function
+    f on [a,b] using n intervals. Internal points apply
+    a centered difference, while end points apply a one-sided
+    difference. Vectorized version.
+    """
+    dx = zeros_like(xs)                     # dx/dt
+    dt = ts[1] - ts[0]
+    dx[1:-1] = (xs[2:] - xs[:-2])/(2*dt)    # Internal mesh points
+    dx[0]  = (xs[1]  - xs[0])/dt           # End point
+    dx[-1] = (xs[-1] - xs[-2])/dt           # End point
+    return dx

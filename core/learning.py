@@ -17,20 +17,3 @@ def differentiate_old(xs, ts, L=3):
 
     return array([diff(xs[k - half_L:k + half_L + 1], ts[k - half_L:k + half_L + 1]) for k in range(half_L, len(ts) - half_L)])
 
-def differentiate_vec(xs, ts, L=3):
-    assert(xs.shape[0] == ts.shape[0])
-    return array([differentiate(xs[:,ii], ts) for ii in range(xs.shape[1])]).transpose()
-
-def differentiate(xs, ts):
-    """
-    Compute the discrete derivative of a Python function
-    f on [a,b] using n intervals. Internal points apply
-    a centered difference, while end points apply a one-sided
-    difference. Vectorized version.
-    """
-    dx = zeros_like(xs)                     # dx/dt
-    dt = ts[1] - ts[0]
-    dx[1:-1] = (xs[2:] - xs[:-2])/(2*dt)    # Internal mesh points
-    dx[0]  = (xs[1]  - xs[0])/dt           # End point
-    dx[-1] = (xs[-1] - xs[-2])/dt           # End point
-    return dx

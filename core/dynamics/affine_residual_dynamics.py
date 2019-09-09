@@ -1,4 +1,5 @@
-from core.dynamics import AffineDynamics, ScalarDynamics
+from .affine_dynamics import AffineDynamics
+from .scalar_dynamics import ScalarDynamics
 
 class AffineResidualDynamics(AffineDynamics):
     def __init__(self, affine_dynamics, drift_res, act_res):
