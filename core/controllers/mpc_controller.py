@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 
 from .controller import Controller
 from ..dynamics.linear_system_dynamics import LinearSystemDynamics
-from ..learning_keedmd import BasisFunctions, Edmd
+from ..learning_keedmd import Edmd
 
 
 class MPCController(Controller):
