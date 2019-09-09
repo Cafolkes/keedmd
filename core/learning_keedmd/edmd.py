@@ -1,8 +1,8 @@
-from core.learning_keedmd import utils
+from .utils import differentiate_vec
 from sklearn import linear_model
 from scipy.linalg import expm
 from numpy import array, concatenate, zeros, dot, linalg, eye, ones, std, where, divide, multiply, tile
-from core.learning_keedmd import BasisFunctions
+from .basis_functions import BasisFunctions
 
 class Edmd():
     '''
@@ -89,7 +89,7 @@ class Edmd():
 
         Ntraj = X_filtered.shape[0]  # Number of trajectories in dataset
         Z = array([self.lift(X_filtered[ii,:,:].transpose(), X_d_filtered[ii,:,:].transpose()) for ii in range(Ntraj)])  # Lift x
-        Z_dot = array([utils.differentiate_vec(Z[ii,:,:],t_filtered[ii,:]) for ii in range(Ntraj)])  #Numerical differentiate lifted state
+        Z_dot = array([differentiate_vec(Z[ii,:,:],t_filtered[ii,:]) for ii in range(Ntraj)])  #Numerical differentiate lifted state
 
         # Vectorize data
         n_data = Z.shape[0]*Z.shape[1]

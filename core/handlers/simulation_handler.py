@@ -1,4 +1,4 @@
-from core.handlers import Handler
+from .handler import Handler
 from core.controllers import AggregatedMpcController
 from numpy import array, random
 

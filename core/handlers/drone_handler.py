@@ -1,4 +1,4 @@
-from core.handlers import Handler
+from .handler import Handler
 
 from numpy import zeros, random
 

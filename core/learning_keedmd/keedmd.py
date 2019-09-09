@@ -1,4 +1,4 @@
-from core.learning_keedmd.edmd import Edmd
+from .edmd import Edmd
 from sklearn import linear_model
 from numpy import array, concatenate, zeros, dot, linalg, eye, diag, std, divide, tile, where
 import numpy as np
