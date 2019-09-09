@@ -2,7 +2,7 @@ from matplotlib.pyplot import figure, grid, legend, plot, show, subplot, suptitl
 from numpy import array, linalg, transpose, math, diag, dot, ones, zeros, reshape, unique, power, prod, exp, log, divide, linspace, square, ndarray
 from numpy import concatenate as npconcatenate
 from itertools import combinations_with_replacement, permutations
-from core.learning_keedmd import utils
+from keedmd.core.learning_keedmd import utils
 from core.learning_keedmd.basis_functions import BasisFunctions
 from core.dynamics.linear_system_dynamics import LinearSystemDynamics
 from core.controllers.constant_controller import ConstantController
