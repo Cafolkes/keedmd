@@ -1,3 +1,4 @@
+name = 'dynamics'
 from .affine_dynamics import AffineDynamics
 from .affine_quad_clf import AffineQuadCLF
 from .dynamics import Dynamics

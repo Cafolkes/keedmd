@@ -1,3 +1,4 @@
+name = 'controllers'
 from .constant_controller import ConstantController
 from .controller import Controller
 from .energy_controller import EnergyController
