@@ -149,8 +149,8 @@ class KoopmanEigenfunctions(BasisFunctions):
 
             num_classes = output.size()[1]
 
-            jacobian = t_zeros((num_classes, inputs.size())).double()
-            grad_output = t_zeros((output.size(),)).double()
+            jacobian = t_zeros((int(num_classes), *inputs.size())).double()
+            grad_output = t_zeros((*output.size(),)).double()
             if inputs.is_cuda:
                 grad_output = grad_output.cuda()
                 jacobian = jacobian.cuda()
@@ -242,7 +242,7 @@ class KoopmanEigenfunctions(BasisFunctions):
         X_d = array([X_d[ii,:,:].reshape((X_d.shape[1],X_d.shape[2])) - X_f[ii,:] for ii in range(len(X))])
 
         # Calculate numerical derivatives
-        X_dot = array([differentiate_vec(X_shift[ii,:,:],t) for ii in range(X_shift.shape[0])]) 
+        X_dot = array([differentiate_vec(X_shift[ii,:,:],t) for ii in range(X_shift.shape[0])])
         t = array([t for _ in range(len(X))])
         #clip = int((X_shift.shape[1]-X_dot.shape[1])/2)
         #X_shift = X_shift[:,clip:-clip,:]
