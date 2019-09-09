@@ -10,10 +10,10 @@ import numpy as np
 #from numpy.random import uniform
 from scipy.io import loadmat, savemat
 from sys import argv
-from core.systems import CartPole
-from core.dynamics import LinearSystemDynamics
-from core.controllers import PDController, OpenLoopController, MPCController
-from core.learning_keedmd import KoopmanEigenfunctions, RBF, Edmd, Keedmd, plot_trajectory
+from ..systems import CartPole
+from ..dynamics import LinearSystemDynamics
+from ..controllers import PDController, OpenLoopController, MPCController
+from ..learning_keedmd import KoopmanEigenfunctions, RBF, Edmd, Keedmd, plot_trajectory
 import time
 import dill
 

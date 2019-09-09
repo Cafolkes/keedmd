@@ -5,7 +5,7 @@ from itertools import combinations_with_replacement, permutations
 from .utils import differentiate_vec
 from .basis_functions import BasisFunctions
 from ..dynamics.linear_system_dynamics import LinearSystemDynamics
-from core.controllers.constant_controller import ConstantController
+from ..controllers.constant_controller import ConstantController
 from torch import nn, cuda, optim, from_numpy, manual_seed, mean, transpose as t_transpose, mm, matmul, zeros as t_zeros, save, load
 from torch.utils.data.dataset import Dataset, TensorDataset
 from torch.utils.data.dataset import random_split
