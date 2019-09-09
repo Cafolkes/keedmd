@@ -11,8 +11,7 @@ import osqp
 import matplotlib.pyplot as plt
 
 from .controller import Controller
-from ..dynamics.linear_system_dynamics import LinearSystemDynamics
-from ..learning_keedmd import Edmd
+from ..learning_keedmd.edmd import Edmd
 
 
 class MPCController(Controller):
