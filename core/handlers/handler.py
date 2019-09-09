@@ -1,6 +1,6 @@
 from numpy import array, zeros, append, delete
 
-class Handler():
+class Handler(object):
     """
     Class to handle Episodic Learning. This class is a template only.
     """
