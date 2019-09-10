@@ -29,7 +29,7 @@ class Handler(object):
         pass
 
     def aggregate_data(self, X, Xd, U, Unom, t, edmd_object):
-        X, Xd, Z, Zdot, U, Unom, t = edmd_object.process(array([X]), array([Xd]), array([U]), array([Unom]), array([t]))
+        X, Xd, Z, Zdot, U, Unom, t = edmd_object.process(array([X.transpose()]), array([Xd.transpose()]), array([U.transpose()]), array([Unom.transpose()]), array([t.transpose()]))
         assert (X.shape[0] == self.X_agg.shape[0])
         assert (Xd.shape[0] == self.Xd_agg.shape[0])
         assert (U.shape[0] == self.U_agg.shape[0])
