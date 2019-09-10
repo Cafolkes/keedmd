@@ -404,15 +404,15 @@ noise_var_pred = 0.5
 output_pred = CartPoleTrajectory(system_true, q_d_pred,t_pred)
 
 # Set up MPC parameters
-Q = sparse.diags([200,10,1,5])
+Q = sparse.diags([200,100,50,30])
 QN = Q
 
 
 upper_bounds_MPC_control = array([30.0, pi, 10, 10])  # State constraints, check they are higher than upper_bounds
 lower_bounds_MPC_control = -upper_bounds_MPC_control  # State constraints
 umax_control = 20  # check it is higher than the control to generate the trajectories
-MPC_horizon = 0.2 # [s]
-plotMPC = False
+MPC_horizon = 0.5 # [s]
+plotMPC = True
 
 # Linearized with PD
 linearlize_PD_controller = PDController(output_pred, K_p, K_d, noise_var=0)
@@ -529,3 +529,4 @@ for ii in range(n):
         title('Closed loop performance of different models with open loop control')
 legend(fontsize=10, loc='best')
 savefig(closed_filename)
+show()

@@ -9,6 +9,8 @@ import scipy.io as sio
 import scipy.sparse as sparse
 import osqp
 import matplotlib.pyplot as plt
+import matplotlib.cm as cm
+
 
 from .controller import Controller
 from ..learning_keedmd.edmd import Edmd
@@ -67,7 +69,7 @@ class MPCControllerDense(Controller):
         Ac, Bc = linear_dynamics.linear_system()
         [nx, nu] = Bc.shape
         self.dt = dt
-        Ad = sparse.csc_matrix(sparse.eye(nx)+Ac*self.dt)
+        Ad = sparse.csc_matrix(sp.linalg.expm(Ac*self.dt))
         Bd = sparse.csc_matrix(Bc*self.dt)
         self.plotMPC = plotMPC
         self.plotMPC_filename = plotMPC_filename
@@ -96,6 +98,17 @@ class MPCControllerDense(Controller):
         self.N = N
         x0 = np.zeros(nx)
         self.run_time = np.zeros([0,])
+
+        #* Plot Ad and Bd
+        """ plt.figure()
+        plt.subplot(1,2,1,xlabel="Ns", ylabel="Ns")
+        plt.imshow(Ad.toarray(),  interpolation='nearest', cmap=cm.Greys_r)
+        plt.title("Ad in $x_{k+1}=Adx_k+Bu_k$")
+        plt.subplot(1,2,2,xlabel="Nu", ylabel="Ns")
+        plt.imshow(Bd.toarray(),  interpolation='nearest', cmap=cm.Greys_r)
+        plt.title("Bdd in $x_{k+1}=Adx_k+Bdu_k$")
+        plt.show() """
+
                 
 
         Rbd = sparse.kron(sparse.eye(N), R)
@@ -122,13 +135,60 @@ class MPCControllerDense(Controller):
 
         B = sparse.coo_matrix((data_list, (row_list, col_list)), shape=(N*nx, N*nu))
 
-        a = Ad
-        Ak = Ad
+        a = Ad.copy()
+        Ak = Ad.copy()
         for i in range(N-1):
-            Ak = Ad.dot(Ad)
+            Ak = Ak.dot(Ad)
             a = sparse.vstack([a,Ak])    
+
+            #* Plot Ad and Bd
+            """             plt.figure()
+            plt.subplot(1,1,1)
+            plt.imshow(Ak.toarray(),  interpolation='nearest', cmap=cm.Greys_r)
+            plt.show() """
+
         
         self.a = a
+
+
+        check_ab = False
+        if check_ab:
+            x0  = np.linspace(-5,40,nx)
+            x00 = np.linspace(-5,40,nx)
+            # Store data Init
+            nsim = N
+            xst = np.zeros((nx,nsim))
+            ust = np.zeros((nu,nsim))
+
+            # Simulate in closed loop
+
+            for i in range(nsim):
+                # Fake pd controller
+                ctrl = np.array([i,]) #np.zeros(nu,) #np.random.rand(nu,)
+                x0 = Ad.dot(x0) + Bd.dot(ctrl)
+
+                # Store Data
+                xst[:,i] = x0
+                ust[:,i] = ctrl
+
+            x_dense = np.reshape(a @ x00 + B @ (ust.flatten('F')),(N,nx)).T
+
+            plt.figure()
+            for i in range(nx):
+                plt.plot(range(nsim),xst[i,:],'d',label="sim "+str(i))
+                plt.plot(range(nsim),x_dense[i,:],'d',label="ax+bu "+str(i))
+            plt.xlabel('Time(s)')
+            plt.grid()
+            plt.legend()
+            plt.show()
+
+
+            for i in range(nu):
+                plt.plot(range(nsim),ust[i,:],label=str(i))
+            plt.xlabel('Time(s)')
+            plt.grid()
+            plt.legend()
+            plt.show()  
 
 
         # Cast MPC problem to a QP: x = (x(0),x(1),...,x(N),u(0),...,u(N-1))
@@ -138,22 +198,11 @@ class MPCControllerDense(Controller):
             self.edmd_object = edmd_object
 
             # - quadratic objective
-            CQC  = sparse.csc_matrix(np.transpose(edmd_object.C).dot(Q.dot(edmd_object.C)))
-            CQNC = sparse.csc_matrix(np.transpose(edmd_object.C).dot(QN.dot(edmd_object.C)))
-            P = sparse.block_diag([sparse.kron(sparse.eye(N), CQC), CQNC,
-                                sparse.kron(sparse.eye(N), R)]).tocsc()
+            CQC  = sparse.csc_matrix(np.transpose(self.C).dot(Q.dot(self.C)))
 
             # - linear objective
             QCT = np.transpose(Q.dot(edmd_object.C))
             QNCT = np.transpose(QN.dot(edmd_object.C))
-            if (xr.ndim==1):
-                q = np.hstack([np.kron(np.ones(N), -QCT.dot(xr)), -QNCT.dot(xr), np.zeros(N*nu)])
-            elif (xr.ndim==2):
-                q = np.hstack([np.reshape(-QCT.dot(xr),((N+1)*nx,),order='F'), np.zeros(N*nu)])
-
-            # - input and state constraints
-            Aineq = sparse.block_diag([edmd_object.C for i in range(N+1)]+[np.eye(N*nu)])
-
 
         else:
             # - quadratic objective
@@ -164,11 +213,9 @@ class MPCControllerDense(Controller):
         self.B = B
 
 
-        xrQB  = B.T @ np.reshape(Q.dot(xr),(N*nx,),order='F')
-        x0_1 = x0.reshape(x0.shape[0],-1)
+        xrQB  = B.T @ np.reshape(Q.dot(xr),(N*nx,))
         x0aQb = B.T @ Qbd @ a @ x0
-        BTQbda =  B.T @ Qbd @ a
-        xr_N_flat = np.tile(xr,N)
+        #xr_N_flat = np.tile(xr,N)
 
 
         q = x0aQb - xrQB 
@@ -182,9 +229,48 @@ class MPCControllerDense(Controller):
         A = sparse.vstack([Aineq_x, Aineq_u]).tocsc()
 
 
+        #! Visualize Matrices
+        fig = plt.figure()
+
+        fig.suptitle("QP Matrices to solve MP in dense form. N={}, nx={}, nu={}".format(N,nx,nu),fontsize=20)
+        plt.subplot(2,4,1,xlabel="Ns*(N+1)", ylabel="Ns*(N+1)")
+        plt.imshow(a.toarray(),  interpolation='nearest', cmap=cm.Greys_r)
+        plt.title("a in $x=ax_0+bu$")
+        plt.subplot(2,4,2,xlabel="Ns*(N+1)", ylabel="Nu*N")
+        plt.imshow(B.toarray(),  interpolation='nearest', cmap=cm.Greys_r)
+        plt.title("b in $x=ax_0+bu$")
+        plt.subplot(2,4,3,xlabel="ns*(N+1) + ns*(N+1) + nu*N", ylabel="Ns*(N+1)+Nu*N")
+        plt.imshow(A.toarray(),  interpolation='nearest', cmap=cm.Greys_r)
+        plt.title("A total in $l\\leq Ax \\geq u$")
+        plt.subplot(2,4,4)
+        plt.imshow(P.toarray(),  interpolation='nearest', cmap=cm.Greys_r)
+        plt.title("P in $J=u^TPu+q^Tu$")
+        plt.subplot(2,4,5)
+        plt.imshow(Qbd.toarray(),  interpolation='nearest', cmap=cm.Greys_r)
+        plt.title("Qbd")
+
+
+        #! Visualize Vectors
+        plt.subplot(2,4,6)
+        plt.plot(l)
+        plt.title('l in  $l\\leq Ax \\geq u$')
+        plt.grid()
+        plt.subplot(2,4,7)
+        plt.plot(u)
+        plt.title("l in  $l\\leq Ax \\geq u$")
+        plt.grid()
+        plt.subplot(2,4,8)
+        plt.plot(q)
+        plt.title("q in $J=u^TPu+q^Tu$")
+        plt.grid()
+        plt.tight_layout()
+        plt.savefig("Sparse MPC.png",bbox_inches='tight')
+        #plt.show()
+
+
+
         # Create an OSQP object
         self.prob = osqp.OSQP()
-
         # Setup workspace
         self.prob.setup(P=P, q=q, A=A, l=l, u=u, warm_start=True, verbose=True)
 
@@ -208,33 +294,20 @@ class MPCControllerDense(Controller):
         - x, numpy 1d array [ns,]
         - time, t, float
         '''
-
         N = self.N
         nu = self.nu
         nx = self.nx
 
         tindex = int(t/self.dt)
-        #print("iteration {}".format(tindex))
-        
-        ## Update inequalities
-        if self.q_d.ndim==2: 
             
-            # Update the local reference trajectory
-            if (tindex+N) < self.Nqd: # if we haven't reach the end of q_d yet
-                xr = self.q_d[:,tindex:tindex+N]
-            else: # we fill xr with copies of the last q_d
-                xr = np.hstack( [self.q_d[:,tindex:],np.transpose(np.tile(self.q_d[:,-1],(N-self.Nqd+tindex,1)))])
+        # Update the local reference trajectory
+        if (tindex+N) < self.Nqd: # if we haven't reach the end of q_d yet
+            xr = self.q_d[:,tindex:tindex+N]
+        else: # we fill xr with copies of the last q_d
+            xr = np.hstack( [self.q_d[:,tindex:],np.transpose(np.tile(self.q_d[:,-1],(N-self.Nqd+tindex,1)))])
 
-            # Construct the new _osqp_q objects
-            if (self.lifting):
-                QCT = np.transpose(self.Q.dot(self.C))                        
-
-        if self.q_d.ndim==1:
-            # Update the local reference trajectory
-            xr = np.transpose(np.tile(self.q_d,N))
-
-        # Lift the current state if necessary
-        if (self.lifting): 
+        # Construct the new _osqp_q objects
+        if (self.lifting):
             x = np.transpose(self.edmd_object.lift(x.reshape((x.shape[0],1)),xr[:,0].reshape((xr.shape[0],1))))[:,0]
         
         """
@@ -251,9 +324,9 @@ plt.show()
 
         """
         # Update initial state
-        x0aQb = self.BTQbda @ x
-        xrQB  = self.B.T @ np.reshape(self.Q.dot(xr),(N*nx,),order='F')
-        q = x0aQb  - xrQB
+        BQax0 = self.BTQbda @ x
+        BQxr  = self.B.T @ np.reshape(self.Q.dot(xr),(N*nx,),order='F')
+        q = BQax0  - BQxr
         l = np.hstack([np.kron(np.ones(N), self.xmin)-self.a @ x, np.kron(np.ones(N), self.umin)])
         u = np.hstack([np.kron(np.ones(N), self.xmax)-self.a @ x, np.kron(np.ones(N), self.umax)])
         self.prob.update(q=q,l=l,u=u)
@@ -266,7 +339,7 @@ plt.show()
             raise ValueError('OSQP did not solve the problem!')
 
         if self.plotMPC:
-            self.plot_MPC(t, xr, tindex)
+            self.plot_MPC(t, x, xr, tindex)
 
         self.run_time = np.append(self.run_time,self._osqp_result.info.run_time)
 
@@ -278,7 +351,7 @@ plt.show()
     def get_control_prediction(self):
         return np.transpose(np.reshape( self._osqp_result.x[-self.N*self.nu:], (self.N,self.nu)))
 
-    def plot_MPC(self, current_time, xr, tindex):
+    def plot_MPC(self, current_time, x0, xr, tindex):
         """plot mpc
         
        
@@ -291,16 +364,15 @@ plt.show()
         nx = self.nx
         N = self.N
 
-        osqp_sim_state = np.transpose(np.reshape( self._osqp_result.x[:(N+1)*nx], (N+1,nx)))
-        osqp_sim_forces = np.transpose(np.reshape( self._osqp_result.x[-N*nu:], (N,nu)))
+        u_flat = self._osqp_result.x
+        osqp_sim_state =  np.reshape(self.a @ x0 + self.B @ u_flat,(N,nx)).T
+        osqp_sim_forces = np.reshape(u_flat,(N,nu)).T
 
         if self.lifting:
             osqp_sim_state = np.dot(self.C,osqp_sim_state)
 
-        # Plot
         pos = current_time/(self.Nqd*self.dt) # position along the trajectory
-        time = np.linspace(current_time,current_time+N*self.dt,num=N+1)
-        timeu = np.linspace(current_time,current_time+N*self.dt,num=N)
+        time = np.linspace(current_time,current_time+N*self.dt,num=N)
 
         
         for ii in range(self.ns):
@@ -311,7 +383,7 @@ plt.show()
             else:
                 self.axs[ii].plot(time,osqp_sim_state[ii,:],color=[0,1-pos,pos])
         for ii in range(self.nu):
-            self.axs[ii+self.ns].plot(timeu,osqp_sim_forces[ii,:],color=[0,1-pos,pos])
+            self.axs[ii+self.ns].plot(time,osqp_sim_forces[ii,:],color=[0,1-pos,pos])
             
     def finish_plot(self, x, u, u_pd, time_vector, filename):
         """
