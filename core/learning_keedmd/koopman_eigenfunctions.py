@@ -94,7 +94,7 @@ class KoopmanEigenfunctions(BasisFunctions):
         X, X_dot, X_d, t = self.process(X=X, t=t, X_d=X_d)
         y_target = X_dot - dot(self.A_cl, X.transpose()).transpose()# - dot(self.BK, X_d.transpose()).transpose()
 
-        device = 'cuda' if cuda.is_available() else 'cpu'
+        device = 'cpu' if cuda.is_available() else 'cpu'
 
         # Prepare data for pytorch:
         manual_seed(42)  # Fix seed for reproducibility

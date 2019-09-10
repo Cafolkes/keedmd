@@ -79,24 +79,13 @@ class MPCController(Controller):
         # Prediction horizon
         self.N = N
         x0 = np.zeros(nx)
+
         
         # Cast MPC problem to a QP: x = (x(0),x(1),...,x(N),u(0),...,u(N-1))
         if (self.lifting):
             # Load eDMD objects
             self.C = edmd_object.C
             self.edmd_object = edmd_object
-
-            """ import seaborn as sns
-            plt.figure()
-            sns.heatmap(self.C, linewidth=0.00)
-            plt.show()
-
-            plt.figure()
-            for i in range(self.C.shape[0]):
-                plt.plot(self.C[i,:])
-            plt.show()
-                        """
-
 
             # - quadratic objective
             CQC  = sparse.csc_matrix(np.transpose(edmd_object.C).dot(Q.dot(edmd_object.C)))
@@ -115,12 +104,6 @@ class MPCController(Controller):
             # - input and state constraints
             Aineq = sparse.block_diag([edmd_object.C for i in range(N+1)]+[np.eye(N*nu)])
 
-
-
-            """ import seaborn as sns
-            plt.figure()
-            sns.heatmap(Aineq.toarray(), linewidth=0.00)
-            plt.show() """
 
         else:
             # - quadratic objective
