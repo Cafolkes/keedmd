@@ -408,11 +408,11 @@ Q = sparse.diags([200,10,1,5])
 QN = Q
 
 
-upper_bounds_MPC_control = array([10.0, pi, 10, 10])  # State constraints, check they are higher than upper_bounds
+upper_bounds_MPC_control = array([30.0, pi, 10, 10])  # State constraints, check they are higher than upper_bounds
 lower_bounds_MPC_control = -upper_bounds_MPC_control  # State constraints
-umax_control = 15  # check it is higher than the control to generate the trajectories
-MPC_horizon = 1.0 # [s]
-plotMPC = True
+umax_control = 20  # check it is higher than the control to generate the trajectories
+MPC_horizon = 0.2 # [s]
+plotMPC = False
 
 # Linearized with PD
 linearlize_PD_controller = PDController(output_pred, K_p, K_d, noise_var=0)
