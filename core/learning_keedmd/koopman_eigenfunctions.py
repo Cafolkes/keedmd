@@ -1,5 +1,5 @@
 from matplotlib.pyplot import figure, grid, legend, plot, show, subplot, suptitle, title
-from numpy import array, linalg, transpose, math, diag, dot, ones, zeros, reshape, unique, power, prod, exp, log, divide, linspace, square, ndarray
+from numpy import array, linalg, transpose, diag, dot, ones, zeros, unique, power, prod, exp, log, divide, real, iscomplex
 from numpy import concatenate as npconcatenate
 from itertools import combinations_with_replacement, permutations
 from .utils import differentiate_vec
@@ -38,6 +38,11 @@ class KoopmanEigenfunctions(BasisFunctions):
 
         lambd, v = linalg.eig(self.A_cl)
         _, w = linalg.eig(transpose(self.A_cl))
+
+        if iscomplex(lambd) or iscomplex(w):
+            Warning("Complex eigenvalues and/or eigenvalues. Complex part supressed.")
+            lambd = real(lambd)
+            w = real(w)
 
         p = array([ii for ii in range(self.max_power+1)])
         combinations = array(list(combinations_with_replacement(p, self.n)))
