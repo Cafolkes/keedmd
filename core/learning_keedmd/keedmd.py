@@ -1,6 +1,6 @@
 from .edmd import Edmd
 from sklearn import linear_model
-from numpy import array, concatenate, zeros, dot, linalg, eye, diag, std, divide, tile, where
+from numpy import array, concatenate, zeros, dot, linalg, eye, diag, std, divide, tile, where, atleast_2d
 import numpy as np
 
 class Keedmd(Edmd):
@@ -22,7 +22,7 @@ class Keedmd(Edmd):
             else:
                 input_vel = concatenate((Z, U), axis=0).transpose()
             output_vel = Z_dot[int(self.n/2):self.n,:].transpose()
-            sol_vel = dot(linalg.pinv(input_vel),output_vel).transpose()
+            sol_vel = atleast_2d(dot(linalg.pinv(input_vel),output_vel).transpose())
             A_vel = sol_vel[:,:self.n_lift]
             B_vel = sol_vel[:,self.n_lift:]
 
@@ -38,12 +38,12 @@ class Keedmd(Edmd):
             else:
                 input_pos = U.transpose()
             output_pos = (Z_dot[:int(self.n/2),:]-dot(self.A[:int(self.n/2),:],Z)).transpose()
-            B_pos = dot(linalg.pinv(input_pos),output_pos).transpose()
+            B_pos = atleast_2d(dot(linalg.pinv(input_pos),output_pos).transpose())
 
             # Solve least squares problem to find B for eigenfunction terms:
             input_eig = (U - U_nom).transpose()
             output_eig = (Z_dot[self.n:, :] - dot(self.A[self.n:, :], Z)).transpose()
-            B_eig = dot(linalg.pinv(input_eig), output_eig).transpose()
+            B_eig = atleast_2d(dot(linalg.pinv(input_eig), output_eig).transpose())
 
             # Construct B matrix:
             self.B = concatenate((B_pos, B_vel, B_eig), axis=0)
@@ -70,7 +70,7 @@ class Keedmd(Edmd):
 
             reg_model.fit(input_vel, output_vel)
 
-            sol_vel = reg_model.coef_
+            sol_vel = atleast_2d(reg_model.coef_)
             A_vel = sol_vel[:, :self.n_lift]
             B_vel = sol_vel[:, self.n_lift:]
 
@@ -87,14 +87,14 @@ class Keedmd(Edmd):
                 input_pos = U.transpose()
             output_pos = (Z_dot[:int(self.n / 2), :] - dot(self.A[:int(self.n / 2), :], Z)).transpose()
             reg_model.fit(input_pos, output_pos)
-            B_pos = reg_model.coef_
+            B_pos = atleast_2d(reg_model.coef_)
 
 
             # Solve least squares problem to find B for eigenfunction terms:
             input_eig = (U - U_nom).transpose()
             output_eig = (Z_dot[self.n:, :] - dot(self.A[self.n:, :], Z)).transpose()
             reg_model.fit(input_eig, output_eig)
-            B_eig = reg_model.coef_
+            B_eig = atleast_2d(reg_model.coef_)
 
             # Construct B matrix:
             self.B = concatenate((B_pos, B_vel, B_eig), axis=0)
