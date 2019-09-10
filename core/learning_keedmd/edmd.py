@@ -124,10 +124,10 @@ class Edmd():
 
     def lift(self, X, X_d):
         Z = self.basis.lift(X, X_d)
-        #if not X.shape[1] == Z.shape[1]:
-        #    Z = Z.transpose()
-        #one_vec = ones((1,Z.shape[1]))
-        return Z #concatenate((X,one_vec, Z),axis=0).transpose()
+        if not X.shape[1] == Z.shape[1]:
+            Z = Z.transpose()
+        one_vec = ones((1,Z.shape[1]))
+        return concatenate((X,one_vec, Z),axis=0).transpose()
 
     def predict(self,X, U):
         return dot(self.C, dot(self.A,X) + dot(self.B, U))
