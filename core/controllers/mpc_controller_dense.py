@@ -247,7 +247,7 @@ class MPCControllerDense(Controller):
             plt.grid()
             plt.tight_layout()
             plt.savefig("Sparse MPC.png",bbox_inches='tight')
-            #plt.show()
+            plt.show()
 
         # Create an OSQP object
         self.prob = osqp.OSQP()
@@ -286,7 +286,8 @@ class MPCControllerDense(Controller):
 
         # Construct the new _osqp_q objects
         if (self.lifting):
-            x = np.transpose(self.edmd_object.lift(x.reshape((x.shape[0],1)),xr[:,0].reshape((xr.shape[0],1))))[:,0]
+            #x = np.transpose(self.edmd_object.lift(x.reshape((x.shape[0],1)),xr[:,0].reshape((xr.shape[0],1))))[:,0]
+            x = self.edmd_object.lift(x,xr[:,0])
             BQxr  = self.B.T @ np.reshape(self.CtQ.dot(xr),(N*nx,),order='F')
             l = np.hstack([np.kron(np.ones(N), self.xmin)- self.Cbd @ self.a @ x, np.kron(np.ones(N), self.umin)])
             u = np.hstack([np.kron(np.ones(N), self.xmax)- self.Cbd @ self.a @ x, np.kron(np.ones(N), self.umax)])
