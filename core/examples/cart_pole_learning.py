@@ -107,7 +107,7 @@ closed_filename = 'closed_loop.png'
 #! ===============================================    COLLECT DATA     ===============================================
 #* Load trajectories
 print("Collect data.")
-print(" - Generate optimal desired path..", end =" ")
+print(" - Generate optimal desired path..", end=" ")
 t0 = time.process_time()
 
 R = sparse.eye(m)
@@ -395,15 +395,15 @@ if test_open_loop:
 #%%  
 #!==============================================  EVALUATE PERFORMANCE -- CLOSED LOOP =============================================
 t0 = time.process_time()
-print('Evaluate Performance with closed loop trajectory tracking...', end =" ")
+print('Evaluate Performance with closed loop trajectory tracking...', end=" ")
 # Set up trajectory and controller for prediction task:
 q_d_pred = q_d[4,:,:].transpose()
-q_d_pred = q_d_pred[:,:int(q_d_pred.shape[1]/2*1.4)]
+q_d_pred = q_d_pred[:,:int(q_d_pred.shape[1]/2*1.1)]
 #q_d_pred = np.zeros(q_d_pred.shape)
 x_0 = q_d_pred[:,0]
 #x_0[0] = 0
 t_pred = t_d.squeeze()
-t_pred = t_pred[:int(t_pred.shape[0]/2*1.4)]
+t_pred = t_pred[:int(t_pred.shape[0]/2*1.1)]
 noise_var_pred = 0.5
 output_pred = CartPoleTrajectory(system_true, q_d_pred,t_pred)
 
@@ -440,7 +440,8 @@ edmd_controller = MPCControllerDense(linear_dynamics=edmd_sys,
                                 xr=q_d_pred,
                                 lifting=True,
                                 edmd_object=edmd_model,
-                                plotMPC=plotMPC)
+                                plotMPC=plotMPC,
+                                name='KEEDMD')
 
 xs_edmd_MPC, us_emdm_MPC = system_true.simulate(x_0, edmd_controller, t_pred)
 xs_edmd_MPC = xs_edmd_MPC.transpose()
@@ -450,9 +451,7 @@ if plotMPC:
     edmd_controller.finish_plot(xs_edmd_MPC, us_emdm_MPC, us_lin_PD, t_pred,"eDMD_thoughts.png") 
 
 # Linearized with MPC
-eye_lifting = Edmd(basis=IdentityBF(n))
-eye_lifting.C = np.eye(n)
-linearlize_mpc_controller = MPCControllerDense(linear_dynamics=nominal_sys, 
+""" linearlize_mpc_controller = MPCControllerDense(linear_dynamics=nominal_sys, 
                                                 N=int(MPC_horizon/dt),
                                                 dt=dt, 
                                                 umin=array([-umax_control]), 
@@ -462,16 +461,15 @@ linearlize_mpc_controller = MPCControllerDense(linear_dynamics=nominal_sys,
                                                 Q=Q, 
                                                 R=R, 
                                                 QN=QN, 
-                                                xr=q_d_pred,      
-                                                lifting=True,
-                                                edmd_object=eye_lifting,          
-                                                plotMPC=plotMPC)
+                                                xr=q_d_pred,             
+                                                plotMPC=plotMPC,
+                                                name='Lin')
 
 xs_lin_MPC, us_lin_MPC = system_true.simulate(x_0, linearlize_mpc_controller, t_pred)
 xs_lin_MPC = xs_lin_MPC.transpose()
 us_lin_MPC = us_lin_MPC.transpose()
 if plotMPC:
-    linearlize_mpc_controller.finish_plot(xs_lin_MPC,us_lin_MPC, us_lin_PD, t_pred,"LinMPC_thoughts.png") 
+    linearlize_mpc_controller.finish_plot(xs_lin_MPC,us_lin_MPC, us_lin_PD, t_pred,"LinMPC_thoughts.png")  """
 
 
 """ figure()
@@ -488,7 +486,7 @@ xs_lin_PD, us_lin_PD = system_true.simulate(x_0, linearlize_PD_controller, t_pre
 xs_lin_PD = xs_lin_PD.transpose()
 
 
-""" keedmd_sys = LinearSystemDynamics(A=keedmd_model.A, B=keedmd_model.B)
+keedmd_sys = LinearSystemDynamics(A=keedmd_model.A, B=keedmd_model.B)
 keedmd_controller = MPCControllerDense(linear_dynamics=keedmd_sys, 
                                 N=int(MPC_horizon/dt),
                                 dt=dt, 
@@ -502,14 +500,16 @@ keedmd_controller = MPCControllerDense(linear_dynamics=keedmd_sys,
                                 xr=q_d_pred,
                                 lifting=True,
                                 edmd_object=keedmd_model,
-                                plotMPC=plotMPC)
+                                plotMPC=plotMPC,
+                                name='KEEDMD')
+
 
 xs_keedmd_MPC, us_keedmd_MPC = system_true.simulate(x_0, keedmd_controller, t_pred)
 xs_keedmd_MPC = xs_keedmd_MPC.transpose()
 us_keedmd_MPC = us_keedmd_MPC.transpose()
 
 if plotMPC:
-    keedmd_controller.finish_plot(xs_keedmd_MPC,us_keedmd_MPC, us_lin_PD, t_pred,"KeeDMD_thoughts.png") """
+    keedmd_controller.finish_plot(xs_keedmd_MPC,us_keedmd_MPC, us_lin_PD, t_pred,"KeeDMD_thoughts.png")
 
 """ figure()
 hist(keedmd_controller.run_time*1000)
@@ -534,14 +534,14 @@ for ii in range(n):
     subplot(n, 1, ii+1)
     plot(t_pred, q_d_pred[ii,:], linestyle="--",linewidth=2, label='reference')
     plot(t_pred, xs_edmd_MPC[ii,:], linewidth=2, label='eDMD with MPC')
-    #plot(t_pred, xs_keedmd_MPC[ii,:], linewidth=2, label='KeeDMD with MPC')
+    plot(t_pred, xs_keedmd_MPC[ii,:], linewidth=2, label='KeeDMD with MPC')
     #plot(t_pred, xs_lin_MPC[ii,:], linewidth=2, label='Linearized dynamics with MPC')
     plot(t_pred, xs_lin_PD[ii,:], linewidth=2, label='Linearized dynamics with PD Controller')
     xlabel('Time (s)')
     ylabel(ylabels[ii])
     grid()
     if ii == 0:
-        title('Closed loop performance of different models with open loop control')
+        title('Closed loop performance of different models')
 legend(fontsize=10, loc='best')
 savefig(closed_filename)
 show()

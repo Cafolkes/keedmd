@@ -34,7 +34,8 @@ class MPCControllerDense(Controller):
 
     Use lifting=True to solve MPC in the lifted space
     """
-    def __init__(self, linear_dynamics, N, dt, umin, umax, xmin, xmax, Q, R, QN, xr, plotMPC=False, plotMPC_filename="",lifting=False, edmd_object=Edmd()):
+    def __init__(self, linear_dynamics, N, dt, umin, umax, xmin, xmax, 
+                Q, R, QN, xr, plotMPC=False, plotMPC_filename="",lifting=False, edmd_object=Edmd(),name="noname"):
         """Create an MPC Controller object.
 
         Sizes:
@@ -134,7 +135,7 @@ class MPCControllerDense(Controller):
         self.a = a
         self.B = B
 
-        check_ab = False
+        check_ab = True
         if check_ab:
             x0  = np.linspace(-5,40,nx)
             x00 = np.linspace(-5,40,nx)
@@ -157,21 +158,22 @@ class MPCControllerDense(Controller):
             x_dense = np.reshape(a @ x00 + B @ (ust.flatten('F')),(N,nx)).T
 
             plt.figure()
+            plt.subplot(2,1,1)
             for i in range(nx):
                 plt.plot(range(nsim),xst[i,:],'d',label="sim "+str(i))
                 plt.plot(range(nsim),x_dense[i,:],'d',label="ax+bu "+str(i))
             plt.xlabel('Time(s)')
             plt.grid()
             plt.legend()
-            plt.show()
 
-
+            plt.subplot(2,1,2)
             for i in range(nu):
                 plt.plot(range(nsim),ust[i,:],label=str(i))
             plt.xlabel('Time(s)')
             plt.grid()
             plt.legend()
-            plt.show()  
+            plt.savefig("AB_check_for_"+name+".png",bbox_inches='tight')
+            plt.close()
 
 
         # Cast MPC problem to a QP: x = (x(0),x(1),...,x(N),u(0),...,u(N-1))
@@ -246,8 +248,9 @@ class MPCControllerDense(Controller):
             plt.title("q in $J=u^TPu+q^Tu$")
             plt.grid()
             plt.tight_layout()
-            plt.savefig("Sparse MPC.png",bbox_inches='tight')
-            plt.show()
+            plt.savefig("MPC_matrices_for_"+name+".png",bbox_inches='tight')
+            plt.close()
+            #plt.show()
 
         # Create an OSQP object
         self.prob = osqp.OSQP()
@@ -380,6 +383,7 @@ class MPCControllerDense(Controller):
             self.axs[ii+self.ns].plot(time_vector[:-1],u_pd[ii,:],label='$u_{PD}$',color=[0,1,1])
             self.axs[ii+self.ns].legend(fontsize=10, loc='best') """
         self.fig.savefig(filename)
+        plt.close()
         #plt.close(self.fig)
 
 
