@@ -398,13 +398,15 @@ t0 = time.process_time()
 print('Evaluate Performance with closed loop trajectory tracking...', end=" ")
 # Set up trajectory and controller for prediction task:
 q_d_pred = q_d[4,:,:].transpose()
-q_d_pred = q_d_pred[:,:int(q_d_pred.shape[1]/2*1.1)]
+q_d_pred = q_d_pred - np.tile(q_d_pred[:,-1:],(1,q_d_pred.shape[1]))  #ensure global end point is at origin
+q_d_pred = q_d_pred[:,:int(q_d_pred.shape[1]/2*1)]
+
 #q_d_pred = np.zeros(q_d_pred.shape)
 x_0 = q_d_pred[:,0]
 #x_0[0] = 0
 t_pred = t_d.squeeze()
-t_pred = t_pred[:int(t_pred.shape[0]/2*1.1)]
-noise_var_pred = 0.5
+t_pred = t_pred[:int(t_pred.shape[0]/2*1)]
+noise_var_pred = 0.0
 output_pred = CartPoleTrajectory(system_true, q_d_pred,t_pred)
 
 # Set up MPC parameters
@@ -412,10 +414,10 @@ Q = sparse.diags([5000,300,500,600])
 QN = Q
 
 
-upper_bounds_MPC_control = array([30.0, pi, 10, 10])  # State constraints, check they are higher than upper_bounds
+upper_bounds_MPC_control = array([1000, 1000, 1000, 1000])  # State constraints, check they are higher than upper_bounds
 lower_bounds_MPC_control = -upper_bounds_MPC_control  # State constraints
-umax_control = 20  # check it is higher than the control to generate the trajectories
-MPC_horizon = 1.0 # [s]
+umax_control = 1000  # check it is higher than the control to generate the trajectories
+MPC_horizon = 0.25 # [s]
 plotMPC = True
 
 # Linearized with PD

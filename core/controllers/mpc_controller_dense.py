@@ -378,13 +378,8 @@ class MPCControllerDense(Controller):
             self.axs[ii].plot(time_vector, self.q_d[ii,:], linewidth=2, label='$x_d$', color=[1,0,0])
             self.axs[ii].plot(time_vector, x[ii,:], linewidth=2, label='$x$', color=[0,0,0])
             self.axs[ii].legend(fontsize=10, loc='best')
-        """for ii in range(self.nu):
-            self.axs[ii+self.ns].plot(time_vector[:-1],u[ii,:],label='$u$',color=[0,0,0])
-            self.axs[ii+self.ns].plot(time_vector[:-1],u_pd[ii,:],label='$u_{PD}$',color=[0,1,1])
-            self.axs[ii+self.ns].legend(fontsize=10, loc='best') """
         self.fig.savefig(filename)
         plt.close()
-        #plt.close(self.fig)
 
 
 
