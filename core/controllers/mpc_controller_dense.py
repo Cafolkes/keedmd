@@ -2,6 +2,7 @@
 
 from numpy import zeros
 from numpy.linalg import eigvals
+import time
 
 import numpy as np
 import scipy as sp
@@ -279,6 +280,7 @@ class MPCControllerDense(Controller):
         - x, numpy 1d array [ns,]
         - time, t, float
         '''
+        time_eval0 = time.time()
         N = self.N
         nu = self.nu
         nx = self.nx
@@ -310,8 +312,13 @@ class MPCControllerDense(Controller):
 
         self.prob.update(q=q,l=l,u=u)
 
+        print('Time Setup {}ms'.format(1000*(time.time()-time_eval0)))
+        time_eval0 = time.time() 
         ## Solve MPC Instance
         self._osqp_result = self.prob.solve()
+
+        print('Time Setup {}ms'.format(1000*(time.time()-time_eval0)))
+        time_eval0 = time.time() 
 
         # Check solver status
         if self._osqp_result.info.status != 'solved':
