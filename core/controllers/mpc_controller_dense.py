@@ -148,7 +148,7 @@ class MPCControllerDense(Controller):
 
             for i in range(nsim):
                 # Fake pd controller
-                ctrl = np.array([i,]) #np.zeros(nu,) #np.random.rand(nu,)
+                ctrl = np.zeros(nu,) #np.random.rand(nu,)
                 x0 = Ad.dot(x0) + Bd.dot(ctrl)
 
                 # Store Data
@@ -260,7 +260,11 @@ class MPCControllerDense(Controller):
         if self.plotMPC:
             # Figure to plot MPC thoughts
             self.fig, self.axs = plt.subplots(self.ns+self.nu)
-            ylabels = ['$x$', '$\\theta$', '$\\dot{x}$', '$\\dot{\\theta}$']
+            if nx==4:
+                ylabels = ['$x$', '$\\theta$', '$\\dot{x}$', '$\\dot{\\theta}$']
+            else:
+                ylabels = [str(i) for i in range(nx)]
+
             for ii in range(self.ns):
                 self.axs[ii].set(xlabel='Time(s)',ylabel=ylabels[ii])
                 self.axs[ii].grid()
