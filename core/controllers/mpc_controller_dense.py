@@ -80,6 +80,7 @@ class MPCControllerDense(Controller):
         self.ns = xr.shape[0]
 
         self.Q = Q
+        self.R = R
         self.lifting = lifting
 
         self.nu = nu
@@ -102,7 +103,7 @@ class MPCControllerDense(Controller):
 
 
         # Check Xmin and Xmax
-        if  xmin.shape[0]==ns: # it is a single vector we tile it
+        if  xmin.shape[0]==ns and xmin.ndim==1: # it is a single vector we tile it
             x_min_flat = np.kron(np.ones(N), xmin)
             x_max_flat = np.kron(np.ones(N), xmax)
         elif xmin.shape[0]==ns*N: # if it is a long vector it is ok
@@ -118,7 +119,7 @@ class MPCControllerDense(Controller):
 
 
         # Check Umin and Umax
-        if  umin.shape[0]==nu:
+        if  umin.shape[0]==nu and umin.ndim==1:
             u_min_flat = np.kron(np.ones(N), umin)
             u_max_flat = np.kron(np.ones(N), umax)
         elif umin.shape[0]==nu*N:
@@ -311,7 +312,7 @@ class MPCControllerDense(Controller):
         nu = self.nu
         nx = self.nx
 
-        tindex = int(t/self.dt)
+        tindex = int(t/self.dt)+1
             
         # Update the local reference trajectory
         if (tindex+N) < self.Nqd: # if we haven't reach the end of q_d yet
@@ -324,13 +325,13 @@ class MPCControllerDense(Controller):
             x = np.transpose(self.edmd_object.lift(x.reshape((x.shape[0],1)),xr[:,0].reshape((xr.shape[0],1))))[:,0]
             #x = self.edmd_object.lift(x,xr[:,0])
             BQxr  = self.B.T @ np.reshape(self.CtQ.dot(xr),(N*nx,),order='F')
-            l = np.hstack([self.x_min_flat - self.Cbd @ self.a @ x0, self.u_min_flat])
-            u = np.hstack([self.x_max_flat - self.Cbd @ self.a @ x0, self.u_max_flat])
+            l = np.hstack([self.x_min_flat - self.Cbd @ self.a @ x, self.u_min_flat])
+            u = np.hstack([self.x_max_flat - self.Cbd @ self.a @ x, self.u_max_flat])
 
         else:
             BQxr  = self.B.T @ np.reshape(self.Q.dot(xr),(N*nx,),order='F')
-            l = np.hstack([self.x_min_flat - self.a @ x0, self.u_min_flat])
-            u = np.hstack([self.x_max_flat - self.a @ x0, self.u_max_flat])
+            l = np.hstack([self.x_min_flat - self.a @ x, self.u_min_flat])
+            u = np.hstack([self.x_max_flat - self.a @ x, self.u_max_flat])
 
         # Update initial state
         BQax0 = self.BTQbda @ x
@@ -396,6 +397,54 @@ class MPCControllerDense(Controller):
                 self.axs[ii].plot(time,osqp_sim_state[ii,:],color=[0,1-pos,pos])
         for ii in range(self.nu):
             self.axs[ii+self.ns].plot(time,osqp_sim_forces[ii,:],color=[0,1-pos,pos])
+
+    def update(self, xmin=None, xmax=None, umax=None, umin= None, Q=None):
+        
+        N, ns, nu = [self.N, self.ns, self.nu]
+        if xmin is not None and xmax is not None:
+            # Check Xmin and Xmax
+            if  xmin.shape[0]==ns and xmin.ndim==1: # it is a single vector we tile it
+                x_min_flat = np.kron(np.ones(N), xmin)
+                x_max_flat = np.kron(np.ones(N), xmax)
+            elif xmin.shape[0]==ns*N and xmin.ndim==1: # if it is a long vector it is ok
+                x_min_flat = xmin
+                x_max_flat = xmax
+            elif xmin.shape[0] == ns and xmin.shape[1] == N: # if it is a block we flatten it
+                x_min_flat = np.reshape(xmin,(N*ns,),order='F')
+                x_max_flat = np.reshape(xmax,(N*ns,),order='F')
+            else:
+                raise ValueError('xmin has wrong dimensions. xmin shape={}'.format(xmin.shape))
+            self.x_min_flat = x_min_flat 
+            self.x_max_flat = x_max_flat
+
+        if umin is not None and umax is not None: #TODO check it works 
+        # Check Umin and Umax
+            if  umin.shape[0]==nu and umin.ndim==1:
+                u_min_flat = np.kron(np.ones(N), umin)
+                u_max_flat = np.kron(np.ones(N), umax)
+            elif umin.shape[0]==nu*N and umin.ndim==1:
+                u_min_flat = umin
+                u_max_flat = umax
+            elif umin.shape[0] == nu and umin.shape[1] == N: 
+                u_min_flat = np.reshape(umin,(N*nu,),order='F')
+                u_max_flat = np.reshape(umax,(N*nu,),order='F')
+            else:
+                raise ValueError('umin has wrong dimensions. Umin shape={}'.format(umin.shape))
+            self.u_min_flat = u_min_flat 
+            self.u_max_flat = u_max_flat 
+
+        if Q is not None:
+            raise ValueError('Q changes is not implemented') #TODO implemented Q change
+
+            """             a, B = [self.a, self.B]
+            Qbd = sparse.kron(sparse.eye(N), Q)
+
+            P = Rbd + B.T @ Qbd @ B
+            self.BTQbda =  B.T @ Qbd @ a
+            self.prob.update(P=P,l=l,u=u) """
+
+        
+        
             
     def finish_plot(self, x, u, u_pd, time_vector, filename):
         """

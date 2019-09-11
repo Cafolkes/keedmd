@@ -253,6 +253,7 @@ if not load_fit:
     t0 = time.process_time()
     print(' - Fitting EDMD model...', end =" ")
     edmd_model = Edmd(rbf_basis, n, l1=l1_edmd, l2=l2_edmd)
+    #TODO check eigenvalues, and controllability
     X, X_d, Z, Z_dot, U, U_nom, t = edmd_model.process(xs, q_d, us, us_nom, ts)
     edmd_model.fit(X, X_d, Z, Z_dot, U, U_nom)
     print('in {:.2f}s'.format(time.process_time()-t0))
