@@ -77,12 +77,6 @@ class MPCControllerDense(Controller):
         self.plotMPC_filename = plotMPC_filename
         self.q_d = xr
 
-        self.umin = umin 
-        self.umax = umax 
-        self.xmin = xmin 
-        self.xmax = xmax
-
-        
         self.ns = xr.shape[0]
 
         self.Q = Q
@@ -105,6 +99,38 @@ class MPCControllerDense(Controller):
         Rbd = sparse.kron(sparse.eye(N), R)
         Qbd = sparse.kron(sparse.eye(N), Q)
         Bbd = block_diag(Bd,nu).tocoo()
+
+
+        # Check Xmin and Xmax
+        if  xmin.shape[0]==ns: # it is a single vector we tile it
+            x_min_flat = np.kron(np.ones(N), xmin)
+            x_max_flat = np.kron(np.ones(N), xmax)
+        elif xmin.shape[0]==ns*N: # if it is a long vector it is ok
+            x_min_flat = xmin
+            x_max_flat = xmax
+        elif xmin.shape[0] == ns and xmin.shape[1] == N: # if it is a block we flatten it
+            x_min_flat = np.reshape(xmin,(N*ns,),order='F')
+            x_max_flat = np.reshape(xmax,(N*ns,),order='F')
+        else:
+            raise ValueError('xmin has wrong dimensions. xmin shape={}'.format(xmin.shape))
+        self.x_min_flat = x_min_flat 
+        self.x_max_flat = x_max_flat
+
+
+        # Check Umin and Umax
+        if  umin.shape[0]==nu:
+            u_min_flat = np.kron(np.ones(N), umin)
+            u_max_flat = np.kron(np.ones(N), umax)
+        elif umin.shape[0]==nu*N:
+            u_min_flat = umin
+            u_max_flat = umax
+        elif umin.shape[0] == nu and umin.shape[1] == N: 
+            u_min_flat = np.reshape(umin,(N*nu,),order='F')
+            u_max_flat = np.reshape(umax,(N*nu,),order='F')
+        else:
+            raise ValueError('umin has wrong dimensions. Umin shape={}'.format(umin.shape))
+        self.u_min_flat = u_min_flat 
+        self.u_max_flat = u_max_flat 
 
         #! GET a & b
         # Write B:
@@ -194,8 +220,8 @@ class MPCControllerDense(Controller):
             Aineq_x = Cbd @ B
 
             xrQB  = B.T @ np.reshape(self.CtQ.dot(xr),(N*nx,),order='F')
-            l = np.hstack([np.kron(np.ones(N), xmin)- Cbd @ a @ x0, np.kron(np.ones(N), umin)])
-            u = np.hstack([np.kron(np.ones(N), xmax)- Cbd @ a @ x0, np.kron(np.ones(N), umax)])
+            l = np.hstack([x_min_flat - Cbd @ a @ x0, u_min_flat])
+            u = np.hstack([x_max_flat - Cbd @ a @ x0, u_max_flat])
 
         else:
             # - quadratic objective
@@ -204,8 +230,8 @@ class MPCControllerDense(Controller):
             xrQB  = B.T @ np.reshape(Q.dot(xr),(N*nx,),order='F')
             Aineq_x = B
         
-            l = np.hstack([np.kron(np.ones(N), xmin)- a @ x0, np.kron(np.ones(N), umin)])
-            u = np.hstack([np.kron(np.ones(N), xmax)- a @ x0, np.kron(np.ones(N), umax)])
+            l = np.hstack([x_min_flat - a @ x0, u_min_flat])
+            u = np.hstack([x_max_flat - a @ x0, u_max_flat])
 
         x0aQb = self.BTQbda @ x0
         q = x0aQb - xrQB 
@@ -298,13 +324,13 @@ class MPCControllerDense(Controller):
             x = np.transpose(self.edmd_object.lift(x.reshape((x.shape[0],1)),xr[:,0].reshape((xr.shape[0],1))))[:,0]
             #x = self.edmd_object.lift(x,xr[:,0])
             BQxr  = self.B.T @ np.reshape(self.CtQ.dot(xr),(N*nx,),order='F')
-            l = np.hstack([np.kron(np.ones(N), self.xmin)- self.Cbd @ self.a @ x, np.kron(np.ones(N), self.umin)])
-            u = np.hstack([np.kron(np.ones(N), self.xmax)- self.Cbd @ self.a @ x, np.kron(np.ones(N), self.umax)])
+            l = np.hstack([self.x_min_flat - self.Cbd @ self.a @ x0, self.u_min_flat])
+            u = np.hstack([self.x_max_flat - self.Cbd @ self.a @ x0, self.u_max_flat])
 
         else:
             BQxr  = self.B.T @ np.reshape(self.Q.dot(xr),(N*nx,),order='F')
-            l = np.hstack([np.kron(np.ones(N), self.xmin)-            self.a @ x, np.kron(np.ones(N), self.umin)])
-            u = np.hstack([np.kron(np.ones(N), self.xmax)-            self.a @ x, np.kron(np.ones(N), self.umax)])
+            l = np.hstack([self.x_min_flat - self.a @ x0, self.u_min_flat])
+            u = np.hstack([self.x_max_flat - self.a @ x0, self.u_max_flat])
 
         # Update initial state
         BQax0 = self.BTQbda @ x
@@ -312,12 +338,12 @@ class MPCControllerDense(Controller):
 
         self.prob.update(q=q,l=l,u=u)
 
-        print('Time Setup {}ms'.format(1000*(time.time()-time_eval0)))
+        print('Time Setup {:.2f}ms'.format(1000*(time.time()-time_eval0)))
         time_eval0 = time.time() 
         ## Solve MPC Instance
         self._osqp_result = self.prob.solve()
 
-        print('Time Setup {}ms'.format(1000*(time.time()-time_eval0)))
+        print('Time Solve {:.2f}ms'.format(1000*(time.time()-time_eval0)))
         time_eval0 = time.time() 
 
         # Check solver status
