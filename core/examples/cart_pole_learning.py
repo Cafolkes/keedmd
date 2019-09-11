@@ -16,6 +16,7 @@ from ..controllers import PDController, OpenLoopController, MPCController, MPCCo
 from ..learning_keedmd import KoopmanEigenfunctions, RBF, Edmd, Keedmd, plot_trajectory, IdentityBF
 import time
 import dill
+import control
 
 import random as veryrandom
 import scipy.sparse as sparse
@@ -107,7 +108,7 @@ closed_filename = 'closed_loop.png'
 #! ===============================================    COLLECT DATA     ===============================================
 #* Load trajectories
 print("Collect data.")
-print(" - Generate optimal desired path..", end=" ")
+print(" - Generate optimal desired path..",end=" ")
 t0 = time.process_time()
 
 R = sparse.eye(m)
@@ -399,14 +400,14 @@ t0 = time.process_time()
 print('Evaluate Performance with closed loop trajectory tracking...', end=" ")
 # Set up trajectory and controller for prediction task:
 q_d_pred = q_d[4,:,:].transpose()
-q_d_pred = q_d_pred - np.tile(q_d_pred[:,-1:],(1,q_d_pred.shape[1]))  #ensure global end point is at origin
-q_d_pred = q_d_pred[:,:int(q_d_pred.shape[1]/2*1)]
+#q_d_pred = q_d_pred - np.tile(q_d_pred[:,-1:],(1,q_d_pred.shape[1]))  #ensure global end point is at origin
+#q_d_pred = q_d_pred[:,:int(q_d_pred.shape[1]/2*1)]
 
 #q_d_pred = np.zeros(q_d_pred.shape)
 x_0 = q_d_pred[:,0]
 #x_0[0] = 0
 t_pred = t_d.squeeze()
-t_pred = t_pred[:int(t_pred.shape[0]/2*1)]
+#t_pred = t_pred[:int(t_pred.shape[0]/2*1)]
 noise_var_pred = 0.0
 output_pred = CartPoleTrajectory(system_true, q_d_pred,t_pred)
 
@@ -429,6 +430,24 @@ us_lin_PD = us_lin_PD.transpose()
 
 
 #* eDMD 
+def check_controllability(A,B,n):
+    Cmatrix = control.ctrb(A,B)
+    rankCmatrix = np.linalg.matrix_rank(Cmatrix)
+    print('controllability matrix rank is {}, ns={}, nz={}'.format(rankCmatrix,n,A.shape[0]))
+    return rankCmatrix
+    
+# Check eigenvalues
+eig, eig_v = np.linalg.eig(edmd_model.A)
+eig_max = np.max(np.real(eig))
+print('Max eig {}'.format(eig_max))
+# Controllability
+Cmatrix = control.ctrb(A=edmd_model.A, B=edmd_model.B)
+print('  edmd controllability matrix rank is {}, ns={}, nz={}'.format(np.linalg.matrix_rank(Cmatrix),n,edmd_model.A.shape[0]))
+
+Cmatrix = control.ctrb(A=keedmd_model.A, B=keedmd_model.B)
+print('keedmd controllability matrix rank is {}, ns={}, nz={}'.format(np.linalg.matrix_rank(Cmatrix),n,keedmd_model.A.shape[0]))
+
+
 edmd_sys = LinearSystemDynamics(A=edmd_model.A, B=edmd_model.B)
 edmd_controller = MPCControllerDense(linear_dynamics=edmd_sys, 
                                 N=int(MPC_horizon/dt),

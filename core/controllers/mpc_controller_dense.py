@@ -70,6 +70,8 @@ class MPCControllerDense(Controller):
         # Load arguments
         Ac, Bc = linear_dynamics.linear_system()
         [nx, nu] = Bc.shape
+        ns = xr.shape[0]
+
         self.dt = dt
         Ad = sparse.csc_matrix(sp.linalg.expm(Ac*self.dt))
         Bd = sparse.csc_matrix(Bc*self.dt)
@@ -77,7 +79,6 @@ class MPCControllerDense(Controller):
         self.plotMPC_filename = plotMPC_filename
         self.q_d = xr
 
-        self.ns = xr.shape[0]
 
         self.Q = Q
         self.R = R
@@ -85,6 +86,7 @@ class MPCControllerDense(Controller):
 
         self.nu = nu
         self.nx = nx
+        self.ns = ns
 
         # Total desired path
         if self.q_d.ndim==2:
@@ -314,6 +316,7 @@ class MPCControllerDense(Controller):
 
         tindex = int(t/self.dt)+1
             
+        print("Eval at t={:.2f}, x={}".format(t,x))
         # Update the local reference trajectory
         if (tindex+N) < self.Nqd: # if we haven't reach the end of q_d yet
             xr = self.q_d[:,tindex:tindex+N]
@@ -323,6 +326,8 @@ class MPCControllerDense(Controller):
         # Construct the new _osqp_q objects
         if (self.lifting):
             x = np.transpose(self.edmd_object.lift(x.reshape((x.shape[0],1)),xr[:,0].reshape((xr.shape[0],1))))[:,0]
+            print("Eval at t={:.2f}, z={}".format(t,x))
+
             #x = self.edmd_object.lift(x,xr[:,0])
             BQxr  = self.B.T @ np.reshape(self.CtQ.dot(xr),(N*nx,),order='F')
             l = np.hstack([self.x_min_flat - self.Cbd @ self.a @ x, self.u_min_flat])
