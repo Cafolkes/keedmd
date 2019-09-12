@@ -317,15 +317,15 @@ class MPCControllerFast(Controller):
 
         # Construct the new _osqp_q objects
         if (self.lifting):
-            x = np.transpose(self.edmd_object.lift(x.reshape((x.shape[0],1)),xr[:,0].reshape((xr.shape[0],1))))[:,0]
+            x = np.transpose(self.edmd_object.lift(x.reshape((x.shape[0],1)),self.xr[:,0].reshape((self.xr.shape[0],1))))[:,0]
 
             #x = self.edmd_object.lift(x,xr[:,0])
-            BQxr  = self.B.T @ np.reshape(self.CtQ.dot(xr),(N*nx,),order='F')
+            BQxr  = self.B.T @ np.reshape(self.CtQ.dot(self.xr),(N*nx,),order='F')
             l = np.hstack([self.x_min_flat - self.Cbd @ self.a @ x, self.u_min_flat])
             u = np.hstack([self.x_max_flat - self.Cbd @ self.a @ x, self.u_max_flat])
 
         else:
-            BQxr  = self.B.T @ np.reshape(self.Q.dot(xr),(N*nx,),order='F')
+            BQxr  = self.B.T @ np.reshape(self.Q.dot(self.xr),(N*nx,),order='F')
             l = np.hstack([self.x_min_flat - self.a @ x, self.u_min_flat])
             u = np.hstack([self.x_max_flat - self.a @ x, self.u_max_flat])
 
