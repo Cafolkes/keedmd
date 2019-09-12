@@ -9,6 +9,7 @@ from .pd_controller import PDController
 from .qp_controller import QPController
 from .mpc_controller import MPCController
 from .mpc_controller_dense import MPCControllerDense
+from .mpc_controller_lift_fp import MPCControllerFast
 from .aggregated_mpc_controller import AggregatedMpcController
 from .random_controller import RandomController
 from .openloop_controller import OpenLoopController
