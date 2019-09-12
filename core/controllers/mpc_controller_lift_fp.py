@@ -27,7 +27,7 @@ def block_diag(M,n):
   return sparse.block_diag([M for i in range(n)])
 
 
-class MPCControllerDense(Controller):
+class MPCControllerFast(Controller):
     """
     Class for controllers MPC.
 
