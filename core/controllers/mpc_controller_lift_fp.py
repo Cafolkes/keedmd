@@ -286,7 +286,7 @@ class MPCControllerFast(Controller):
         # Create an OSQP object
         self.prob = osqp.OSQP()
         # Setup workspace
-        self.prob.setup(P=P, q=q, A=A, l=l, u=u, warm_start=True, verbose=True)
+        self.prob.setup(P=P.tocsc(), q=q, A=A, l=l, u=u, warm_start=True, verbose=True)
 
         if self.plotMPC:
             # Figure to plot MPC thoughts
