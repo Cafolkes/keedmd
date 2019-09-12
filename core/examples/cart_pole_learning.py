@@ -16,7 +16,7 @@ from ..controllers import PDController, OpenLoopController, MPCController, MPCCo
 from ..learning_keedmd import KoopmanEigenfunctions, RBF, Edmd, Keedmd, plot_trajectory, IdentityBF
 import time
 import dill
-import control
+#import control
 
 import random as veryrandom
 import scipy.sparse as sparse
@@ -71,9 +71,9 @@ plot_eigen = False
 eigenfunction_max_power = 1             #TODO: Remove when MPC debug finalized
 l2_diffeomorphism = 1e0                 #Fix for current architecture
 jacobian_penalty_diffeomorphism = 5e0   #Fix for current architecture
-load_diffeomorphism_model = False
+load_diffeomorphism_model = True
 diffeomorphism_model_file = 'diff_model'
-diff_n_epochs = 100
+diff_n_epochs = 20
 diff_train_frac = 0.9
 diff_n_hidden_layers = 2
 diff_layer_width = 100
@@ -91,11 +91,11 @@ l2_keedmd = 1e-2
 # Best 0.06
 n_lift_edmd = (eigenfunction_max_power+1)**n-1
 l1_edmd = 1e-2
-l2_edmd = 1e-2
+l2_edmd = 0.#1e-2
 
 # Simulation parameters (evaluate performance)
-load_fit = True
-test_open_loop = False
+load_fit = False
+test_open_loop = True
 plot_open_loop = test_open_loop
 save_traj = False
 save_fit = not load_fit
@@ -328,7 +328,7 @@ if test_open_loop:
         xs_keedmd_tmp = dot(keedmd_model.C,zs_keedmd.transpose())
 
         edmd_controller = OpenLoopController(edmd_sys, us_pred_tmp, t_pred[:us_pred_tmp.shape[0]])
-        z0_edmd = edmd_model.lift(x0_pred.reshape(x0_pred.shape[0],1), q_d_pred[:,ii,:1]).squeeze()
+        z0_edmd = edmd_model.lift(x0_pred.reshape(x0_pred.shape[0],1), q_d_pred[ii,:1,:].transpose()).squeeze()
         zs_edmd,_ = edmd_sys.simulate(z0_edmd,edmd_controller,t_pred)
         xs_edmd_tmp = dot(edmd_model.C,zs_edmd.transpose())
 
@@ -345,6 +345,7 @@ if test_open_loop:
         savemat('./core/examples/results/cart_pendulum_prediction.mat', {'t_pred':t_pred, 'xs_pred': xs_pred,
                                                                 'xs_keedmd':xs_keedmd, 'xs_edmd':xs_edmd, 'xs_nom': xs_nom})
 
+    #Ntraj_pred=1 #TODO: Remove
     # Calculate error statistics
     mse_keedmd = array([(xs_keedmd[ii] - xs_pred[ii])**2 for ii in range(Ntraj_pred)])
     mse_edmd = array([(xs_edmd[ii] - xs_pred[ii])**2 for ii in range(Ntraj_pred)])

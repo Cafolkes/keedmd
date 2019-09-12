@@ -1,7 +1,7 @@
 from .utils import differentiate_vec
 from sklearn import linear_model
 from scipy.linalg import expm
-from numpy import array, concatenate, zeros, dot, linalg, eye, ones, std, where, divide, multiply, tile
+from numpy import array, concatenate, zeros, dot, linalg, eye, ones, std, where, divide, multiply, tile, argwhere
 from .basis_functions import BasisFunctions
 
 class Edmd():
@@ -21,6 +21,7 @@ class Edmd():
         self.m = None
         self.override_C = override_C
         self.acceleration_bounds = acceleration_bounds #(nx1)
+        self.Z_std = ones((basis.Nlift+basis.n+1,1))
 
     def fit(self, X, X_d, Z, Z_dot, U, U_nom):
         """
@@ -61,9 +62,10 @@ class Edmd():
             # Construct EDMD matrices using Elastic Net L1 and L2 regularization
             input = concatenate((Z.transpose(),U.transpose()),axis=1)
             output = Z_dot.transpose()
+
             l1_ratio = self.l1/(self.l1+self.l2)
             alpha = self.l1 + self.l2
-            reg_model = linear_model.ElasticNet(alpha=alpha, l1_ratio=l1_ratio, fit_intercept=False, normalize=False, max_iter=1e5)
+            reg_model = linear_model.ElasticNet(alpha=alpha, l1_ratio=l1_ratio, fit_intercept=True, normalize=True, max_iter=1e5)
             reg_model.fit(input,output)
 
             self.A = reg_model.coef_[:self.n_lift,:self.n_lift]
@@ -89,17 +91,28 @@ class Edmd():
 
         Ntraj = X_filtered.shape[0]  # Number of trajectories in dataset
         Z = array([self.lift(X_filtered[ii,:,:].transpose(), X_d_filtered[ii,:,:].transpose()) for ii in range(Ntraj)])  # Lift x
-        Z_dot = array([differentiate_vec(Z[ii,:,:],t_filtered[ii,:]) for ii in range(Ntraj)])  #Numerical differentiate lifted state
 
-        # Vectorize data
-        n_data = Z.shape[0]*Z.shape[1]
+        # Vectorize Z- data
+        n_data = Z.shape[0] * Z.shape[1]
         self.n_lift = Z.shape[2]
         self.m = U_filtered.shape[2]
         order = 'F'
+        Z_vec = Z.transpose().reshape((self.n_lift, n_data), order=order)
 
+        # Normalize data
+        self.Z_std = std(Z_vec, axis=1)
+        self.Z_std[argwhere(self.Z_std == 0.)] = 1.
+        self.Z_std[:self.n] = 1.  # Do not rescale states. Note: Assumes state is added to beginning of observables
+        self.Z_std = self.Z_std.reshape((self.Z_std.shape[0], 1))
+        Z_norm = array([divide(Z[ii,:,:], self.Z_std.transpose()) for ii in range(Z.shape[0])])
+
+        Z_dot = array([differentiate_vec(Z_norm[ii,:,:],t_filtered[ii,:]) for ii in range(Ntraj)])  #Numerical differentiate lifted state
+
+
+        #Vectorize remaining data
         X_filtered, X_d_filtered, Z, Z_dot, U_filtered, U_nom_filtered, t_filtered = X_filtered.transpose().reshape((self.n,n_data),order=order), \
                                                                        X_d_filtered.transpose().reshape((self.n, n_data),order=order), \
-                                                                       Z.transpose().reshape((self.n_lift,n_data),order=order), \
+                                                                        Z_norm.transpose().reshape((self.n_lift, n_data),order=order), \
                                                                         Z_dot.transpose().reshape((self.n_lift,n_data),order=order), \
                                                                         U_filtered.transpose().reshape((self.m,n_data),order=order), \
                                                                         U_nom_filtered.transpose().reshape((self.m, n_data),order=order), \
@@ -127,7 +140,8 @@ class Edmd():
         if not X.shape[1] == Z.shape[1]:
             Z = Z.transpose()
         one_vec = ones((1,Z.shape[1]))
-        return concatenate((X,one_vec, Z),axis=0).transpose()
+        output_norm = divide(concatenate((X,one_vec, Z),axis=0),self.Z_std)
+        return output_norm.transpose()
 
     def predict(self,X, U):
         return dot(self.C, dot(self.A,X) + dot(self.B, U))

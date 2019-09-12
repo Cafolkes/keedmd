@@ -1,6 +1,6 @@
 from .edmd import Edmd
 from sklearn import linear_model
-from numpy import array, concatenate, zeros, dot, linalg, eye, diag, std, divide, tile, where, atleast_2d
+from numpy import array, concatenate, zeros, dot, linalg, eye, diag, std, divide, tile, where, atleast_2d, ones
 import numpy as np
 
 class Keedmd(Edmd):
@@ -9,6 +9,7 @@ class Keedmd(Edmd):
         self.episodic = episodic
         self.K_p = K_p
         self.K_d = K_d
+        self.Z_std = ones((basis.Nlift + basis.n, 1))
         if self.basis.Lambda is None:
             raise Exception('Basis provided is not an Koopman eigenfunction basis')
 
@@ -112,4 +113,6 @@ class Keedmd(Edmd):
 
     def lift(self, X, X_d):
         Z = self.basis.lift(X, X_d)
-        return concatenate((X.transpose(), Z),axis=1)
+        output_norm = divide(concatenate((X.transpose(), Z),axis=1),self.Z_std.transpose())
+        return output_norm
+

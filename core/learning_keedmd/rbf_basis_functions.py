@@ -17,7 +17,7 @@ class RBF(BasisFunctions):
             Number of lifing functions
         """
         self.n = n
-        self.n_lift = rbf_centers.shape[0]
+        self.Nlift = rbf_centers.shape[0]
         self.rbf_centers = rbf_centers
         self.gamma = gamma
         self.type = type
@@ -45,7 +45,7 @@ class RBF(BasisFunctions):
 
     def construct_basis(self):
         if self.type == 'gaussian':
-            self.basis = lambda q, t: array([diag(rbf_kernel(q.reshape(q.shape[1],self.n), tile(self.rbf_centers[ii,:],(q.shape[1],1)), self.gamma)).transpose() for ii in range(self.n_lift)])
+            self.basis = lambda q, t: array([diag(rbf_kernel(q.reshape(q.shape[1],self.n), tile(self.rbf_centers[ii,:],(q.shape[1],1)), self.gamma)).transpose() for ii in range(self.Nlift)])
         else:
             raise Exception('RBF kernels other than Gaussian not implemented')
 
