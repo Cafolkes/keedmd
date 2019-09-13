@@ -16,7 +16,7 @@ from ..controllers import PDController, OpenLoopController, MPCController, MPCCo
 from ..learning_keedmd import KoopmanEigenfunctions, RBF, Edmd, Keedmd, plot_trajectory, IdentityBF
 import time
 import dill
-#import control
+import control
 
 import random as veryrandom
 import scipy.sparse as sparse
@@ -59,7 +59,7 @@ nominal_sys = LinearSystemDynamics(A=A_nom, B=B_nom)
 # Simulation parameters (data collection)
 plot_traj_gen = False               # Plot trajectories generated for data collection
 traj_origin = 'load_mat'            # gen_MPC - solve MPC to generate desired trajectories, load_mat - load saved trajectories
-Ntraj = 20                          # Number of trajectories to collect data from
+Ntraj = 60                          # Number of trajectories to collect data from
 
 dt = 1.0e-2                         # Time step
 N = int(2./dt)                      # Number of time steps
@@ -68,7 +68,7 @@ noise_var = 0.1                     # Exploration noise to perturb controller
 
 # Koopman eigenfunction parameters
 plot_eigen = False
-eigenfunction_max_power = 1             #TODO: Remove when MPC debug finalized
+eigenfunction_max_power = 3             #TODO: Remove when MPC debug finalized
 l2_diffeomorphism = 1e0                 #Fix for current architecture
 jacobian_penalty_diffeomorphism = 5e0   #Fix for current architecture
 load_diffeomorphism_model = True
@@ -85,17 +85,17 @@ diff_dropout_prob = 0.5
 # KEEDMD parameters
 # Best: 0.024
 l1_keedmd = 5e-2
-l2_keedmd = 1e-2
+l1_ratio_keedmd = 0.5
 
 # EDMD parameters
 # Best 0.06
 n_lift_edmd = (eigenfunction_max_power+1)**n-1
 l1_edmd = 1e-2
-l2_edmd = 0.#1e-2
+l1_ratio_edmd = 0.5#1e-2
 
 # Simulation parameters (evaluate performance)
-load_fit = False
-test_open_loop = True
+load_fit = True
+test_open_loop = False
 plot_open_loop = test_open_loop
 save_traj = False
 save_fit = not load_fit
@@ -225,9 +225,9 @@ if not load_fit:
     # Fit KEEDMD model:
     t0 = time.process_time()
     print(' - Fitting KEEDMD model...', end =" ")
-    keedmd_model = Keedmd(eigenfunction_basis, n, l1=l1_keedmd, l2=l2_keedmd, K_p=K_p, K_d=K_d)
+    keedmd_model = Keedmd(eigenfunction_basis, n, l1=l1_keedmd, l1_ratio=l1_ratio_keedmd, K_p=K_p, K_d=K_d)
     X, X_d, Z, Z_dot, U, U_nom, t = keedmd_model.process(xs, q_d, us, us_nom, ts)
-    keedmd_model.fit(X, X_d, Z, Z_dot, U, U_nom)
+    keedmd_model.tune_fit(X, X_d, Z, Z_dot, U, U_nom)
     print('in {:.2f}s'.format(time.process_time()-t0))
     
     # Construct basis of RBFs for EDMD:
@@ -253,8 +253,7 @@ if not load_fit:
     # Fit EDMD model
     t0 = time.process_time()
     print(' - Fitting EDMD model...', end =" ")
-    edmd_model = Edmd(rbf_basis, n, l1=l1_edmd, l2=l2_edmd)
-    #TODO check eigenvalues, and controllability
+    edmd_model = Edmd(rbf_basis, n, l1=l1_edmd, l1_ratio=l1_ratio_edmd)
     X, X_d, Z, Z_dot, U, U_nom, t = edmd_model.process(xs, q_d, us, us_nom, ts)
     edmd_model.fit(X, X_d, Z, Z_dot, U, U_nom)
     print('in {:.2f}s'.format(time.process_time()-t0))
@@ -402,18 +401,18 @@ print('Evaluate Performance with closed loop trajectory tracking...', end=" ")
 # Set up trajectory and controller for prediction task:
 q_d_pred = q_d[4,:,:].transpose()
 #q_d_pred = q_d_pred - np.tile(q_d_pred[:,-1:],(1,q_d_pred.shape[1]))  #ensure global end point is at origin
-#q_d_pred = q_d_pred[:,:int(q_d_pred.shape[1]/2*1)]
+q_d_pred = q_d_pred[:,:int(q_d_pred.shape[1]/2*1.5)]
 
 #q_d_pred = np.zeros(q_d_pred.shape)
 x_0 = q_d_pred[:,0]
 #x_0[0] = 0
 t_pred = t_d.squeeze()
-#t_pred = t_pred[:int(t_pred.shape[0]/2*1)]
+t_pred = t_pred[:int(t_pred.shape[0]/2*1.5)]
 noise_var_pred = 0.0
 output_pred = CartPoleTrajectory(system_true, q_d_pred,t_pred)
 
 # Set up MPC parameters
-Q = sparse.diags([5000,300,500,600])
+Q = sparse.diags([5000,3000,5000,6000])
 QN = Q
 
 
@@ -462,7 +461,7 @@ edmd_controller = MPCControllerDense(linear_dynamics=edmd_sys,
                                 QN=QN, 
                                 xr=q_d_pred,
                                 lifting=True,
-                                edmd_object=edmd_model,
+                                C=edmd_model.C,
                                 plotMPC=plotMPC,
                                 name='KEEDMD')
 
@@ -522,7 +521,7 @@ keedmd_controller = MPCControllerDense(linear_dynamics=keedmd_sys,
                                 QN=QN, 
                                 xr=q_d_pred,
                                 lifting=True,
-                                edmd_object=keedmd_model,
+                                C=keedmd_model.C,
                                 plotMPC=plotMPC,
                                 name='KEEDMD')
 

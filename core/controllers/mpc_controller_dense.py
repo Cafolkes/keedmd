@@ -36,7 +36,7 @@ class MPCControllerDense(Controller):
     Use lifting=True to solve MPC in the lifted space
     """
     def __init__(self, linear_dynamics, N, dt, umin, umax, xmin, xmax, 
-                Q, R, QN, xr, plotMPC=False, plotMPC_filename="",lifting=False, edmd_object=Edmd(),name="noname"):
+                Q, R, QN, xr, plotMPC=False, plotMPC_filename="",lifting=False, C=None, name="noname"):
         """Create an MPC Controller object.
 
         Sizes:
@@ -103,6 +103,11 @@ class MPCControllerDense(Controller):
         Qbd = sparse.kron(sparse.eye(N), Q)
         Bbd = block_diag(Bd,nu).tocoo()
 
+
+        if lifting:
+            self.C = C
+        else:
+            self.C = sparse.eye(ns)
 
         # Check Xmin and Xmax
         if  xmin.shape[0]==ns and xmin.ndim==1: # it is a single vector we tile it
@@ -207,34 +212,21 @@ class MPCControllerDense(Controller):
 
 
         # Cast MPC problem to a QP: x = (x(0),x(1),...,x(N),u(0),...,u(N-1))
-        if (self.lifting):
-            # Load eDMD objects
-            self.C = edmd_object.C
-            self.edmd_object = edmd_object
+ 
 
-            # Compute Block Diagonal elements
-            self.Cbd = sparse.kron(sparse.eye(N), self.C)
-            CQCbd  = self.Cbd.T @ Qbd @ self.Cbd
-            self.CtQ = self.C.T @ Q
-            Cbd = self.Cbd
-            
-            P = Rbd + B.T @ CQCbd @ B            
-            self.BTQbda =  B.T @ CQCbd @ a            
-            Aineq_x = Cbd @ B
-
-            xrQB  = B.T @ np.reshape(self.CtQ.dot(xr),(N*nx,),order='F')
-            l = np.hstack([x_min_flat - Cbd @ a @ x0, u_min_flat])
-            u = np.hstack([x_max_flat - Cbd @ a @ x0, u_max_flat])
-
-        else:
-            # - quadratic objective
-            P = Rbd + B.T @ Qbd @ B
-            self.BTQbda =  B.T @ Qbd @ a
-            xrQB  = B.T @ np.reshape(Q.dot(xr),(N*nx,),order='F')
-            Aineq_x = B
+        # Compute Block Diagonal elements
+        self.Cbd = sparse.kron(sparse.eye(N), self.C)
+        CQCbd  = self.Cbd.T @ Qbd @ self.Cbd
+        self.CtQ = self.C.T @ Q
+        Cbd = self.Cbd
         
-            l = np.hstack([x_min_flat - a @ x0, u_min_flat])
-            u = np.hstack([x_max_flat - a @ x0, u_max_flat])
+        P = Rbd + B.T @ CQCbd @ B            
+        self.BTQbda =  B.T @ CQCbd @ a            
+        Aineq_x = Cbd @ B
+
+        xrQB  = B.T @ np.reshape(self.CtQ.dot(xr),(N*nx,),order='F')
+        l = np.hstack([x_min_flat - Cbd @ a @ x0, u_min_flat])
+        u = np.hstack([x_max_flat - Cbd @ a @ x0, u_max_flat])
 
         x0aQb = self.BTQbda @ x0
         q = x0aQb - xrQB 
@@ -285,7 +277,7 @@ class MPCControllerDense(Controller):
         # Create an OSQP object
         self.prob = osqp.OSQP()
         # Setup workspace
-        self.prob.setup(P=P, q=q, A=A, l=l, u=u, warm_start=True, verbose=True)
+        self.prob.setup(P=P.tocsc(), q=q, A=A, l=l, u=u, warm_start=True, verbose=True)
 
         if self.plotMPC:
             # Figure to plot MPC thoughts
