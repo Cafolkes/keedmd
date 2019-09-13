@@ -4,18 +4,18 @@ from numpy import array, concatenate, zeros, dot, linalg, eye, diag, std, divide
 import numpy as np
 
 class Keedmd(Edmd):
-    def __init__(self, basis, system_dim, l1=0., l1_ratio=0.5, acceleration_bounds=None, override_C=True, K_p = None, K_d = None, episodic=False):
-        super().__init__(basis, system_dim, l1=l1, l1_ratio=l1_ratio, acceleration_bounds=acceleration_bounds, override_C=override_C)
+    def __init__(self, basis, system_dim, l1_pos=0., l1_ratio_pos=0.5, l1_vel=0., l1_ratio_vel=0.5, l1_eig=0., l1_ratio_eig=0.5, acceleration_bounds=None, override_C=True, K_p = None, K_d = None, episodic=False):
+        super().__init__(basis, system_dim, l1=l1_vel, l1_ratio=l1_ratio_vel, acceleration_bounds=acceleration_bounds, override_C=override_C)
         self.episodic = episodic
         self.K_p = K_p
         self.K_d = K_d
         self.Z_std = ones((basis.Nlift + basis.n, 1))
-        self.l1_pos = self.l1
-        self.l1_ratio_pos = self.l1_ratio
-        self.l1_vel = self.l1
-        self.l1_ratio_vel =  self.l1_ratio
-        self.l1_eig = self.l1
-        self.l1_ratio_eig = self.l1_ratio
+        self.l1_pos = self.l1_pos
+        self.l1_ratio_pos = self.l1_ratio_pos
+        self.l1_vel = self.l1_vel
+        self.l1_ratio_vel =  self.l1_ratio_vel
+        self.l1_eig = self.l1_eig
+        self.l1_ratio_eig = self.l1_ratio_eig
 
         if self.basis.Lambda is None:
             raise Exception('Basis provided is not an Koopman eigenfunction basis')
