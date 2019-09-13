@@ -147,7 +147,7 @@ class Edmd():
         return dot(self.C, dot(self.A,X) + dot(self.B, U))
 
     def tune_fit(self, X, X_d, Z, Z_dot, U, U_nom):
-        l1_ratio = array([.1, .3, .5, .6, .75, .85, .9, .925, .95, .975, .99, 1])  # Values to test
+        l1_ratio = array([.1, .5, .7, .9, .95, .99, 1])  # Values to test
 
         # Construct EDMD matrices using Elastic Net L1 and L2 regularization
         input = concatenate((Z.transpose(), U.transpose()), axis=1)
