@@ -36,7 +36,7 @@ class MPCControllerDense(Controller):
     Use lifting=True to solve MPC in the lifted space
     """
     def __init__(self, linear_dynamics, N, dt, umin, umax, xmin, xmax, 
-                Q, R, QN, xr, plotMPC=False, plotMPC_filename="",lifting=False, C=None, name="noname"):
+                Q, R, QN, xr, plotMPC=False, plotMPC_filename="",lifting=False, edmd_object=None, name="noname"):
         """Create an MPC Controller object.
 
         Sizes:
@@ -105,7 +105,8 @@ class MPCControllerDense(Controller):
 
 
         if lifting:
-            self.C = C
+            self.C = edmd_object.C
+            self.edmd_object = edmd_object
         else:
             self.C = sparse.eye(ns)
 
@@ -277,7 +278,7 @@ class MPCControllerDense(Controller):
         # Create an OSQP object
         self.prob = osqp.OSQP()
         # Setup workspace
-        self.prob.setup(P=P, q=q, A=A, l=l, u=u, warm_start=True, verbose=True)
+        self.prob.setup(P=P, q=q, A=A, l=l, u=u, warm_start=True, verbose=False)
 
         if self.plotMPC:
             # Figure to plot MPC thoughts

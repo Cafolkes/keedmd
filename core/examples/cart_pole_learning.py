@@ -402,13 +402,13 @@ print('Evaluate Performance with closed loop trajectory tracking...', end=" ")
 # Set up trajectory and controller for prediction task:
 q_d_pred = q_d[4,:,:].transpose()
 #q_d_pred = q_d_pred - np.tile(q_d_pred[:,-1:],(1,q_d_pred.shape[1]))  #ensure global end point is at origin
-q_d_pred = q_d_pred[:,:int(q_d_pred.shape[1]/2*1.5)]
+#q_d_pred = q_d_pred[:,:int(q_d_pred.shape[1]/2*1.5)]
 
 #q_d_pred = np.zeros(q_d_pred.shape)
 x_0 = q_d_pred[:,0]
 #x_0[0] = 0
 t_pred = t_d.squeeze()
-t_pred = t_pred[:int(t_pred.shape[0]/2*1.5)]
+#t_pred = t_pred[:int(t_pred.shape[0]/2*1.5)]
 noise_var_pred = 0.0
 output_pred = CartPoleTrajectory(system_true, q_d_pred,t_pred)
 
@@ -421,7 +421,7 @@ upper_bounds_MPC_control = array([1000, 1000, 1000, 1000])  # State constraints,
 lower_bounds_MPC_control = -upper_bounds_MPC_control  # State constraints
 umax_control = 1000  # check it is higher than the control to generate the trajectories
 MPC_horizon = 0.25 # [s]
-plotMPC = True
+plotMPC = False
 
 # Linearized with PD
 linearlize_PD_controller = PDController(output_pred, K_p, K_d, noise_var=0)
@@ -462,7 +462,7 @@ edmd_controller = MPCControllerDense(linear_dynamics=edmd_sys,
                                 QN=QN, 
                                 xr=q_d_pred,
                                 lifting=True,
-                                C=edmd_model.C,
+                                edmd_object=edmd_model,
                                 plotMPC=plotMPC,
                                 name='KEEDMD')
 
@@ -474,7 +474,7 @@ if plotMPC:
     edmd_controller.finish_plot(xs_edmd_MPC, us_emdm_MPC, us_lin_PD, t_pred,"eDMD_thoughts.png") 
 
 # Linearized with MPC
-""" linearlize_mpc_controller = MPCControllerDense(linear_dynamics=nominal_sys, 
+linearlize_mpc_controller = MPCControllerDense(linear_dynamics=nominal_sys, 
                                                 N=int(MPC_horizon/dt),
                                                 dt=dt, 
                                                 umin=array([-umax_control]), 
@@ -492,15 +492,15 @@ xs_lin_MPC, us_lin_MPC = system_true.simulate(x_0, linearlize_mpc_controller, t_
 xs_lin_MPC = xs_lin_MPC.transpose()
 us_lin_MPC = us_lin_MPC.transpose()
 if plotMPC:
-    linearlize_mpc_controller.finish_plot(xs_lin_MPC,us_lin_MPC, us_lin_PD, t_pred,"LinMPC_thoughts.png")  """
+    linearlize_mpc_controller.finish_plot(xs_lin_MPC,us_lin_MPC, us_lin_PD, t_pred,"LinMPC_thoughts.png") 
 
 
-""" figure()
+figure()
 hist(linearlize_mpc_controller.run_time*1000)
 title('MPC Run Time Histogram sparse. Mean {:.2f}ms'.format(np.mean(linearlize_mpc_controller.run_time*1000)))
 xlabel('Time(ms)')
 savefig('MPC Run Time Histogram dense.png')
-#show() """
+#show()
 
 #* Linearized with PD
 output_pred = CartPoleTrajectory(system_true, q_d_pred,t_pred)
@@ -522,7 +522,7 @@ keedmd_controller = MPCControllerDense(linear_dynamics=keedmd_sys,
                                 QN=QN, 
                                 xr=q_d_pred,
                                 lifting=True,
-                                C=keedmd_model.C,
+                                edmd_object=keedmd_model,
                                 plotMPC=plotMPC,
                                 name='KEEDMD')
 
@@ -534,12 +534,12 @@ us_keedmd_MPC = us_keedmd_MPC.transpose()
 if plotMPC:
     keedmd_controller.finish_plot(xs_keedmd_MPC,us_keedmd_MPC, us_lin_PD, t_pred,"KeeDMD_thoughts.png")
 
-""" figure()
+figure()
 hist(keedmd_controller.run_time*1000)
 title('MPC Run Time Histogram sparse. Mean {:.2f}ms'.format(np.mean(keedmd_controller.run_time*1000)))
 xlabel('Time(ms)')
 savefig('MPC Run Time Histogram dense.png')
-show() """
+show()
 
 
 print('in {:.2f}s'.format(time.process_time()-t0))
@@ -558,7 +558,7 @@ for ii in range(n):
     plot(t_pred, q_d_pred[ii,:], linestyle="--",linewidth=2, label='reference')
     plot(t_pred, xs_edmd_MPC[ii,:], linewidth=2, label='eDMD with MPC')
     plot(t_pred, xs_keedmd_MPC[ii,:], linewidth=2, label='KeeDMD with MPC')
-    #plot(t_pred, xs_lin_MPC[ii,:], linewidth=2, label='Linearized dynamics with MPC')
+    plot(t_pred, xs_lin_MPC[ii,:], linewidth=2, label='Linearized dynamics with MPC')
     plot(t_pred, xs_lin_PD[ii,:], linewidth=2, label='Linearized dynamics with PD Controller')
     xlabel('Time (s)')
     ylabel(ylabels[ii])
