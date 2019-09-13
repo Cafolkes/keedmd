@@ -36,7 +36,8 @@ class MPCControllerFast(Controller):
     Use lifting=True to solve MPC in the lifted space
     """
     def __init__(self, linear_dynamics, N, dt, umin, umax, xmin, xmax, 
-                Q, R, QN, xr, plotMPC=False, plotMPC_filename="",lifting=False, edmd_object=Edmd(),name="noname"):
+                 Q, R, QN, xr, plotMPC=False, plotMPC_filename="",
+                 lifting=False, edmd_object=Edmd(),name="noname", soft=False, D=None):
         """Create an MPC Controller object.
 
         Sizes:
@@ -81,6 +82,8 @@ class MPCControllerFast(Controller):
         self.Q = Q
         self.R = R
         self.lifting = lifting
+        self.soft = soft
+
 
         self.nu = nu
         self.nx = nx
@@ -245,6 +248,15 @@ class MPCControllerFast(Controller):
         Aineq_u = sparse.eye(N*nu)
         A = sparse.vstack([Aineq_x, Aineq_u]).tocsc()
 
+        if soft:
+            Pdelta = sparse.kron(sparse.eye(N), D)
+            P = sparse.block_diag([P,Pdelta])
+            qdelta = np.zeros(N*ns)
+            q = np.hstack([q,qdelta])
+            Adelta = sparse.csc_matrix(np.vstack([np.eye(N*ns),np.zeros((N*nu,N*ns))]))
+            A = sparse.hstack([A, Adelta])
+
+
         # plot_matrices = True
         # if plot_matrices:
         #     #! Visualize Matrices
@@ -330,6 +342,9 @@ class MPCControllerFast(Controller):
 
         # Update initial state 
         q = self.BTQbda @ x  - self.BQxr
+
+        if self.soft:
+            q = np.hstack([q,np.zeros(N*ns)])   
 
         self.prob.update(q=q,l=l,u=u)
 
