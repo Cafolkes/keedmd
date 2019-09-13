@@ -1,22 +1,29 @@
 from .edmd import Edmd
 from sklearn import linear_model
-from numpy import array, concatenate, zeros, dot, linalg, eye, diag, std, divide, tile, where, atleast_2d, ones
+from numpy import array, concatenate, zeros, dot, linalg, eye, diag, std, divide, tile, multiply, atleast_2d, ones
 import numpy as np
 
 class Keedmd(Edmd):
-    def __init__(self, basis, system_dim, l1=0., l2=0., acceleration_bounds=None, override_C=True, K_p = None, K_d = None, episodic=False):
-        super().__init__(basis, system_dim, l1=l1, l2=l2, acceleration_bounds=acceleration_bounds, override_C=override_C)
+    def __init__(self, basis, system_dim, l1=0., l1_ratio=0.5, acceleration_bounds=None, override_C=True, K_p = None, K_d = None, episodic=False):
+        super().__init__(basis, system_dim, l1=l1, l1_ratio=l1_ratio, acceleration_bounds=acceleration_bounds, override_C=override_C)
         self.episodic = episodic
         self.K_p = K_p
         self.K_d = K_d
         self.Z_std = ones((basis.Nlift + basis.n, 1))
+        self.l1_pos = self.l1
+        self.l1_ratio_pos = self.l1_ratio
+        self.l1_vel = self.l1
+        self.l1_ratio_vel =  self.l1_ratio
+        self.l1_eig = self.l1
+        self.l1_ratio_eig = self.l1_ratio
+
         if self.basis.Lambda is None:
             raise Exception('Basis provided is not an Koopman eigenfunction basis')
 
     def fit(self, X, X_d, Z, Z_dot, U, U_nom):
         self.n_lift = Z.shape[0]
 
-        if self.l1 == 0. and self.l2 == 0.:
+        if self.l1 == 0.:
             # Solve least squares problem to find A and B for velocity terms:
             if self.episodic:
                 input_vel = concatenate((Z,U-U_nom),axis=0).transpose()
@@ -52,13 +59,11 @@ class Keedmd(Edmd):
             if self.override_C:
                 self.C = zeros((self.n,self.n_lift))
                 self.C[:self.n,:self.n] = eye(self.n)
-            else:
+                self.C = multiply(self.C, self.Z_std.transpose())
                 raise Exception('Warning: Learning of C not implemented for structured regression.')
 
         else:
-            l1_ratio = self.l1 / (self.l1 + self.l2)
-            alpha = self.l1 + self.l2
-            reg_model = linear_model.ElasticNet(alpha=alpha, l1_ratio=l1_ratio, fit_intercept=False,
+            reg_model = linear_model.ElasticNet(alpha=self.l1, l1_ratio=self.l1_ratio, fit_intercept=False,
                                                          normalize=False, max_iter=1e5)
 
             # Solve least squares problem to find A and B for velocity terms:
@@ -103,6 +108,7 @@ class Keedmd(Edmd):
             if self.override_C:
                 self.C = zeros((self.n, self.n_lift))
                 self.C[:self.n, :self.n] = eye(self.n)
+                self.C = multiply(self.C, self.Z_std.transpose())
             else:
                 raise Exception('Warning: Learning of C not implemented for structured regression.')
 
@@ -110,6 +116,68 @@ class Keedmd(Edmd):
             if self.K_p is None or self.K_p is None:
                 raise Exception('Nominal controller gains not defined.')
             self.A[self.n:,:self.n] -= dot(self.B[self.n:,:],concatenate((self.K_p, self.K_d), axis=1))
+
+
+    def tune_fit(self, X, X_d, Z, Z_dot, U, U_nom):
+
+        l1_ratio = array([.1, .3, .5, .6, .75, .85, .9, .925, .95, .975, .99, 1])  # Values to test
+        reg_model_cv = linear_model.MultiTaskElasticNetCV(l1_ratio=l1_ratio, fit_intercept=False,
+                                            normalize=False, cv=5, n_jobs=-1)
+
+        # Solve least squares problem to find A and B for velocity terms:
+        if self.episodic:
+            input_vel = concatenate((Z, U - U_nom), axis=0).transpose()
+        else:
+            input_vel = concatenate((Z, U), axis=0).transpose()
+        output_vel = Z_dot[int(self.n / 2):self.n, :].transpose()
+
+        reg_model_cv.fit(input_vel, output_vel)
+
+        sol_vel = atleast_2d(reg_model_cv.coef_)
+        A_vel = sol_vel[:, :self.n_lift]
+        B_vel = sol_vel[:, self.n_lift:]
+        self.l1_vel = reg_model_cv.alpha_
+        self.l1_ratio_vel = reg_model_cv.l1_ratio_
+
+        # Construct A matrix
+        self.A = zeros((self.n_lift, self.n_lift))
+        self.A[:int(self.n / 2), int(self.n / 2):self.n] = eye(int(self.n / 2))  # Known kinematics
+        self.A[int(self.n / 2):self.n, :] = A_vel
+        self.A[self.n:, self.n:] = diag(self.basis.Lambda)
+
+        # Solve least squares problem to find B for position terms:
+        if self.episodic:
+            input_pos = (U - U_nom).transpose()
+        else:
+            input_pos = U.transpose()
+        output_pos = (Z_dot[:int(self.n / 2), :] - dot(self.A[:int(self.n / 2), :], Z)).transpose()
+        reg_model_cv.fit(input_pos, output_pos)
+        B_pos = atleast_2d(reg_model_cv.coef_)
+        self.l1_pos = reg_model_cv.alpha_
+        self.l1_ratio_pos = reg_model_cv.l1_ratio_
+
+        # Solve least squares problem to find B for eigenfunction terms:
+        input_eig = (U - U_nom).transpose()
+        output_eig = (Z_dot[self.n:, :] - dot(self.A[self.n:, :], Z)).transpose()
+        reg_model_cv.fit(input_eig, output_eig)
+        B_eig = atleast_2d(reg_model_cv.coef_)
+        self.l1_eig = reg_model_cv.alpha_
+        self.l1_ratio_eig = reg_model_cv.l1_ratio_
+
+        # Construct B matrix:
+        self.B = concatenate((B_pos, B_vel, B_eig), axis=0)
+
+        if self.override_C:
+            self.C = zeros((self.n, self.n_lift))
+            self.C[:self.n, :self.n] = eye(self.n)
+            self.C = multiply(self.C, self.Z_std.transpose())
+        else:
+            raise Exception('Warning: Learning of C not implemented for structured regression.')
+
+        if not self.episodic:
+            if self.K_p is None or self.K_p is None:
+                raise Exception('Nominal controller gains not defined.')
+            self.A[self.n:, :self.n] -= dot(self.B[self.n:, :], concatenate((self.K_p, self.K_d), axis=1))
 
     def lift(self, X, X_d):
         Z = self.basis.lift(X, X_d)

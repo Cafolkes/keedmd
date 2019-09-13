@@ -1,7 +1,7 @@
 from .utils import differentiate_vec
 from sklearn import linear_model
 from scipy.linalg import expm
-from numpy import array, concatenate, zeros, dot, linalg, eye, ones, std, where, divide, multiply, tile, argwhere
+from numpy import array, concatenate, zeros, dot, linalg, eye, ones, std, where, divide, multiply, tile, argwhere, diag
 from .basis_functions import BasisFunctions
 
 class Edmd():
@@ -9,13 +9,13 @@ class Edmd():
     Base class for edmd-type methods. Implements baseline edmd with the possible addition of l1 and/or l2 regularization.
     Overload fit for more specific methods.
     '''
-    def __init__(self, basis=BasisFunctions(0,0), system_dim=0, l1=0., l2=0., acceleration_bounds=None, override_C=True):
+    def __init__(self, basis=BasisFunctions(0,0), system_dim=0, l1=0., l1_ratio=0.5, acceleration_bounds=None, override_C=True):
         self.A = None
         self.B = None
         self.C = None
         self.basis = basis  # Basis class to use as lifting functions
         self.l1 = l1  # Strength of l1 regularization
-        self.l2 = l2  # Strength of l2 regularization
+        self.l1_ratio = l1_ratio  # Strength of l2 regularization
         self.n = system_dim
         self.n_lift = None
         self.m = None
@@ -43,7 +43,7 @@ class Edmd():
         - t: time, numpy 2d array [Ntraj, N]
         """
 
-        if self.l1 == 0. and self.l2 == 0.:
+        if self.l1 == 0.:
             # Construct EDMD matrices as described in M. Korda, I. Mezic, "Linear predictors for nonlinear dynamical systems: Koopman operator meets model predictive control":
             W = concatenate((Z_dot, X), axis=0)
             V = concatenate((Z, U), axis=0)
@@ -57,15 +57,14 @@ class Edmd():
             if self.override_C:
                 self.C = zeros(self.C.shape)
                 self.C[:self.n,:self.n] = eye(self.n)
+                self.C = multiply(self.C, self.Z_std.transpose())
 
         else:
             # Construct EDMD matrices using Elastic Net L1 and L2 regularization
             input = concatenate((Z.transpose(),U.transpose()),axis=1)
             output = Z_dot.transpose()
 
-            l1_ratio = self.l1/(self.l1+self.l2)
-            alpha = self.l1 + self.l2
-            reg_model = linear_model.ElasticNet(alpha=alpha, l1_ratio=l1_ratio, fit_intercept=True, normalize=True, max_iter=1e5)
+            reg_model = linear_model.ElasticNet(alpha=self.l1, l1_ratio=self.l1_ratio, fit_intercept=False, normalize=False, max_iter=1e5)
             reg_model.fit(input,output)
 
             self.A = reg_model.coef_[:self.n_lift,:self.n_lift]
@@ -73,6 +72,7 @@ class Edmd():
             if self.override_C:
                 self.C = zeros((self.n,self.n_lift))
                 self.C[:self.n,:self.n] = eye(self.n)
+                self.C = multiply(self.C, self.Z_std.transpose())
             else:
                 raise Exception('Warning: Learning of C not implemented for regularized regression.')
 
@@ -102,7 +102,7 @@ class Edmd():
         # Normalize data
         self.Z_std = std(Z_vec, axis=1)
         self.Z_std[argwhere(self.Z_std == 0.)] = 1.
-        self.Z_std[:self.n] = 1.  # Do not rescale states. Note: Assumes state is added to beginning of observables
+        #self.Z_std[:self.n] = 1.  # Do not rescale states. Note: Assumes state is added to beginning of observables
         self.Z_std = self.Z_std.reshape((self.Z_std.shape[0], 1))
         Z_norm = array([divide(Z[ii,:,:], self.Z_std.transpose()) for ii in range(Z.shape[0])])
 
@@ -145,6 +145,31 @@ class Edmd():
 
     def predict(self,X, U):
         return dot(self.C, dot(self.A,X) + dot(self.B, U))
+
+    def tune_fit(self, X, X_d, Z, Z_dot, U, U_nom):
+        l1_ratio = array([.1, .3, .5, .6, .75, .85, .9, .925, .95, .975, .99, 1])  # Values to test
+
+        # Construct EDMD matrices using Elastic Net L1 and L2 regularization
+        input = concatenate((Z.transpose(), U.transpose()), axis=1)
+        output = Z_dot.transpose()
+
+        reg_model_cv = linear_model.MultiTaskElasticNetCV(l1_ratio=l1_ratio, fit_intercept=False, normalize=False, cv=5, n_jobs=-1, selection='random')
+        reg_model_cv.fit(input, output)
+
+        self.A = reg_model_cv.coef_[:self.n_lift, :self.n_lift]
+        self.B = reg_model_cv.coef_[:self.n_lift, self.n_lift:]
+        if self.override_C:
+            self.C = zeros((self.n, self.n_lift))
+            self.C[:self.n, :self.n] = eye(self.n)
+            self.C = multiply(self.C,self.Z_std.transpose())
+
+        else:
+            raise Exception('Warning: Learning of C not implemented for regularized regression.')
+
+        self.l1 = reg_model_cv.alpha_
+        self.l1_ratio = reg_model_cv.l1_ratio_
+
+
 
     def discretize(self,dt):
         '''
