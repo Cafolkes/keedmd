@@ -73,8 +73,6 @@ class MPCControllerFast(Controller):
         ns = xr.shape[0]
 
         self.dt = dt
-        Ad = sparse.csc_matrix(sp.linalg.expm(Ac*self.dt))
-        Bd = sparse.csc_matrix(Bc*self.dt)
         self.plotMPC = plotMPC
         self.plotMPC_filename = plotMPC_filename
         self.q_d = xr
@@ -87,6 +85,9 @@ class MPCControllerFast(Controller):
         self.nu = nu
         self.nx = nx
         self.ns = ns
+        
+        Ad = sparse.csc_matrix(sp.linalg.expm(Ac*self.dt))
+        Bd = sparse.csc_matrix(Bc*self.dt)
 
         # Total desired path
         if self.q_d.ndim==2:
@@ -166,45 +167,45 @@ class MPCControllerFast(Controller):
         self.a = a
         self.B = B
 
-        check_ab = True
-        if check_ab:
-            x0  = np.linspace(-5,40,nx)
-            x00 = np.linspace(-5,40,nx)
-            # Store data Init
-            nsim = N
-            xst = np.zeros((nx,nsim))
-            ust = np.zeros((nu,nsim))
+        # check_ab = True
+        # if check_ab:
+        #     x0  = np.linspace(-5,40,nx)
+        #     x00 = np.linspace(-5,40,nx)
+        #     # Store data Init
+        #     nsim = N
+        #     xst = np.zeros((nx,nsim))
+        #     ust = np.zeros((nu,nsim))
 
-            # Simulate in closed loop
+        #     # Simulate in closed loop
 
-            for i in range(nsim):
-                # Fake pd controller
-                ctrl = np.zeros(nu,) #np.random.rand(nu,)
-                x0 = Ad.dot(x0) + Bd.dot(ctrl)
+        #     for i in range(nsim):
+        #         # Fake pd controller
+        #         ctrl = np.zeros(nu,) #np.random.rand(nu,)
+        #         x0 = Ad.dot(x0) + Bd.dot(ctrl)
 
-                # Store Data
-                xst[:,i] = x0
-                ust[:,i] = ctrl
+        #         # Store Data
+        #         xst[:,i] = x0
+        #         ust[:,i] = ctrl
 
-            x_dense = np.reshape(a @ x00 + B @ (ust.flatten('F')),(N,nx)).T
+        #     x_dense = np.reshape(a @ x00 + B @ (ust.flatten('F')),(N,nx)).T
 
-            plt.figure()
-            plt.subplot(2,1,1)
-            for i in range(nx):
-                plt.plot(range(nsim),xst[i,:],'d',label="sim "+str(i))
-                plt.plot(range(nsim),x_dense[i,:],'d',label="ax+bu "+str(i))
-            plt.xlabel('Time(s)')
-            plt.grid()
-            plt.legend()
+        #     plt.figure()
+        #     plt.subplot(2,1,1)
+        #     for i in range(nx):
+        #         plt.plot(range(nsim),xst[i,:],'d',label="sim "+str(i))
+        #         plt.plot(range(nsim),x_dense[i,:],'d',label="ax+bu "+str(i))
+        #     plt.xlabel('Time(s)')
+        #     plt.grid()
+        #     plt.legend()
 
-            plt.subplot(2,1,2)
-            for i in range(nu):
-                plt.plot(range(nsim),ust[i,:],label=str(i))
-            plt.xlabel('Time(s)')
-            plt.grid()
-            plt.legend()
-            plt.savefig("AB_check_for_"+name+".png",bbox_inches='tight')
-            plt.close()
+        #     plt.subplot(2,1,2)
+        #     for i in range(nu):
+        #         plt.plot(range(nsim),ust[i,:],label=str(i))
+        #     plt.xlabel('Time(s)')
+        #     plt.grid()
+        #     plt.legend()
+        #     plt.savefig("AB_check_for_"+name+".png",bbox_inches='tight')
+        #     plt.close()
 
 
         # Cast MPC problem to a QP: x = (x(0),x(1),...,x(N),u(0),...,u(N-1))
@@ -238,49 +239,51 @@ class MPCControllerFast(Controller):
             u = np.hstack([x_max_flat - a @ x0, u_max_flat])
 
         x0aQb = self.BTQbda @ x0
+        self.Cbda = Cbd @ a
+        self.BQxr  = self.B.T @ np.reshape(self.CtQ.dot(self.xr),(N*nx,),order='F')
         q = x0aQb - xrQB 
         Aineq_u = sparse.eye(N*nu)
         A = sparse.vstack([Aineq_x, Aineq_u]).tocsc()
 
-        plot_matrices = True
-        if plot_matrices:
-            #! Visualize Matrices
-            fig = plt.figure()
+        # plot_matrices = True
+        # if plot_matrices:
+        #     #! Visualize Matrices
+        #     fig = plt.figure()
 
-            fig.suptitle("QP Matrices to solve MP in dense form. N={}, nx={}, nu={}".format(N,nx,nu),fontsize=20)
-            plt.subplot(2,4,1,xlabel="Ns*(N+1)", ylabel="Ns*(N+1)")
-            plt.imshow(a.toarray(),  interpolation='nearest', cmap=cm.Greys_r)
-            plt.title("a in $x=ax_0+bu$")
-            plt.subplot(2,4,2,xlabel="Ns*(N+1)", ylabel="Nu*N")
-            plt.imshow(B.toarray(),  interpolation='nearest', cmap=cm.Greys_r)
-            plt.title("b in $x=ax_0+bu$")
-            plt.subplot(2,4,3,xlabel="ns*(N+1) + ns*(N+1) + nu*N", ylabel="Ns*(N+1)+Nu*N")
-            plt.imshow(A.toarray(),  interpolation='nearest', cmap=cm.Greys_r)
-            plt.title("A total in $l\\leq Ax \\geq u$")
-            plt.subplot(2,4,4)
-            plt.imshow(P.toarray(),  interpolation='nearest', cmap=cm.Greys_r)
-            plt.title("P in $J=u^TPu+q^Tu$")
-            plt.subplot(2,4,5)
-            plt.imshow(Qbd.toarray(),  interpolation='nearest', cmap=cm.Greys_r)
-            plt.title("Qbd")
+        #     fig.suptitle("QP Matrices to solve MP in dense form. N={}, nx={}, nu={}".format(N,nx,nu),fontsize=20)
+        #     plt.subplot(2,4,1,xlabel="Ns*(N+1)", ylabel="Ns*(N+1)")
+        #     plt.imshow(a.toarray(),  interpolation='nearest', cmap=cm.Greys_r)
+        #     plt.title("a in $x=ax_0+bu$")
+        #     plt.subplot(2,4,2,xlabel="Ns*(N+1)", ylabel="Nu*N")
+        #     plt.imshow(B.toarray(),  interpolation='nearest', cmap=cm.Greys_r)
+        #     plt.title("b in $x=ax_0+bu$")
+        #     plt.subplot(2,4,3,xlabel="ns*(N+1) + ns*(N+1) + nu*N", ylabel="Ns*(N+1)+Nu*N")
+        #     plt.imshow(A.toarray(),  interpolation='nearest', cmap=cm.Greys_r)
+        #     plt.title("A total in $l\\leq Ax \\geq u$")
+        #     plt.subplot(2,4,4)
+        #     plt.imshow(P.toarray(),  interpolation='nearest', cmap=cm.Greys_r)
+        #     plt.title("P in $J=u^TPu+q^Tu$")
+        #     plt.subplot(2,4,5)
+        #     plt.imshow(Qbd.toarray(),  interpolation='nearest', cmap=cm.Greys_r)
+        #     plt.title("Qbd")
 
 
-            #! Visualize Vectors
-            plt.subplot(2,4,6)
-            plt.plot(l)
-            plt.title('l in  $l\\leq Ax \\geq u$')
-            plt.grid()
-            plt.subplot(2,4,7)
-            plt.plot(u)
-            plt.title("l in  $l\\leq Ax \\geq u$")
-            plt.grid()
-            plt.subplot(2,4,8)
-            plt.plot(q)
-            plt.title("q in $J=u^TPu+q^Tu$")
-            plt.grid()
-            plt.tight_layout()
-            plt.savefig("MPC_matrices_for_"+name+".png",bbox_inches='tight')
-            plt.close()
+        #     #! Visualize Vectors
+        #     plt.subplot(2,4,6)
+        #     plt.plot(l)
+        #     plt.title('l in  $l\\leq Ax \\geq u$')
+        #     plt.grid()
+        #     plt.subplot(2,4,7)
+        #     plt.plot(u)
+        #     plt.title("l in  $l\\leq Ax \\geq u$")
+        #     plt.grid()
+        #     plt.subplot(2,4,8)
+        #     plt.plot(q)
+        #     plt.title("q in $J=u^TPu+q^Tu$")
+        #     plt.grid()
+        #     plt.tight_layout()
+        #     plt.savefig("MPC_matrices_for_"+name+".png",bbox_inches='tight')
+        #     plt.close()
             #plt.show()
 
         # Create an OSQP object
@@ -310,7 +313,6 @@ class MPCControllerFast(Controller):
         - x, numpy 1d array [ns,]
         - time, t, float
         '''
-
         N = self.N
         nu = self.nu
         nx = self.nx
@@ -319,19 +321,15 @@ class MPCControllerFast(Controller):
         if (self.lifting):
             x = np.transpose(self.edmd_object.lift(x.reshape((x.shape[0],1)),self.xr[:,0].reshape((self.xr.shape[0],1))))[:,0]
 
-            #x = self.edmd_object.lift(x,xr[:,0])
-            BQxr  = self.B.T @ np.reshape(self.CtQ.dot(self.xr),(N*nx,),order='F')
-            l = np.hstack([self.x_min_flat - self.Cbd @ self.a @ x, self.u_min_flat])
-            u = np.hstack([self.x_max_flat - self.Cbd @ self.a @ x, self.u_max_flat])
+            l = np.hstack([self.x_min_flat - self.Cbda @ x, self.u_min_flat])
+            u = np.hstack([self.x_max_flat - self.Cbda @ x, self.u_max_flat])
 
         else:
-            BQxr  = self.B.T @ np.reshape(self.Q.dot(self.xr),(N*nx,),order='F')
             l = np.hstack([self.x_min_flat - self.a @ x, self.u_min_flat])
             u = np.hstack([self.x_max_flat - self.a @ x, self.u_max_flat])
 
-        # Update initial state
-        BQax0 = self.BTQbda @ x
-        q = BQax0  - BQxr
+        # Update initial state 
+        q = self.BTQbda @ x  - self.BQxr
 
         self.prob.update(q=q,l=l,u=u)
 
