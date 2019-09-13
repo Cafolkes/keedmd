@@ -10,12 +10,12 @@ class Keedmd(Edmd):
         self.K_p = K_p
         self.K_d = K_d
         self.Z_std = ones((basis.Nlift + basis.n, 1))
-        self.l1_pos = self.l1_pos
-        self.l1_ratio_pos = self.l1_ratio_pos
-        self.l1_vel = self.l1_vel
-        self.l1_ratio_vel =  self.l1_ratio_vel
-        self.l1_eig = self.l1_eig
-        self.l1_ratio_eig = self.l1_ratio_eig
+        self.l1_pos = l1_pos
+        self.l1_ratio_pos = l1_ratio_pos
+        self.l1_vel = l1_vel
+        self.l1_ratio_vel =  l1_ratio_vel
+        self.l1_eig = l1_eig
+        self.l1_ratio_eig = l1_ratio_eig
 
         if self.basis.Lambda is None:
             raise Exception('Basis provided is not an Koopman eigenfunction basis')
