@@ -85,13 +85,13 @@ diff_dropout_prob = 0.5
 # KEEDMD parameters
 # Best: 0.024
 l1_keedmd = 5e-2
-l2_keedmd = 1e-2
+l1_ratio_keedmd = 0.5
 
 # EDMD parameters
 # Best 0.06
 n_lift_edmd = (eigenfunction_max_power+1)**n-1
 l1_edmd = 1e-2
-l2_edmd = 0.#1e-2
+l1_ratio_edmd = 0.5#1e-2
 
 # Simulation parameters (evaluate performance)
 load_fit = True
@@ -225,9 +225,9 @@ if not load_fit:
     # Fit KEEDMD model:
     t0 = time.process_time()
     print(' - Fitting KEEDMD model...', end =" ")
-    keedmd_model = Keedmd(eigenfunction_basis, n, l1=l1_keedmd, l2=l2_keedmd, K_p=K_p, K_d=K_d)
+    keedmd_model = Keedmd(eigenfunction_basis, n, l1=l1_keedmd, l1_ratio=l1_ratio_keedmd, K_p=K_p, K_d=K_d)
     X, X_d, Z, Z_dot, U, U_nom, t = keedmd_model.process(xs, q_d, us, us_nom, ts)
-    keedmd_model.fit(X, X_d, Z, Z_dot, U, U_nom)
+    keedmd_model.tune_fit(X, X_d, Z, Z_dot, U, U_nom)
     print('in {:.2f}s'.format(time.process_time()-t0))
     
     # Construct basis of RBFs for EDMD:
@@ -253,8 +253,7 @@ if not load_fit:
     # Fit EDMD model
     t0 = time.process_time()
     print(' - Fitting EDMD model...', end =" ")
-    edmd_model = Edmd(rbf_basis, n, l1=l1_edmd, l2=l2_edmd)
-    #TODO check eigenvalues, and controllability
+    edmd_model = Edmd(rbf_basis, n, l1=l1_edmd, l1_ratio=l1_ratio_edmd)
     X, X_d, Z, Z_dot, U, U_nom, t = edmd_model.process(xs, q_d, us, us_nom, ts)
     edmd_model.fit(X, X_d, Z, Z_dot, U, U_nom)
     print('in {:.2f}s'.format(time.process_time()-t0))
