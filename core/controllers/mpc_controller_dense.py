@@ -36,7 +36,7 @@ class MPCControllerDense(Controller):
     Use lifting=True to solve MPC in the lifted space
     """
     def __init__(self, linear_dynamics, N, dt, umin, umax, xmin, xmax, 
-                Q, R, QN, xr, plotMPC=False, plotMPC_filename="",lifting=False, edmd_object=None, name="noname"):
+                Q, R, QN, xr, plotMPC=False, plotMPC_filename="",lifting=False, edmd_object=None, name="noname", soft=False, D=None):
         """Create an MPC Controller object.
 
         Sizes:
@@ -87,6 +87,7 @@ class MPCControllerDense(Controller):
         self.nu = nu
         self.nx = nx
         self.ns = ns
+        self.soft = soft
 
         # Total desired path
         if self.q_d.ndim==2:
@@ -221,7 +222,10 @@ class MPCControllerDense(Controller):
         self.CtQ = self.C.T @ Q
         Cbd = self.Cbd
         
+            
         P = Rbd + B.T @ CQCbd @ B            
+
+            
         self.BTQbda =  B.T @ CQCbd @ a            
         Aineq_x = Cbd @ B
 
@@ -233,6 +237,14 @@ class MPCControllerDense(Controller):
         q = x0aQb - xrQB 
         Aineq_u = sparse.eye(N*nu)
         A = sparse.vstack([Aineq_x, Aineq_u]).tocsc()
+
+        if soft:
+            Pdelta = sparse.kron(sparse.eye(N), D)
+            P = sparse.block_diag([P,Pdelta])
+            qdelta = np.zeros(N*ns)
+            q = np.hstack([q,qdelta])
+            Adelta = sparse.csc_matrix(np.vstack([np.eye(N*ns),np.zeros((N*nu,N*ns))]))
+            A = sparse.hstack([A, Adelta])
 
         plot_matrices = True
         if plot_matrices:
@@ -306,6 +318,9 @@ class MPCControllerDense(Controller):
         N = self.N
         nu = self.nu
         nx = self.nx
+        ns = self.ns
+
+
 
         tindex = int(t/self.dt)+1
             
@@ -319,7 +334,7 @@ class MPCControllerDense(Controller):
         # Construct the new _osqp_q objects
         if (self.lifting):
             x = np.transpose(self.edmd_object.lift(x.reshape((x.shape[0],1)),xr[:,0].reshape((xr.shape[0],1))))[:,0]
-            print("Eval at t={:.2f}, z={}".format(t,x))
+            #print("Eval at t={:.2f}, z={}".format(t,x))
 
             #x = self.edmd_object.lift(x,xr[:,0])
             BQxr  = self.B.T @ np.reshape(self.CtQ.dot(xr),(N*nx,),order='F')
@@ -334,6 +349,9 @@ class MPCControllerDense(Controller):
         # Update initial state
         BQax0 = self.BTQbda @ x
         q = BQax0  - BQxr
+
+        if self.soft:
+            q = np.hstack([q,np.zeros(N*ns)])        
 
         self.prob.update(q=q,l=l,u=u)
 

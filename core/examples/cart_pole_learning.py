@@ -402,13 +402,13 @@ print('Evaluate Performance with closed loop trajectory tracking...', end=" ")
 # Set up trajectory and controller for prediction task:
 q_d_pred = q_d[4,:,:].transpose()
 #q_d_pred = q_d_pred - np.tile(q_d_pred[:,-1:],(1,q_d_pred.shape[1]))  #ensure global end point is at origin
-#q_d_pred = q_d_pred[:,:int(q_d_pred.shape[1]/2*1.5)]
+q_d_pred = q_d_pred[:,:int(q_d_pred.shape[1]/2*1)]
 
 #q_d_pred = np.zeros(q_d_pred.shape)
 x_0 = q_d_pred[:,0]
 #x_0[0] = 0
 t_pred = t_d.squeeze()
-#t_pred = t_pred[:int(t_pred.shape[0]/2*1.5)]
+t_pred = t_pred[:int(t_pred.shape[0]/2*1)]
 noise_var_pred = 0.0
 output_pred = CartPoleTrajectory(system_true, q_d_pred,t_pred)
 
@@ -417,7 +417,7 @@ Q = sparse.diags([5000,3000,5000,6000])
 QN = Q
 
 
-upper_bounds_MPC_control = array([1000, 1000, 1000, 1000])  # State constraints, check they are higher than upper_bounds
+upper_bounds_MPC_control = array([1000, 0.0, 1000, 1000])  # State constraints, check they are higher than upper_bounds
 lower_bounds_MPC_control = -upper_bounds_MPC_control  # State constraints
 umax_control = 1000  # check it is higher than the control to generate the trajectories
 MPC_horizon = 0.25 # [s]
@@ -448,7 +448,7 @@ print('  edmd controllability matrix rank is {}, ns={}, nz={}'.format(np.linalg.
 Cmatrix = control.ctrb(A=keedmd_model.A, B=keedmd_model.B)
 print('keedmd controllability matrix rank is {}, ns={}, nz={}'.format(np.linalg.matrix_rank(Cmatrix),n,keedmd_model.A.shape[0]))
 
-
+D = sparse.diags([5000,30000,5000,6000])
 edmd_sys = LinearSystemDynamics(A=edmd_model.A, B=edmd_model.B)
 edmd_controller = MPCControllerDense(linear_dynamics=edmd_sys, 
                                 N=int(MPC_horizon/dt),
@@ -464,6 +464,8 @@ edmd_controller = MPCControllerDense(linear_dynamics=edmd_sys,
                                 lifting=True,
                                 edmd_object=edmd_model,
                                 plotMPC=plotMPC,
+                                soft=True,
+                                D=D,
                                 name='KEEDMD')
 
 xs_edmd_MPC, us_emdm_MPC = system_true.simulate(x_0, edmd_controller, t_pred)
@@ -566,5 +568,5 @@ for ii in range(n):
     if ii == 0:
         title('Closed loop performance of different models')
 legend(fontsize=10, loc='best')
-savefig(closed_filename)
+savefig(closed_filename,format='svg', dpi=1200)
 show()
