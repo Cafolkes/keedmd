@@ -64,7 +64,7 @@ class Keedmd(Edmd):
 
         else:
             reg_model = linear_model.ElasticNet(alpha=self.l1, l1_ratio=self.l1_ratio, fit_intercept=False,
-                                                         normalize=False, max_iter=1e5)
+                                                         normalize=False, selection='random', max_iter=1e4)
 
             # Solve least squares problem to find A and B for velocity terms:
             if self.episodic:
@@ -120,9 +120,9 @@ class Keedmd(Edmd):
 
     def tune_fit(self, X, X_d, Z, Z_dot, U, U_nom):
 
-        l1_ratio = array([.1, .3, .5, .6, .75, .85, .9, .925, .95, .975, .99, 1])  # Values to test
+        l1_ratio = array([.1, .5, .7, .9, .95, .99, 1])  # Values to test
         reg_model_cv = linear_model.MultiTaskElasticNetCV(l1_ratio=l1_ratio, fit_intercept=False,
-                                            normalize=False, cv=5, n_jobs=-1)
+                                            normalize=False, cv=5, n_jobs=-1, selection='random', max_iter=1e4)
 
         # Solve least squares problem to find A and B for velocity terms:
         if self.episodic:
