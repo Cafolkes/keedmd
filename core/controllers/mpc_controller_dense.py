@@ -12,7 +12,6 @@ import osqp
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 
-
 from .controller import Controller
 from ..learning_keedmd.edmd import Edmd
 
@@ -72,9 +71,16 @@ class MPCControllerDense(Controller):
         [nx, nu] = Bc.shape
         ns = xr.shape[0]
 
+        #Discretize dynamics:
         self.dt = dt
-        Ad = sparse.csc_matrix(sp.linalg.expm(Ac*self.dt))
-        Bd = sparse.csc_matrix(Bc*self.dt)
+        if lifting:
+            self.C = edmd_object.C
+            self.edmd_object = edmd_object
+        else:
+            self.C = sparse.eye(ns)
+        lin_model_d = sp.signal.cont2discrete((Ac,Bc,self.C,zeros((ns,1))),dt)
+        Ad = sparse.csc_matrix(lin_model_d[0]) #TODO: If bad behavior, delete this
+        Bd = sparse.csc_matrix(lin_model_d[1]) #TODO: If bad behavior, delete this
         self.plotMPC = plotMPC
         self.plotMPC_filename = plotMPC_filename
         self.q_d = xr
@@ -105,11 +111,7 @@ class MPCControllerDense(Controller):
         Bbd = block_diag(Bd,nu).tocoo()
 
 
-        if lifting:
-            self.C = edmd_object.C
-            self.edmd_object = edmd_object
-        else:
-            self.C = sparse.eye(ns)
+
 
         # Check Xmin and Xmax
         if  xmin.shape[0]==ns and xmin.ndim==1: # it is a single vector we tile it
