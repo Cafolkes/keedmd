@@ -89,8 +89,16 @@ class MPCControllerFast(Controller):
         self.nx = nx
         self.ns = ns
         
-        Ad = sparse.csc_matrix(sp.linalg.expm(Ac*self.dt))
-        Bd = sparse.csc_matrix(Bc*self.dt)
+        #Discretize dynamics:
+        self.dt = dt
+        if lifting:
+            self.C = edmd_object.C
+            self.edmd_object = edmd_object
+        else:
+            self.C = sparse.eye(ns)
+        lin_model_d = sp.signal.cont2discrete((Ac,Bc,self.C,zeros((ns,1))),dt)
+        Ad = sparse.csc_matrix(lin_model_d[0]) #TODO: If bad behavior, delete this
+        Bd = sparse.csc_matrix(lin_model_d[1]) #TODO: If bad behavior, delete this
 
         # Total desired path
         if self.q_d.ndim==2:
@@ -213,10 +221,6 @@ class MPCControllerFast(Controller):
 
         # Cast MPC problem to a QP: x = (x(0),x(1),...,x(N),u(0),...,u(N-1))
         if (self.lifting):
-            # Load eDMD objects
-            self.C = edmd_object.C
-            self.edmd_object = edmd_object
-
             # Compute Block Diagonal elements
             self.Cbd = sparse.kron(sparse.eye(N), self.C)
             CQCbd  = self.Cbd.T @ Qbd @ self.Cbd
