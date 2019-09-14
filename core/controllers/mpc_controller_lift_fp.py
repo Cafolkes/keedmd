@@ -302,6 +302,7 @@ class MPCControllerFast(Controller):
         #     plt.close()
             #plt.show()
 
+        self.osqp_size = P.shape[0]
         # Create an OSQP object
         self.prob = osqp.OSQP()
         # Setup workspace
