@@ -253,6 +253,8 @@ class KoopmanEigenfunctions(BasisFunctions):
             if verbose:
                 print('Epoch: ',i,' Training loss:', format(losses[-1], '08f'), ' Validation loss:', format(val_losses[-1], '08f'))
 
+        return val_losses[-1]
+
     def process(self, X, t, X_d):
         # Shift dynamics to make origin a fixed point
         X_f = X_d[:,-1,:]
