@@ -90,7 +90,7 @@ class KoopmanEigenfunctions(BasisFunctions):
         self.diffeomorphism_model = self.diffeomorphism_model.double()
         self.A_cl = from_numpy(self.A_cl)
 
-    def fit_diffeomorphism_model(self, X, t, X_d, learning_rate=1e-2, learning_decay=0.95, n_epochs=50, train_frac=0.8, l2=1e1, jacobian_penalty=1., batch_size=64, initialize=True, verbose=True):
+    def fit_diffeomorphism_model(self, X, t, X_d, learning_rate=1e-2, learning_decay=0.95, n_epochs=50, train_frac=0.8, l2=1e1, jacobian_penalty=1., batch_size=64, initialize=True, verbose=True, X_val=None, t_val=None, Xd_val=None):
         X, X_dot, X_d, t = self.process(X=X, t=t, X_d=X_d)
         y_target = X_dot - dot(self.A_cl, X.transpose()).transpose()# - dot(self.BK, X_d.transpose()).transpose()
 
@@ -105,13 +105,26 @@ class KoopmanEigenfunctions(BasisFunctions):
 
         # Builds dataset with all data
         dataset = TensorDataset(X_tensor, y_tensor)
-        # Splits randomly into train and validation datasets
-        n_train = int(train_frac*X.shape[0])
-        n_val = X.shape[0]-n_train
-        train_dataset, val_dataset = random_split(dataset, [n_train, n_val])
-        # Builds a loader for each dataset to perform mini-batch gradient descent
-        train_loader = DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=True)
-        val_loader = DataLoader(dataset=val_dataset, batch_size=batch_size)
+
+        if X_val is None or t_val is None or Xd_val is None:
+            # Splits randomly into train and validation datasets
+            n_train = int(train_frac*X.shape[0])
+            n_val = X.shape[0]-n_train
+            train_dataset, val_dataset = random_split(dataset, [n_train, n_val])
+            # Builds a loader for each dataset to perform mini-batch gradient descent
+            train_loader = DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=True)
+            val_loader = DataLoader(dataset=val_dataset, batch_size=batch_size)
+        else:
+            #Uses X,... as training data and X_val,... as validation data
+            X_val, X_dot_val, Xd_val, t_val = self.process(X=X_val, t=t_val, X_d=Xd_val)
+            y_target_val = X_dot_val - dot(self.A_cl, X_val.transpose()).transpose()  # - dot(self.BK, X_d.transpose()).transpose()
+            X_val_tensor = from_numpy(npconcatenate((X_val, X_dot_val, X_dot_val), axis=1))  # [x (1,4), t (1,1), x_dot (1,4)]
+            y_val_tensor = from_numpy(y_target_val)
+            X_val_tensor.requires_grad_(True)
+            val_dataset = TensorDataset(X_val_tensor, y_val_tensor)
+            # Builds a loader for each dataset to perform mini-batch gradient descent
+            train_loader = DataLoader(dataset=dataset, batch_size=batch_size, shuffle=True)
+            val_loader = DataLoader(dataset=val_dataset, batch_size=batch_size)
 
         def diffeomorphism_loss(h_dot, zero_jacobian, y_true, y_pred, is_training):
             h_sum_pred = h_dot - t_transpose(mm(self.A_cl, t_transpose(y_pred, 1, 0)), 1, 0)

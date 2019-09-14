@@ -71,7 +71,7 @@ plot_eigen = False
 eigenfunction_max_power = 3             #TODO: Remove when MPC debug finalized
 l2_diffeomorphism = 1e0                 #Fix for current architecture
 jacobian_penalty_diffeomorphism = 5e0   #Fix for current architecture
-load_diffeomorphism_model = True
+load_diffeomorphism_model = False
 diffeomorphism_model_file = 'diff_model'
 diff_n_epochs = 20
 diff_train_frac = 0.9
@@ -94,7 +94,7 @@ l1_edmd = 1e-2
 l1_ratio_edmd = 0.5#1e-2
 
 # Simulation parameters (evaluate performance)
-load_fit = True
+load_fit = False
 test_open_loop = False
 plot_open_loop = test_open_loop
 save_traj = False
@@ -225,7 +225,7 @@ if not load_fit:
     # Fit KEEDMD model:
     t0 = time.process_time()
     print(' - Fitting KEEDMD model...', end =" ")
-    keedmd_model = Keedmd(eigenfunction_basis, n, l1=l1_keedmd, l1_ratio=l1_ratio_keedmd, K_p=K_p, K_d=K_d)
+    keedmd_model = Keedmd(eigenfunction_basis, n, l1_pos=l1_keedmd, l1_ratio_pos=l1_ratio_keedmd, l1_vel=l1_keedmd, l1_ratio_vel=l1_ratio_keedmd, l1_eig=l1_keedmd, l1_ratio_eig=l1_ratio_keedmd, K_p=K_p, K_d=K_d)
     X, X_d, Z, Z_dot, U, U_nom, t = keedmd_model.process(xs, q_d, us, us_nom, ts)
     keedmd_model.tune_fit(X, X_d, Z, Z_dot, U, U_nom)
     print('in {:.2f}s'.format(time.process_time()-t0))
@@ -401,13 +401,13 @@ print('Evaluate Performance with closed loop trajectory tracking...', end=" ")
 # Set up trajectory and controller for prediction task:
 q_d_pred = q_d[4,:,:].transpose()
 #q_d_pred = q_d_pred - np.tile(q_d_pred[:,-1:],(1,q_d_pred.shape[1]))  #ensure global end point is at origin
-q_d_pred = q_d_pred[:,:int(q_d_pred.shape[1]/2*1)]
+q_d_pred = q_d_pred[:,:int(q_d_pred.shape[1]/2*1.73)]
 
 #q_d_pred = np.zeros(q_d_pred.shape)
 x_0 = q_d_pred[:,0]
 #x_0[0] = 0
 t_pred = t_d.squeeze()
-t_pred = t_pred[:int(t_pred.shape[0]/2*1)]
+t_pred = t_pred[:int(t_pred.shape[0]/2*1.73)]
 noise_var_pred = 0.0
 output_pred = CartPoleTrajectory(system_true, q_d_pred,t_pred)
 
@@ -416,7 +416,7 @@ Q = sparse.diags([5000,3000,5000,6000])
 QN = Q
 
 
-upper_bounds_MPC_control = array([1000, 0.0, 1000, 1000])  # State constraints, check they are higher than upper_bounds
+upper_bounds_MPC_control = array([np.Inf, np.Inf, np.Inf, np.Inf])  # State constraints, check they are higher than upper_bounds
 lower_bounds_MPC_control = -upper_bounds_MPC_control  # State constraints
 umax_control = 1000  # check it is higher than the control to generate the trajectories
 MPC_horizon = 0.25 # [s]
