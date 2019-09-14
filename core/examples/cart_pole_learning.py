@@ -210,7 +210,7 @@ if not load_fit:
     if load_diffeomorphism_model:
         eigenfunction_basis.load_diffeomorphism_model(diffeomorphism_model_file)
     else:
-        eigenfunction_basis.fit_diffeomorphism_model(X=xs, t=t_eval, X_d=q_d, l2=l2_diffeomorphism, jacobian_penalty=jacobian_penalty_diffeomorphism,
+        eigenfunction_basis.fit_diffeomorphism_model(X=xs, t=ts, X_d=q_d, l2=l2_diffeomorphism, jacobian_penalty=jacobian_penalty_diffeomorphism,
             learning_rate=diff_learn_rate, learning_decay=diff_learn_rate_decay, n_epochs=diff_n_epochs, train_frac=diff_train_frac, batch_size=diff_batch_size)
         eigenfunction_basis.save_diffeomorphism_model(diffeomorphism_model_file)
     eigenfunction_basis.construct_basis(ub=upper_bounds, lb=lower_bounds)
