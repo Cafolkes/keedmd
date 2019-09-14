@@ -90,7 +90,8 @@ class KoopmanEigenfunctions(BasisFunctions):
         self.diffeomorphism_model = self.diffeomorphism_model.double()
         self.A_cl = from_numpy(self.A_cl)
 
-    def fit_diffeomorphism_model(self, X, X_dot, X_d, learning_rate=1e-2, learning_decay=0.95, n_epochs=50, train_frac=0.8, l2=1e1, jacobian_penalty=1., batch_size=64, initialize=True, verbose=True, X_val=None, t_val=None, Xd_val=None):
+    def fit_diffeomorphism_model(self, X, t, X_d, learning_rate=1e-2, learning_decay=0.95, n_epochs=50, train_frac=0.8, l2=1e1, jacobian_penalty=1., batch_size=64, initialize=True, verbose=True, X_val=None, t_val=None, Xd_val=None):
+        X, X_dot, X_d, t = self.process(X=X, t=t, X_d=X_d)
         y_target = X_dot - dot(self.A_cl, X.transpose()).transpose()# - dot(self.BK, X_d.transpose()).transpose()
 
         device = 'cpu' if cuda.is_available() else 'cpu'
