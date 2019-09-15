@@ -76,6 +76,7 @@ class MPCControllerFast(Controller):
         self.dt = dt
         self.plotMPC = plotMPC
         self.plotMPC_filename = plotMPC_filename
+        self.verbose = False
         self.q_d = xr
 
 
@@ -302,10 +303,11 @@ class MPCControllerFast(Controller):
         #     plt.close()
             #plt.show()
 
+        self.osqp_size = P.shape[0]
         # Create an OSQP object
         self.prob = osqp.OSQP()
         # Setup workspace
-        self.prob.setup(P=P.tocsc(), q=q, A=A, l=l, u=u, warm_start=True, verbose=True)
+        self.prob.setup(P=P.tocsc(), q=q, A=A, l=l, u=u, warm_start=True, verbose=self.verbose)
 
         if self.plotMPC:
             # Figure to plot MPC thoughts
@@ -332,6 +334,7 @@ class MPCControllerFast(Controller):
         N = self.N
         nu = self.nu
         nx = self.nx
+        x_original = np.copy(x)
 
         # Construct the new _osqp_q objects
         if (self.lifting):
@@ -354,12 +357,15 @@ class MPCControllerFast(Controller):
 
         ## Solve MPC Instance
         self._osqp_result = self.prob.solve()
+        u_out = self._osqp_result.x[:nu]
 
         # Check solver status
         if self._osqp_result.info.status != 'solved':
-            raise ValueError('OSQP did not solve the problem!')
+            #raise ValueError('OSQP did not solve the problem!')
+            u_out = np.zeros(nu)
+            print('WARNING: Augmenting MPC not solved at x = ', x_original)
 
-        return  self._osqp_result.x[:nu]
+        return u_out
 
     def parse_result(self,x,u):
         return  np.transpose(np.reshape( self.a @ x + self.B @ u, (self.N+1,self.nx)))

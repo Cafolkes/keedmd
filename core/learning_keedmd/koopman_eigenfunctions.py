@@ -262,12 +262,8 @@ class KoopmanEigenfunctions(BasisFunctions):
         X_d = array([X_d[ii,:,:].reshape((X_d.shape[1],X_d.shape[2])) - X_f[ii,:] for ii in range(len(X))])
 
         # Calculate numerical derivatives
-        X_dot = array([differentiate_vec(X_shift[ii,:,:],t[0,:]) for ii in range(X_shift.shape[0])])
-        t = array([t[0,:] for _ in range(len(X))])
-        #clip = int((X_shift.shape[1]-X_dot.shape[1])/2)
-        #X_shift = X_shift[:,clip:-clip,:]
-        #X_d = X_d[:, clip:-clip, :]
-        #t = t[:,clip:-clip]
+        X_dot = array([differentiate_vec(X_shift[ii, :, :], t[ii, :]) for ii in range(X_shift.shape[0])])
+
         assert(X_shift.shape == X_dot.shape)
         assert(X_d.shape == X_dot.shape)
         assert(t.shape == X_shift[:,:,0].shape)
