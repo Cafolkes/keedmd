@@ -348,7 +348,7 @@ class MPCControllerFast(Controller):
         q = self.BTQbda @ x  - self.BQxr
 
         if self.soft:
-            q = np.hstack([q,np.zeros(N*ns)])   
+            q = np.hstack([q,np.zeros(N*self.ns)])   
 
         self.prob.update(q=q,l=l,u=u)
 
