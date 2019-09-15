@@ -123,8 +123,8 @@ class KoopmanEigenfunctions(BasisFunctions):
             X_val_tensor.requires_grad_(True)
             val_dataset = TensorDataset(X_val_tensor, y_val_tensor)
             # Builds a loader for each dataset to perform mini-batch gradient descent
-            train_loader = DataLoader(dataset=dataset, batch_size=batch_size, shuffle=True)
-            val_loader = DataLoader(dataset=val_dataset, batch_size=batch_size)
+            train_loader = DataLoader(dataset=dataset, batch_size=int(batch_size), shuffle=True)
+            val_loader = DataLoader(dataset=val_dataset, batch_size=int(batch_size))
 
         def diffeomorphism_loss(h_dot, zero_jacobian, y_true, y_pred, is_training):
             h_sum_pred = h_dot - t_transpose(mm(self.A_cl, t_transpose(y_pred, 1, 0)), 1, 0)
