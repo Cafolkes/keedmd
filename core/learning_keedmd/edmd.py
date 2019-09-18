@@ -71,7 +71,7 @@ class Edmd():
                                         normalize=False, positive=False, precompute='auto', random_state=0,
                                         selection='cyclic', tol=0.0001, verbose=0)
             else:
-                reg_model = linear_model.ElasticNet(alpha=self.l1, l1_ratio=self.l1_ratio, fit_intercept=False, normalize=False, max_iter=1e5)
+                reg_model = linear_model.ElasticNet(alpha=self.l1, l1_ratio=self.l1_ratio, fit_intercept=False, normalize=False, max_iter=1e3)
             reg_model.fit(input,output)
             print(reg_model)
 
@@ -112,7 +112,8 @@ class Edmd():
         self.Z_std[argwhere(self.Z_std == 0.)] = 1.
         #self.Z_std[:self.n] = 1.  # Do not rescale states. Note: Assumes state is added to beginning of observables
         self.Z_std = self.Z_std.reshape((self.Z_std.shape[0], 1))
-        Z_norm = array([divide(Z[ii,:,:], self.Z_std.transpose()) for ii in range(Z.shape[0])])
+        #Z_norm = array([divide(Z[ii,:,:], self.Z_std.transpose()) for ii in range(Z.shape[0])])
+        Z_norm = Z
 
         Z_dot = array([differentiate_vec(Z_norm[ii,:,:],t_filtered[ii,:]) for ii in range(Ntraj)])  #Numerical differentiate lifted state
 
@@ -125,6 +126,23 @@ class Edmd():
                                                                         U_filtered.transpose().reshape((self.m,n_data),order=order), \
                                                                         U_nom_filtered.transpose().reshape((self.m, n_data),order=order), \
                                                                         t_filtered.transpose().reshape((1,n_data),order=order)
+
+        import matplotlib.pyplot as plt
+        ind = 5
+        plt.figure()
+        plt.subplot(2,1,1)
+        plt.plot(t[0,:200], Z[2,:200], label='Z_3')
+        plt.plot(t[0, :200], Z_dot[0, :200], label='$\\dot{Z}_1$')
+        plt.grid()
+        plt.legend()
+        plt.title('Position derivative')
+        plt.subplot(2, 1, 2)
+        plt.plot(t[0, :200], Z[3, :200], label='Z_4')
+        plt.plot(t[0, :200], Z_dot[1, :200], label='$\\dot{Z}_2$')
+        plt.grid()
+        plt.legend()
+        plt.title('Angle derivative')
+        plt.show()
 
         return X_filtered, X_d_filtered, Z, Z_dot, U_filtered, U_nom_filtered, t_filtered
 
