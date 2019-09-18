@@ -72,7 +72,7 @@ plot_eigen = False
 eigenfunction_max_power = 2             #TODO: Remove when MPC debug finalized
 l2_diffeomorphism = 1e0                 #Fix for current architecture
 jacobian_penalty_diffeomorphism = 5e0   #Fix for current architecture
-load_diffeomorphism_model = False
+load_diffeomorphism_model = True
 diffeomorphism_model_file = 'diff_model'
 diff_n_epochs = 30
 diff_train_frac = 0.9
@@ -85,14 +85,14 @@ diff_dropout_prob = 0.5
 
 # KEEDMD parameters
 # Best: 0.024
-l1_keedmd = 5e-2
+l1_keedmd = 1e-2
 l1_ratio_keedmd = 0.5
 
 # EDMD parameters
 # Best 0.06
 n_lift_edmd = (eigenfunction_max_power+1)**n-1
-l1_edmd = 0#1e-2
-l1_ratio_edmd = 0#0.5#1e-2
+l1_edmd = 1e-2
+l1_ratio_edmd = 0.5 #1e-2
 
 # Simulation parameters (evaluate performance)
 load_fit = True
@@ -233,7 +233,7 @@ if not load_fit:
     print(' - Fitting KEEDMD model...', end =" ")
     keedmd_model = Keedmd(eigenfunction_basis, n, l1_pos=l1_keedmd, l1_ratio_pos=l1_ratio_keedmd, l1_vel=l1_keedmd, l1_ratio_vel=l1_ratio_keedmd, l1_eig=l1_keedmd, l1_ratio_eig=l1_ratio_keedmd, K_p=K_p, K_d=K_d)
     X, X_d, Z, Z_dot, U, U_nom, t = keedmd_model.process(xs, q_d, us, us_nom, ts)
-    keedmd_model.tune_fit(X, X_d, Z, Z_dot, U, U_nom)
+    keedmd_model.fit(X, X_d, Z, Z_dot, U, U_nom)
     print('in {:.2f}s'.format(time.process_time()-t0))
     
     # Construct basis of RBFs for EDMD:
@@ -375,19 +375,19 @@ if test_open_loop:
         figure(figsize=(6,9))
         for ii in range(n):
             subplot(4, 1, ii+1)
-            plot(t_pred, e_mean_nom[ii,:], linewidth=2, label='$nom$')
-            fill_between(t_pred, e_mean_nom[ii,:]-e_std_nom[ii,:], e_mean_nom[ii,:]+e_std_nom[ii,:], alpha=0.1)
+            plot(t_pred, np.abs(e_mean_nom[ii,:]), linewidth=2, label='$nom$')
+            fill_between(t_pred, np.zeros_like(e_mean_nom[ii,:]), e_mean_nom[ii,:]+e_std_nom[ii,:], alpha=0.1)
 
-            plot(t_pred, e_mean_edmd[ii,:], linewidth=2, label='$edmd$')
-            fill_between(t_pred, e_mean_edmd[ii, :] - e_std_edmd[ii, :], e_mean_edmd[ii, :] + e_std_edmd[ii, :], alpha=0.2)
+            plot(t_pred, np.abs(e_mean_edmd[ii,:]), linewidth=2, label='$edmd$')
+            fill_between(t_pred, np.zeros_like(e_mean_edmd[ii,:]), e_mean_edmd[ii, :] + e_std_edmd[ii, :], alpha=0.2)
 
-            plot(t_pred, e_mean_keedmd[ii,:], linewidth=2, label='$keedmd$')
-            fill_between(t_pred, e_mean_keedmd[ii, :] - e_std_keedmd[ii, :], e_mean_keedmd[ii, :] + e_std_keedmd[ii, :], alpha=0.2)
+            plot(t_pred, np.abs(e_mean_keedmd[ii,:]), linewidth=2, label='$keedmd$')
+            fill_between(t_pred, np.zeros_like(e_mean_keedmd[ii,:]), e_mean_keedmd[ii, :] + e_std_keedmd[ii, :], alpha=0.2)
 
             if ii == 1 or ii == 3:
-                ylim(-0.5, 0.5)
+                ylim(0., 2.)
             else:
-                ylim(-0.1,0.1)
+                ylim(0.,2.)
 
             grid()
             if ii == 0:
@@ -412,8 +412,6 @@ if test_open_loop:
         close()
 
     print('in {:.2f}s'.format(time.process_time()-t0))
-
-
 
 #%%  
 #!==============================================  EVALUATE PERFORMANCE -- CLOSED LOOP =============================================
