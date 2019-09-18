@@ -1,7 +1,7 @@
 from .utils import differentiate_vec
 from sklearn import linear_model
 from scipy.linalg import expm
-from numpy import array, concatenate, zeros, dot, linalg, eye, ones, std, where, divide, multiply, tile, argwhere, diag
+from numpy import array, concatenate, zeros, dot, linalg, eye, ones, std, where, divide, multiply, tile, argwhere, diag, copy, ones_like
 from .basis_functions import BasisFunctions
 
 class Edmd():
@@ -99,7 +99,7 @@ class Edmd():
 
         Ntraj = X_filtered.shape[0]  # Number of trajectories in dataset
         Z = array([self.lift(X_filtered[ii,:,:].transpose(), X_d_filtered[ii,:,:].transpose()) for ii in range(Ntraj)])  # Lift x
-
+        Z_old = copy(Z)  #TODO: Remove after debug
         # Vectorize Z- data
         n_data = Z.shape[0] * Z.shape[1]
         self.n_lift = Z.shape[2]
@@ -112,8 +112,9 @@ class Edmd():
         self.Z_std[argwhere(self.Z_std == 0.)] = 1.
         #self.Z_std[:self.n] = 1.  # Do not rescale states. Note: Assumes state is added to beginning of observables
         self.Z_std = self.Z_std.reshape((self.Z_std.shape[0], 1))
+        self.Z_std = ones_like(self.Z_std)  #TODO: Remove after debug
         #Z_norm = array([divide(Z[ii,:,:], self.Z_std.transpose()) for ii in range(Z.shape[0])])
-        Z_norm = Z
+        Z_norm = Z  #TODO: Remove after debug
 
         Z_dot = array([differentiate_vec(Z_norm[ii,:,:],t_filtered[ii,:]) for ii in range(Ntraj)])  #Numerical differentiate lifted state
 
@@ -131,14 +132,16 @@ class Edmd():
         ind = 5
         plt.figure()
         plt.subplot(2,1,1)
-        plt.plot(t[0,:200], Z[2,:200], label='Z_3')
+        plt.plot(t[0, :200], Z[2, :200], label='Z_3')
         plt.plot(t[0, :200], Z_dot[0, :200], label='$\\dot{Z}_1$')
+        plt.plot(t[0, :200], Z_old[0, :200,2], label='Unnormalized Z_3')
         plt.grid()
         plt.legend()
         plt.title('Position derivative')
         plt.subplot(2, 1, 2)
         plt.plot(t[0, :200], Z[3, :200], label='Z_4')
         plt.plot(t[0, :200], Z_dot[1, :200], label='$\\dot{Z}_2$')
+        plt.plot(t[0, :200], Z_old[0, :200, 3], label='Unnormalized Z_4')
         plt.grid()
         plt.legend()
         plt.title('Angle derivative')
