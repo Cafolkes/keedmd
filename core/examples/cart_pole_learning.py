@@ -17,6 +17,7 @@ from ..learning_keedmd import KoopmanEigenfunctions, RBF, Edmd, Keedmd, plot_tra
 import time
 import dill
 import control
+from datetime import datetime
 
 import random as veryrandom
 import scipy.sparse as sparse
@@ -90,17 +91,18 @@ l1_ratio_keedmd = 0.5
 # EDMD parameters
 # Best 0.06
 n_lift_edmd = (eigenfunction_max_power+1)**n-1
-l1_edmd = 1e-2
-l1_ratio_edmd = 0.5#1e-2
+l1_edmd = 0 #1e-2
+l1_ratio_edmd = 0 #0.5#1e-2
 
 # Simulation parameters (evaluate performance)
-load_fit = False
-test_open_loop = True
+load_fit = True
+test_open_loop = False
 plot_open_loop = test_open_loop
 save_traj = False
 save_fit = not load_fit
 Ntraj_pred = 20
-experiment_filename = froot_filename
+experiment_filename = '09172019_235447'
+#datetime.now().strftime("%m%d%Y_%H%M%S/")
 froot_filename = 'core/examples/cart_pole_data/'+experiment_filename
 dill_filename = froot_filename+'models_traj.dat'
 open_filename = froot_filename+'open_loop.png'
@@ -449,31 +451,31 @@ Cmatrix = control.ctrb(A=keedmd_model.A, B=keedmd_model.B)
 print('keedmd controllability matrix rank is {}, ns={}, nz={}'.format(np.linalg.matrix_rank(Cmatrix),n,keedmd_model.A.shape[0]))
 
 D = sparse.diags([5000,30000,5000,6000])
-edmd_sys = LinearSystemDynamics(A=edmd_model.A, B=edmd_model.B)
-edmd_controller = MPCControllerDense(linear_dynamics=edmd_sys, 
-                                N=int(MPC_horizon/dt),
-                                dt=dt, 
-                                umin=array([-umax_control]), 
-                                umax=array([+umax_control]),
-                                xmin=lower_bounds_MPC_control, 
-                                xmax=upper_bounds_MPC_control, 
-                                Q=Q, 
-                                R=R, 
-                                QN=QN, 
-                                xr=q_d_pred,
-                                lifting=True,
-                                edmd_object=edmd_model,
-                                plotMPC=plotMPC,
-                                soft=True,
-                                D=D,
-                                name='KEEDMD')
+# edmd_sys = LinearSystemDynamics(A=edmd_model.A, B=edmd_model.B)
+# edmd_controller = MPCControllerDense(linear_dynamics=edmd_sys, 
+#                                 N=int(MPC_horizon/dt),
+#                                 dt=dt, 
+#                                 umin=array([-umax_control]), 
+#                                 umax=array([+umax_control]),
+#                                 xmin=lower_bounds_MPC_control, 
+#                                 xmax=upper_bounds_MPC_control, 
+#                                 Q=Q, 
+#                                 R=R, 
+#                                 QN=QN, 
+#                                 xr=q_d_pred,
+#                                 lifting=True,
+#                                 edmd_object=edmd_model,
+#                                 plotMPC=plotMPC,
+#                                 soft=True,
+#                                 D=D,
+#                                 name='KEEDMD')
 
-xs_edmd_MPC, us_emdm_MPC = system_true.simulate(x_0, edmd_controller, t_pred)
-xs_edmd_MPC = xs_edmd_MPC.transpose()
-us_emdm_MPC = us_emdm_MPC.transpose()
+# xs_edmd_MPC, us_emdm_MPC = system_true.simulate(x_0, edmd_controller, t_pred)
+# xs_edmd_MPC = xs_edmd_MPC.transpose()
+# us_emdm_MPC = us_emdm_MPC.transpose()
     
-if plotMPC:
-    edmd_controller.finish_plot(xs_edmd_MPC, us_emdm_MPC, us_lin_PD, t_pred,"eDMD_thoughts.png") 
+# if plotMPC:
+#     edmd_controller.finish_plot(xs_edmd_MPC, us_emdm_MPC, us_lin_PD, t_pred,"eDMD_thoughts.png") 
 
 # Linearized with MPC
 linearlize_mpc_controller = MPCControllerDense(linear_dynamics=nominal_sys, 
@@ -558,7 +560,7 @@ figure()
 for ii in range(n):
     subplot(n, 1, ii+1)
     plot(t_pred, q_d_pred[ii,:], linestyle="--",linewidth=2, label='reference')
-    plot(t_pred, xs_edmd_MPC[ii,:], linewidth=2, label='eDMD with MPC')
+    #plot(t_pred, xs_edmd_MPC[ii,:], linewidth=2, label='eDMD with MPC')
     plot(t_pred, xs_keedmd_MPC[ii,:], linewidth=2, label='KeeDMD with MPC')
     plot(t_pred, xs_lin_MPC[ii,:], linewidth=2, label='Linearized dynamics with MPC')
     plot(t_pred, xs_lin_PD[ii,:], linewidth=2, label='Linearized dynamics with PD Controller')
