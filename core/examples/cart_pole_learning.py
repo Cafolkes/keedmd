@@ -95,14 +95,16 @@ l1_ratio_edmd = 0.5#1e-2
 
 # Simulation parameters (evaluate performance)
 load_fit = False
-test_open_loop = False
+test_open_loop = True
 plot_open_loop = test_open_loop
 save_traj = False
 save_fit = not load_fit
 Ntraj_pred = 20
-dill_filename = 'models_traj.dat'
-open_filename = 'open_loop.png'
-closed_filename = 'closed_loop.png'
+experiment_filename = froot_filename
+froot_filename = 'core/examples/cart_pole_data/'+experiment_filename
+dill_filename = froot_filename+'models_traj.dat'
+open_filename = froot_filename+'open_loop.png'
+closed_filename = froot_filename+'closed_loop.png'
 
 #%% 
 #! ===============================================    COLLECT DATA     ===============================================
@@ -386,7 +388,7 @@ if test_open_loop:
             if ii == 0:
                 title('Predicted state evolution of different models with open loop control')
         legend(fontsize=10, loc='best')
-        savefig(open_filename)
+        savefig(open_filename,format='pdf', dpi=1200)
         show()
 
     print('in {:.2f}s'.format(time.process_time()-t0))
@@ -499,7 +501,7 @@ figure()
 hist(linearlize_mpc_controller.run_time*1000)
 title('MPC Run Time Histogram sparse. Mean {:.2f}ms'.format(np.mean(linearlize_mpc_controller.run_time*1000)))
 xlabel('Time(ms)')
-savefig('MPC Run Time Histogram dense.png')
+savefig('MPC Run Time Histogram dense.png',format='pdf', dpi=1200)
 #show()
 
 #* Linearized with PD
@@ -538,7 +540,7 @@ figure()
 hist(keedmd_controller.run_time*1000)
 title('MPC Run Time Histogram sparse. Mean {:.2f}ms'.format(np.mean(keedmd_controller.run_time*1000)))
 xlabel('Time(ms)')
-savefig('MPC Run Time Histogram dense.png')
+savefig('MPC Run Time Histogram dense.png',format='pdf', dpi=1200)
 show()
 
 
@@ -566,5 +568,5 @@ for ii in range(n):
     if ii == 0:
         title('Closed loop performance of different models')
 legend(fontsize=10, loc='best')
-savefig(closed_filename,format='svg', dpi=1200)
+savefig(closed_filename,format='pdf', dpi=1200)
 show()
