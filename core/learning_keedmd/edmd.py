@@ -64,8 +64,16 @@ class Edmd():
             input = concatenate((Z.transpose(),U.transpose()),axis=1)
             output = Z_dot.transpose()
 
-            reg_model = linear_model.ElasticNet(alpha=self.l1, l1_ratio=self.l1_ratio, fit_intercept=False, normalize=False, max_iter=1e5)
+            CV = False
+            if CV:
+                reg_model = linear_model.MultiTaskElasticNetCV(alphas=None, copy_X=True, cv=5, eps=0.001, fit_intercept=True,
+                                        l1_ratio=self.l1_ratio, max_iter=1e6, n_alphas=100, n_jobs=None,
+                                        normalize=False, positive=False, precompute='auto', random_state=0,
+                                        selection='cyclic', tol=0.0001, verbose=0)
+            else:
+                reg_model = linear_model.ElasticNet(alpha=self.l1, l1_ratio=self.l1_ratio, fit_intercept=False, normalize=False, max_iter=1e5)
             reg_model.fit(input,output)
+            print(reg_model)
 
             self.A = reg_model.coef_[:self.n_lift,:self.n_lift]
             self.B = reg_model.coef_[:self.n_lift,self.n_lift:]

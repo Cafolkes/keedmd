@@ -211,7 +211,7 @@ class MPCControllerDense(Controller):
             plt.xlabel('Time(s)')
             plt.grid()
             plt.legend()
-            plt.savefig("AB_check_for_"+name+".png",bbox_inches='tight')
+            plt.savefig("AB_check_for_"+name+".pdf",bbox_inches='tight',format='pdf', dpi=2400)
             plt.close()
 
 
@@ -285,7 +285,7 @@ class MPCControllerDense(Controller):
             plt.title("q in $J=u^TPu+q^Tu$")
             plt.grid()
             plt.tight_layout()
-            plt.savefig("MPC_matrices_for_"+name+".png",bbox_inches='tight')
+            plt.savefig("MPC_matrices_for_"+name+".pdf",bbox_inches='tight',format='pdf', dpi=2400)
             plt.close()
             #plt.show()
 
@@ -293,7 +293,7 @@ class MPCControllerDense(Controller):
         self.prob = osqp.OSQP()
         # Setup workspace
 
-        self.prob.setup(P=P.tocsc(), q=q, A=A, l=l, u=u, warm_start=True, verbose=True)
+        self.prob.setup(P=P.tocsc(), q=q, A=A, l=l, u=u, warm_start=True, verbose=False)
 
 
         if self.plotMPC:
@@ -369,6 +369,7 @@ class MPCControllerDense(Controller):
 
         # Check solver status
         if self._osqp_result.info.status != 'solved':
+            print('ERROR: MPC DENSE coudl not be solved at t ={}, x = {}'.format(t, x))
             raise ValueError('OSQP did not solve the problem!')
 
         if self.plotMPC:
@@ -484,7 +485,7 @@ class MPCControllerDense(Controller):
             self.axs[ii].plot(time_vector, self.q_d[ii,:], linewidth=2, label='$x_d$', color=[1,0,0])
             self.axs[ii].plot(time_vector, x[ii,:], linewidth=2, label='$x$', color=[0,0,0])
             self.axs[ii].legend(fontsize=10, loc='best')
-        self.fig.savefig(filename)
+        self.fig.savefig(filename,format='pdf', dpi=2400)
         plt.close()
 
 
