@@ -1,7 +1,6 @@
 #%%
 """Cart Pendulum Example"""
 from matplotlib.pyplot import figure, grid, legend, plot, show, subplot, suptitle, title, ylim, xlabel, ylabel, fill_between, close
-from os import path
 import os
 import sys
 from matplotlib.pyplot import figure, grid, legend, plot, show, subplot, suptitle, title, scatter, savefig, hist
@@ -96,20 +95,21 @@ l1_edmd = 1e-2
 l1_ratio_edmd = 0.5 #1e-2
 
 # Simulation parameters (evaluate performance)
-load_fit = False
+load_fit = True
 test_open_loop = True
 plot_open_loop = test_open_loop
 save_traj = False
 save_fit = not load_fit
 Ntraj_pred = 30
-experiment_filename = '09172019_235447'
+experiment_filename = 'test_1/'
 #datetime.now().strftime("%m%d%Y_%H%M%S/")
 folder = 'core/examples/cart_pole_data/'+experiment_filename
 if not os.path.exists(folder):
-    os.mkdir(folder)
+    os.makedirs(folder)
 dill_filename = folder+'models_traj.dat'
 open_filename = folder+'open_loop.pdf'
 closed_filename = folder+'closed_loop.pdf'
+open_all_filename = folder+'open_all_loop.pdf'
 
 #%% 
 #! ===============================================    COLLECT DATA     ===============================================
@@ -394,9 +394,22 @@ if test_open_loop:
                 title('Predicted state evolution of different models with open loop control')
         legend(fontsize=10, loc='best')
         savefig(open_filename,format='pdf', dpi=2400)
-        show()
-        #close()
+        close()
+        
 
+        figure(figsize=(6,9))
+        title('Predicted state evolution of different models with open loop control')
+        legend(fontsize=10, loc='best')        
+        for ii in range(n_lift_edmd):
+            subplot(2, 1, 1)
+            plot(t_pred, zs_edmd[:,ii], linewidth=2, label='$edmd$')
+            grid()
+
+            subplot(2, 1, 2)
+            plot(t_pred, zs_keedmd[:,ii], linewidth=2, label='$keedmd$')
+            grid()                
+        savefig(open_all_filename,format='pdf', dpi=2400)
+        close()
 
     print('in {:.2f}s'.format(time.process_time()-t0))
 
