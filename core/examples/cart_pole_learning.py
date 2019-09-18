@@ -1,7 +1,8 @@
 #%%
 """Cart Pendulum Example"""
-from matplotlib.pyplot import figure, grid, legend, plot, show, subplot, suptitle, title, ylim, xlabel, ylabel, fill_between
+from matplotlib.pyplot import figure, grid, legend, plot, show, subplot, suptitle, title, ylim, xlabel, ylabel, fill_between, close
 from os import path
+import os
 import sys
 from matplotlib.pyplot import figure, grid, legend, plot, show, subplot, suptitle, title, scatter, savefig, hist
 from numpy import arange, array, concatenate, cos, identity
@@ -60,7 +61,7 @@ nominal_sys = LinearSystemDynamics(A=A_nom, B=B_nom)
 # Simulation parameters (data collection)
 plot_traj_gen = False               # Plot trajectories generated for data collection
 traj_origin = 'load_mat'            # gen_MPC - solve MPC to generate desired trajectories, load_mat - load saved trajectories
-Ntraj = 60                          # Number of trajectories to collect data from
+Ntraj = 100                          # Number of trajectories to collect data from
 
 dt = 1.0e-2                         # Time step
 N = int(2./dt)                      # Number of time steps
@@ -69,17 +70,17 @@ noise_var = 0.1                     # Exploration noise to perturb controller
 
 # Koopman eigenfunction parameters
 plot_eigen = False
-eigenfunction_max_power = 3             #TODO: Remove when MPC debug finalized
+eigenfunction_max_power = 2             #TODO: Remove when MPC debug finalized
 l2_diffeomorphism = 1e0                 #Fix for current architecture
 jacobian_penalty_diffeomorphism = 5e0   #Fix for current architecture
 load_diffeomorphism_model = False
 diffeomorphism_model_file = 'diff_model'
-diff_n_epochs = 20
+diff_n_epochs = 30
 diff_train_frac = 0.9
 diff_n_hidden_layers = 2
 diff_layer_width = 100
 diff_batch_size = 16
-diff_learn_rate = 1e-3                  #Fix for current architecture
+diff_learn_rate = 5e-4                  #Fix for current architecture
 diff_learn_rate_decay = 0.95            #Fix for current architecture
 diff_dropout_prob = 0.5
 
@@ -91,22 +92,24 @@ l1_ratio_keedmd = 0.5
 # EDMD parameters
 # Best 0.06
 n_lift_edmd = (eigenfunction_max_power+1)**n-1
-l1_edmd = 0 #1e-2
-l1_ratio_edmd = 0 #0.5#1e-2
+l1_edmd = 0#1e-2
+l1_ratio_edmd = 0#0.5#1e-2
 
 # Simulation parameters (evaluate performance)
-load_fit = True
-test_open_loop = False
+load_fit = False
+test_open_loop = True
 plot_open_loop = test_open_loop
 save_traj = False
 save_fit = not load_fit
-Ntraj_pred = 20
+Ntraj_pred = 30
 experiment_filename = '09172019_235447'
 #datetime.now().strftime("%m%d%Y_%H%M%S/")
-froot_filename = 'core/examples/cart_pole_data/'+experiment_filename
-dill_filename = froot_filename+'models_traj.dat'
-open_filename = froot_filename+'open_loop.png'
-closed_filename = froot_filename+'closed_loop.png'
+folder = 'core/examples/cart_pole_data/'+experiment_filename
+if not os.path.exists(folder):
+    os.makedir(folder)
+dill_filename = folder+'models_traj.dat'
+open_filename = folder+'open_loop.pdf'
+closed_filename = folder+'closed_loop.pdf'
 
 #%% 
 #! ===============================================    COLLECT DATA     ===============================================
@@ -349,17 +352,17 @@ if test_open_loop:
 
     #Ntraj_pred=1 #TODO: Remove
     # Calculate error statistics
-    mse_keedmd = array([(xs_keedmd[ii] - xs_pred[ii])**2 for ii in range(Ntraj_pred)])
-    mse_edmd = array([(xs_edmd[ii] - xs_pred[ii])**2 for ii in range(Ntraj_pred)])
-    mse_nom = array([(xs_nom[ii] - xs_pred[ii])**2 for ii in range(Ntraj_pred)])
-    e_keedmd = array([xs_keedmd[ii] - xs_pred[ii] for ii in range(Ntraj_pred)])
-    e_edmd = array([xs_edmd[ii] - xs_pred[ii] for ii in range(Ntraj_pred)])
-    e_nom = array([xs_nom[ii] - xs_pred[ii] for ii in range(Ntraj_pred)])
-    mse_keedmd = np.mean(np.mean(np.mean(mse_keedmd)))
-    mse_edmd = np.mean(np.mean(np.mean(mse_edmd)))
-    mse_nom = np.mean(np.mean(np.mean(mse_nom)))
-    e_mean_keedmd = np.mean(e_keedmd, axis=0)
-    e_mean_edmd = np.mean(e_edmd, axis=0)
+    mse_keedmd  = array([(xs_keedmd[ii] - xs_pred[ii])**2 for ii in range(Ntraj_pred)])
+    mse_edmd  = array([(xs_edmd[ii] - xs_pred[ii])**2 for ii in range(Ntraj_pred)])
+    mse_nom   = array([(xs_nom[ii] - xs_pred[ii])**2 for ii in range(Ntraj_pred)])
+    e_keedmd  = array([xs_keedmd[ii] - xs_pred[ii] for ii in range(Ntraj_pred)])
+    e_edmd    = array([xs_edmd[ii] - xs_pred[ii] for ii in range(Ntraj_pred)])
+    e_nom     = array([xs_nom[ii] - xs_pred[ii] for ii in range(Ntraj_pred)])
+    mse_keedmd  = np.mean(np.mean(np.mean(mse_keedmd)))
+    mse_edmd  = np.mean(np.mean(np.mean(mse_edmd)))
+    mse_nom  = np.mean(np.mean(np.mean(mse_nom)))
+    e_mean_keedmd  = np.mean(e_keedmd, axis=0)
+    e_mean_edmd  = np.mean(e_edmd, axis=0)
     e_mean_nom = np.mean(e_nom, axis=0)
     e_std_keedmd = np.std(e_keedmd, axis=0)
     e_std_edmd = np.std(e_edmd, axis=0)
@@ -390,8 +393,9 @@ if test_open_loop:
             if ii == 0:
                 title('Predicted state evolution of different models with open loop control')
         legend(fontsize=10, loc='best')
-        savefig(open_filename,format='pdf', dpi=1200)
-        show()
+        savefig(open_filename,format='pdf', dpi=2400)
+        close()
+        #show()
 
     print('in {:.2f}s'.format(time.process_time()-t0))
 
@@ -404,26 +408,26 @@ print('Evaluate Performance with closed loop trajectory tracking...', end=" ")
 # Set up trajectory and controller for prediction task:
 q_d_pred = q_d[4,:,:].transpose()
 #q_d_pred = q_d_pred - np.tile(q_d_pred[:,-1:],(1,q_d_pred.shape[1]))  #ensure global end point is at origin
-q_d_pred = q_d_pred[:,:int(q_d_pred.shape[1]/2*1.73)]
+q_d_pred = q_d_pred[:,:int(q_d_pred.shape[1]/2*1.71)]
 
 #q_d_pred = np.zeros(q_d_pred.shape)
 x_0 = q_d_pred[:,0]
 #x_0[0] = 0
 t_pred = t_d.squeeze()
-t_pred = t_pred[:int(t_pred.shape[0]/2*1.73)]
+t_pred = t_pred[:int(t_pred.shape[0]/2*1.71)]
 noise_var_pred = 0.0
 output_pred = CartPoleTrajectory(system_true, q_d_pred,t_pred)
 
 # Set up MPC parameters
-Q = sparse.diags([5000,3000,5000,6000])
+Q = sparse.diags([5000,300,500,600])
 QN = Q
 
 
 upper_bounds_MPC_control = array([np.Inf, np.Inf, np.Inf, np.Inf])  # State constraints, check they are higher than upper_bounds
 lower_bounds_MPC_control = -upper_bounds_MPC_control  # State constraints
-umax_control = 1000  # check it is higher than the control to generate the trajectories
-MPC_horizon = 0.25 # [s]
-plotMPC = False
+umax_control = np.Inf  # check it is higher than the control to generate the trajectories
+MPC_horizon = 0.5 # [s]
+plotMPC = True
 
 # Linearized with PD
 linearlize_PD_controller = PDController(output_pred, K_p, K_d, noise_var=0)
@@ -440,17 +444,17 @@ def check_controllability(A,B,n):
     return rankCmatrix
     
 # Check eigenvalues
-eig, eig_v = np.linalg.eig(edmd_model.A)
+eig, eig_v = np.linalg.eig(keedmd_model.A)
 eig_max = np.max(np.real(eig))
 print('Max eig {}'.format(eig_max))
 # Controllability
-Cmatrix = control.ctrb(A=edmd_model.A, B=edmd_model.B)
-print('  edmd controllability matrix rank is {}, ns={}, nz={}'.format(np.linalg.matrix_rank(Cmatrix),n,edmd_model.A.shape[0]))
+#Cmatrix = control.ctrb(A=edmd_model.A, B=edmd_model.B)
+#print('  edmd controllability matrix rank is {}, ns={}, nz={}'.format(np.linalg.matrix_rank(Cmatrix),n,edmd_model.A.shape[0]))
 
 Cmatrix = control.ctrb(A=keedmd_model.A, B=keedmd_model.B)
 print('keedmd controllability matrix rank is {}, ns={}, nz={}'.format(np.linalg.matrix_rank(Cmatrix),n,keedmd_model.A.shape[0]))
 
-D = sparse.diags([5000,30000,5000,6000])
+D = sparse.diags([50000,30000,5000,6000])
 # edmd_sys = LinearSystemDynamics(A=edmd_model.A, B=edmd_model.B)
 # edmd_controller = MPCControllerDense(linear_dynamics=edmd_sys, 
 #                                 N=int(MPC_horizon/dt),
@@ -496,7 +500,7 @@ xs_lin_MPC, us_lin_MPC = system_true.simulate(x_0, linearlize_mpc_controller, t_
 xs_lin_MPC = xs_lin_MPC.transpose()
 us_lin_MPC = us_lin_MPC.transpose()
 if plotMPC:
-    linearlize_mpc_controller.finish_plot(xs_lin_MPC,us_lin_MPC, us_lin_PD, t_pred,"LinMPC_thoughts.png") 
+    linearlize_mpc_controller.finish_plot(xs_lin_MPC,us_lin_MPC, us_lin_PD, t_pred,"LinMPC_thoughts.pdf") 
 
 
 figure()
@@ -536,14 +540,14 @@ xs_keedmd_MPC = xs_keedmd_MPC.transpose()
 us_keedmd_MPC = us_keedmd_MPC.transpose()
 
 if plotMPC:
-    keedmd_controller.finish_plot(xs_keedmd_MPC,us_keedmd_MPC, us_lin_PD, t_pred,"KeeDMD_thoughts.png")
+    keedmd_controller.finish_plot(xs_keedmd_MPC,us_keedmd_MPC, us_lin_PD, t_pred,"KeeDMD_thoughts.pdf")
 
 figure()
 hist(keedmd_controller.run_time*1000)
 title('MPC Run Time Histogram sparse. Mean {:.2f}ms'.format(np.mean(keedmd_controller.run_time*1000)))
 xlabel('Time(ms)')
 savefig('MPC Run Time Histogram dense.png',format='pdf', dpi=1200)
-show()
+close()#show()
 
 
 print('in {:.2f}s'.format(time.process_time()-t0))
@@ -570,5 +574,5 @@ for ii in range(n):
     if ii == 0:
         title('Closed loop performance of different models')
 legend(fontsize=10, loc='best')
-savefig(closed_filename,format='pdf', dpi=1200)
+savefig(closed_filename,format='pdf', dpi=2400)
 show()
