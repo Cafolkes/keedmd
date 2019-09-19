@@ -141,7 +141,7 @@ class MPCController(Controller):
         self.prob = osqp.OSQP()
 
         # Setup workspace
-        self.prob.setup(P, q, A, self._osqp_l, self._osqp_u, warm_start=True, verbose=True)
+        self.prob.setup(P, q, A, self._osqp_l, self._osqp_u, warm_start=True, verbose=False)
 
         if self.plotMPC:
             # Figure to plot MPC thoughts
@@ -169,7 +169,7 @@ class MPCController(Controller):
         nx = self.nx
 
         tindex = int(t/self.dt)
-        print("iteration {}".format(tindex))
+        #print("iteration {}".format(tindex))
         
         ## Update inequalities
         if self.q_d.ndim==2: 
