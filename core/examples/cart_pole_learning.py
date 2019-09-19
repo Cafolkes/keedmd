@@ -61,7 +61,7 @@ nominal_sys = LinearSystemDynamics(A=A_nom, B=B_nom)
 # Simulation parameters (data collection)
 plot_traj_gen = False               # Plot trajectories generated for data collection
 traj_origin = 'load_mat'            # gen_MPC - solve MPC to generate desired trajectories, load_mat - load saved trajectories
-Ntraj = 100                          # Number of trajectories to collect data from
+Ntraj = 20                          # Number of trajectories to collect data from
 
 dt = 1.0e-2                         # Time step
 N = int(2./dt)                      # Number of time steps
@@ -70,24 +70,28 @@ noise_var = 0.1                     # Exploration noise to perturb controller
 
 # Koopman eigenfunction parameters
 plot_eigen = False
-eigenfunction_max_power = 2             #TODO: Remove when MPC debug finalized
-l2_diffeomorphism = 1e0                 #Fix for current architecture
-jacobian_penalty_diffeomorphism = 5e0   #Fix for current architecture
-load_diffeomorphism_model = True
+eigenfunction_max_power = 3             #TODO: Remove when MPC debug finalized
+l2_diffeomorphism = 0.26316                 #Fix for current architecture
+jacobian_penalty_diffeomorphism = 3.95   #Fix for current architecture
+load_diffeomorphism_model = False
 diffeomorphism_model_file = 'diff_model'
-diff_n_epochs = 30
-diff_train_frac = 0.9
-diff_n_hidden_layers = 2
-diff_layer_width = 100
+diff_n_epochs = 100
+diff_train_frac = 0.99
+diff_n_hidden_layers = 3
+diff_layer_width = 30
 diff_batch_size = 16
-diff_learn_rate = 5e-4                  #Fix for current architecture
-diff_learn_rate_decay = 0.95            #Fix for current architecture
+diff_learn_rate = 0.0737                  #Fix for current architecture
+diff_learn_rate_decay = 0.9            #Fix for current architecture
 diff_dropout_prob = 0.5
 
 # KEEDMD parameters
 # Best: 0.024
-l1_keedmd = 1e-2
-l1_ratio_keedmd = 0.5
+l1_pos_keedmd = 0.001092836619742326
+l1_pos_ratio_keedmd = 0.5
+l1_vel_keedmd = 0.009162797953919657
+l1_vel_ratio_keedmd = 0.5
+l1_eig_keedmd = 0.13168606880733497
+l1_eig_ratio_keedmd = 0.5
 
 # EDMD parameters
 # Best 0.06
@@ -231,9 +235,9 @@ if not load_fit:
     # Fit KEEDMD model:
     t0 = time.process_time()
     print(' - Fitting KEEDMD model...', end =" ")
-    keedmd_model = Keedmd(eigenfunction_basis, n, l1_pos=l1_keedmd, l1_ratio_pos=l1_ratio_keedmd, l1_vel=l1_keedmd, l1_ratio_vel=l1_ratio_keedmd, l1_eig=l1_keedmd, l1_ratio_eig=l1_ratio_keedmd, K_p=K_p, K_d=K_d)
+    keedmd_model = Keedmd(eigenfunction_basis, n, l1_pos=l1_pos_keedmd, l1_ratio_pos=l1_pos_ratio_keedmd, l1_vel=l1_vel_keedmd, l1_ratio_vel=l1_vel_ratio_keedmd, l1_eig=l1_eig_keedmd, l1_ratio_eig=l1_eig_ratio_keedmd, K_p=K_p, K_d=K_d)
     X, X_d, Z, Z_dot, U, U_nom, t = keedmd_model.process(xs, q_d, us, us_nom, ts)
-    keedmd_model.fit(X, X_d, Z, Z_dot, U, U_nom)
+    keedmd_model.tune_fit(X, X_d, Z, Z_dot, U, U_nom)
     print('in {:.2f}s'.format(time.process_time()-t0))
     
     # Construct basis of RBFs for EDMD:
@@ -261,7 +265,7 @@ if not load_fit:
     print(' - Fitting EDMD model...', end =" ")
     edmd_model = Edmd(rbf_basis, n, l1=l1_edmd, l1_ratio=l1_ratio_edmd)
     X, X_d, Z, Z_dot, U, U_nom, t = edmd_model.process(xs, q_d, us, us_nom, ts)
-    edmd_model.fit(X, X_d, Z, Z_dot, U, U_nom)
+    edmd_model.tune_fit(X, X_d, Z, Z_dot, U, U_nom)
     print('in {:.2f}s'.format(time.process_time()-t0))
 
 
@@ -376,10 +380,9 @@ if test_open_loop:
         for ii in range(n):
             subplot(4, 1, ii+1)
             plot(t_pred, np.abs(e_mean_nom[ii,:]), linewidth=2, label='$nom$')
-            fill_between(t_pred, np.zeros_like(e_mean_nom[ii,:]), e_mean_nom[ii,:]+e_std_nom[ii,:], alpha=0.1)
+            fill_between(t_pred, np.zeros_like(e_mean_nom[ii,:]), e_mean_nom[ii,:]+e_std_nom[ii,:], alpha=0.2)
 
             plot(t_pred, np.abs(e_mean_edmd[ii,:]), linewidth=2, label='$edmd$')
-            fill_between(t_pred, np.zeros_like(e_mean_edmd[ii,:]), e_mean_edmd[ii, :] + e_std_edmd[ii, :], alpha=0.2)
 
             plot(t_pred, np.abs(e_mean_keedmd[ii,:]), linewidth=2, label='$keedmd$')
             fill_between(t_pred, np.zeros_like(e_mean_keedmd[ii,:]), e_mean_keedmd[ii, :] + e_std_keedmd[ii, :], alpha=0.2)
@@ -387,7 +390,7 @@ if test_open_loop:
             if ii == 1 or ii == 3:
                 ylim(0., 2.)
             else:
-                ylim(0.,2.)
+                ylim(0.,.5)
 
             grid()
             if ii == 0:
@@ -402,7 +405,7 @@ if test_open_loop:
 
 #%%  
 #!==============================================  EVALUATE PERFORMANCE -- CLOSED LOOP =============================================
-t0 = time.process_time()
+'''t0 = time.process_time()
 print('Evaluate Performance with closed loop trajectory tracking...', end=" ")
 # Set up trajectory and controller for prediction task:
 q_d_pred = q_d[4,:,:].transpose()
@@ -574,4 +577,4 @@ for ii in range(n):
         title('Closed loop performance of different models')
 legend(fontsize=10, loc='best')
 savefig(closed_filename,format='pdf', dpi=2400)
-show()
+show()'''

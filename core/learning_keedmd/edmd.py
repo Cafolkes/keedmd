@@ -110,14 +110,13 @@ class Edmd():
         # Normalize data
         self.Z_std = std(Z_vec, axis=1)
         self.Z_std[argwhere(self.Z_std == 0.)] = 1.
-        #self.Z_std[:self.n] = 1.  # Do not rescale states. Note: Assumes state is added to beginning of observables
+        self.Z_std[:self.n] = 1.  # Do not rescale states. Note: Assumes state is added to beginning of observables
         self.Z_std = self.Z_std.reshape((self.Z_std.shape[0], 1))
-        self.Z_std = ones_like(self.Z_std)  #TODO: Remove after debug
-        #Z_norm = array([divide(Z[ii,:,:], self.Z_std.transpose()) for ii in range(Z.shape[0])])
-        Z_norm = Z  #TODO: Remove after debug
+        #self.Z_std = ones_like(self.Z_std)  #TODO: Remove after debug
+        Z_norm = array([divide(Z[ii,:,:], self.Z_std.transpose()) for ii in range(Z.shape[0])])
+        #Z_norm = Z  #TODO: Remove after debug
 
         Z_dot = array([differentiate_vec(Z_norm[ii,:,:],t_filtered[ii,:]) for ii in range(Ntraj)])  #Numerical differentiate lifted state
-
 
         #Vectorize remaining data
         X_filtered, X_d_filtered, Z, Z_dot, U_filtered, U_nom_filtered, t_filtered = X_filtered.transpose().reshape((self.n,n_data),order=order), \
@@ -128,8 +127,7 @@ class Edmd():
                                                                         U_nom_filtered.transpose().reshape((self.m, n_data),order=order), \
                                                                         t_filtered.transpose().reshape((1,n_data),order=order)
 
-        import matplotlib.pyplot as plt
-        ind = 5
+        '''import matplotlib.pyplot as plt
         plt.figure()
         plt.subplot(2,1,1)
         plt.plot(t[0, :200], Z[2, :200], label='Z_3')
@@ -145,7 +143,7 @@ class Edmd():
         plt.grid()
         plt.legend()
         plt.title('Angle derivative')
-        plt.show()
+        plt.show()'''
 
         return X_filtered, X_d_filtered, Z, Z_dot, U_filtered, U_nom_filtered, t_filtered
 
@@ -197,6 +195,8 @@ class Edmd():
 
         self.l1 = reg_model_cv.alpha_
         self.l1_ratio = reg_model_cv.l1_ratio_
+
+        print('EDMD l1: ', self.l1, self.l1_ratio)
 
 
 
