@@ -67,10 +67,10 @@ NN_parameter_file = 'scripts/NN_parameters.pickle'
 
 l2_diffeomorphism = np.linspace(0.,5., 20)
 jacobian_penalty_diffeomorphism = np.linspace(0.,5., 20)
-diff_n_epochs = 10 #[50, 100, 200, 500]
+diff_n_epochs = [50, 100, 200, 500]
 diff_n_hidden_layers = [1, 2, 3, 4]
 diff_layer_width = [10, 20, 30, 40, 50]
-diff_batch_size = [8]
+diff_batch_size = [8, 16, 32]
 diff_learn_rate = np.linspace(1e-5, 1e-1, 20)  # Fix for current architecture
 diff_learn_rate_decay = [0.8, 0.9, 0.95, 0.975, 0.99, 1.0]
 diff_dropout_prob = [0., 0.05, 0.1, 0.25, 0.5]
@@ -192,6 +192,7 @@ if tune_diffeomorphism:
             t_val = ts[val_inds, :]
             X_val = xs[val_inds, :, :]
             Xd_val = q_d[val_inds, :, :]
+            print(t.shape, X.shape, Xd.shape, t_val.shape, X_val.shape, Xd_val.shape)
 
             # Fit model with current data set and hyperparameters
             eigenfunction_basis = KoopmanEigenfunctions(n=n, max_power=eigenfunction_max_power, A_cl=A_cl, BK=BK)
@@ -203,7 +204,7 @@ if tune_diffeomorphism:
                                                             learning_rate=learn_rate,
                                                             learning_decay=rate_decay, n_epochs=n_epochs,
                                                             train_frac=1.0, batch_size=batch_size, initialize=True,
-                                                            verbose=False, X_val=X_val, Xd_val=Xd_val, t_val=t_val)
+                                                            verbose=False, X_val=X_val, t_val=t_val, Xd_val=Xd_val)
             fold_score.append(score_tmp)
 
         test_score.append(sum(fold_score)/len(fold_score))
