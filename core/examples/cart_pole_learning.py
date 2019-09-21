@@ -84,11 +84,11 @@ diff_learn_rate_decay = 0.9
 diff_dropout_prob = 0.5
 
 # KEEDMD parameters
-l1_pos_keedmd = 9.85518509349373e-07
-l1_pos_ratio_keedmd = 1.0
-l1_vel_keedmd = 0.00979960592061635
-l1_vel_ratio_keedmd = 0.99
-l1_eig_keedmd = 0.003213783025880654
+l1_pos_keedmd = 9.85704592e-5
+l1_pos_ratio_keedmd = 0.1
+l1_vel_keedmd = 0.00667665
+l1_vel_ratio_keedmd = 1.0
+l1_eig_keedmd = 0.00135646
 l1_eig_ratio_keedmd = 0.1
 
 # EDMD parameters
@@ -452,7 +452,7 @@ D = sparse.diags([500,300,50,60])
 
 upper_bounds_MPC_control = array([np.Inf, np.Inf, np.Inf, np.Inf])  # State constraints, check they are higher than upper_bounds
 lower_bounds_MPC_control = -upper_bounds_MPC_control  # State constraints
-umax_control = 5.  # check it is higher than the control to generate the trajectories
+umax_control = np.inf  # check it is higher than the control to generate the trajectories
 MPC_horizon = 0.25 # [s]
 plotMPC = False
 
