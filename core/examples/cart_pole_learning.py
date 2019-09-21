@@ -58,8 +58,8 @@ K_d = -array([[8.0734, 7.4294]])  # Derivative control gains
 nominal_sys = LinearSystemDynamics(A=A_nom, B=B_nom)
 
 # Simulation parameters (data collection)
-plot_traj_gen = False               # Plot trajectories generated for data collection
-traj_origin = 'gen_MPC'            # gen_MPC - solve MPC to generate desired trajectories, load_mat - load saved trajectories
+plot_traj_gen = False                # Plot trajectories generated for data collection
+traj_origin = 'gen_MPC'              # gen_MPC - solve MPC to generate desired trajectories, load_mat - load saved trajectories
 Ntraj = 100                          # Number of trajectories to collect data from
 
 dt = 1.0e-2                         # Time step
@@ -70,8 +70,8 @@ noise_var = 0.5                     # Exploration noise to perturb controller
 # Koopman eigenfunction parameters
 plot_eigen = False
 eigenfunction_max_power = 2
-l2_diffeomorphism = 0.26316                 #Fix for current architecture
-jacobian_penalty_diffeomorphism = 3.95   #Fix for current architecture
+l2_diffeomorphism = 0.26316
+jacobian_penalty_diffeomorphism = 3.95
 load_diffeomorphism_model = True
 diffeomorphism_model_file = 'diff_model_cart_pole'
 diff_n_epochs = 100
@@ -79,8 +79,8 @@ diff_train_frac = 0.99
 diff_n_hidden_layers = 3
 diff_layer_width = 30
 diff_batch_size = 16
-diff_learn_rate = 0.0737                  #Fix for current architecture
-diff_learn_rate_decay = 0.9            #Fix for current architecture
+diff_learn_rate = 0.0737
+diff_learn_rate_decay = 0.9
 diff_dropout_prob = 0.5
 
 # KEEDMD parameters
@@ -97,7 +97,7 @@ l1_edmd = 0.015656845050848606
 l1_ratio_edmd = 1.00
 
 # Simulation parameters (evaluate performance)
-load_fit = True
+load_fit = False
 test_open_loop = True
 plot_open_loop = test_open_loop
 save_traj = False
@@ -370,11 +370,12 @@ if test_open_loop:
     e_std_edmd = np.std(e_edmd, axis=0)
     e_std_nom = np.std(e_nom, axis=0)
 
+    # Save open loop data for analysis and plotting:
     folder = "core/examples/results/" + datetime.now().strftime("%m%d%Y_%H%M%S")
     os.mkdir(folder)
 
     data_list = [t_pred, mse_keedmd, mse_edmd, mse_nom, e_keedmd, e_edmd, e_nom, e_mean_keedmd, e_mean_edmd, e_mean_nom, e_std_keedmd, e_std_edmd, e_std_nom]
-    outfile = open(folder + "/error_data.pickle", 'wb')
+    outfile = open(folder + "/open_loop.pickle", 'wb')
     dill.dump(data_list, outfile)
     outfile.close()
 
@@ -451,7 +452,7 @@ D = sparse.diags([500,300,50,60])
 
 upper_bounds_MPC_control = array([np.Inf, np.Inf, np.Inf, np.Inf])  # State constraints, check they are higher than upper_bounds
 lower_bounds_MPC_control = -upper_bounds_MPC_control  # State constraints
-umax_control = np.Inf  # check it is higher than the control to generate the trajectories
+umax_control = 5.  # check it is higher than the control to generate the trajectories
 MPC_horizon = 0.25 # [s]
 plotMPC = False
 
@@ -571,19 +572,26 @@ if save_traj:
 
 #! Plot the closed loop trajectory
 ylabels = ['$x$', '$\\theta$', '$\\dot{x}$', '$\\dot{\\theta}$']
-figure()
+figure(figsize=(10, 5.5))
 for ii in range(n):
-    subplot(n, 1, ii+1)
+    subplot(n+1, 1, ii+1)
     plot(t_pred, q_d_pred[ii,:], linestyle="--",linewidth=2, label='reference')
-    plot(t_pred, xs_edmd_MPC[ii,:], linewidth=2, label='eDMD with MPC')
-    plot(t_pred, xs_keedmd_MPC[ii,:], linewidth=2, label='KEEDMD with MPC')
-    plot(t_pred, xs_lin_MPC[ii,:], linewidth=2, label='Linearized dynamics with MPC')
+    plot(t_pred, xs_lin_MPC[ii, :], linewidth=2, label='Linearized dynamics with MPC', color='tab:green')
+    plot(t_pred, xs_edmd_MPC[ii,:], linewidth=2, label='eDMD with MPC', color='tab:orange')
+    plot(t_pred, xs_keedmd_MPC[ii,:], linewidth=2, label='KEEDMD with MPC',color='tab:gray')
     xlabel('Time (s)')
     ylabel(ylabels[ii])
     grid()
     if ii == 0:
         title('Closed loop performance of different models')
 legend(fontsize=10, loc='best')
+subplot(n + 1, 1, n + 1)
+plot(t_pred[:-1], us_lin_MPC[0, :], linewidth=2, label='Linearized dynamics with MPC', color='tab:green')
+plot(t_pred[:-1], us_edmd_MPC[0, :], linewidth=2, label='eDMD with MPC', color='tab:orange')
+plot(t_pred[:-1], us_keedmd_MPC[0, :], linewidth=2, label='KEEDMD with MPC', color='tab:gray')
+xlabel('Time (s)')
+ylabel('u')
+grid()
 savefig(closed_filename,format='pdf', dpi=2400)
 show()
 
@@ -604,3 +612,10 @@ print('Tracking error (MSE), Nominal: ', mse_mpc_nom, ', EDMD: ', mse_mpc_edmd, 
 print('Control effort (norm), Nominal:  ', E_nom, ', EDMD: ', E_edmd, ', KEEDMD: ', E_keedmd)
 print('MPC cost, Nominal: ', cost_nom, ', EDMD: ', cost_edmd, ', KEEDMD: ', cost_keedmd)
 print('MPC cost improvement, EDMD: ', (cost_edmd/cost_nom-1)*100, '%, KEEDMD: ', (cost_keedmd/cost_nom-1)*100, '%')
+
+# Save closed loop data for analysis and plotting:
+data_list = [t_pred, q_d_pred, xs_lin_MPC, xs_edmd_MPC, xs_keedmd_MPC, us_lin_MPC, us_edmd_MPC, us_keedmd_MPC, mse_mpc_nom, mse_mpc_edmd, mse_mpc_keedmd, E_nom, E_edmd, E_keedmd, cost_nom, cost_edmd, cost_keedmd]
+outfile = open(folder + "/closed_loop.pickle", 'wb')
+dill.dump(data_list, outfile)
+outfile.close()
+
