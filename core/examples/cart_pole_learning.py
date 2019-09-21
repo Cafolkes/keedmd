@@ -60,21 +60,21 @@ nominal_sys = LinearSystemDynamics(A=A_nom, B=B_nom)
 
 # Simulation parameters (data collection)
 plot_traj_gen = False               # Plot trajectories generated for data collection
-traj_origin = 'load_mat'            # gen_MPC - solve MPC to generate desired trajectories, load_mat - load saved trajectories
+traj_origin = 'gen_MPC'            # gen_MPC - solve MPC to generate desired trajectories, load_mat - load saved trajectories
 Ntraj = 100                          # Number of trajectories to collect data from
 
 dt = 1.0e-2                         # Time step
 N = int(2./dt)                      # Number of time steps
 t_eval = dt * arange(N + 1)         # Simulation time points
-noise_var = 0.1                     # Exploration noise to perturb controller
+noise_var = 0.5                     # Exploration noise to perturb controller
 
 # Koopman eigenfunction parameters
 plot_eigen = False
-eigenfunction_max_power = 3             #TODO: Remove when MPC debug finalized
+eigenfunction_max_power = 2
 l2_diffeomorphism = 0.26316                 #Fix for current architecture
 jacobian_penalty_diffeomorphism = 3.95   #Fix for current architecture
-load_diffeomorphism_model = False
-diffeomorphism_model_file = 'diff_model'
+load_diffeomorphism_model = True
+diffeomorphism_model_file = 'diff_model_cart_pole'
 diff_n_epochs = 100
 diff_train_frac = 0.99
 diff_n_hidden_layers = 3
@@ -85,19 +85,17 @@ diff_learn_rate_decay = 0.9            #Fix for current architecture
 diff_dropout_prob = 0.5
 
 # KEEDMD parameters
-# Best: 0.024
-l1_pos_keedmd = 0.0008847875
-l1_pos_ratio_keedmd = 0.1
-l1_vel_keedmd = 0.00640266
-l1_vel_ratio_keedmd = 1.0
-l1_eig_keedmd = 0.145496189
+l1_pos_keedmd = 9.85518509349373e-07
+l1_pos_ratio_keedmd = 1.0
+l1_vel_keedmd = 0.00979960592061635
+l1_vel_ratio_keedmd = 0.99
+l1_eig_keedmd = 0.003213783025880654
 l1_eig_ratio_keedmd = 0.1
 
 # EDMD parameters
-# Best 0.06
 n_lift_edmd = (eigenfunction_max_power+1)**n-1
-l1_edmd = 1e0
-l1_ratio_edmd = 0.5 #1e-2
+l1_edmd = 0.015656845050848606
+l1_ratio_edmd = 1.00
 
 # Simulation parameters (evaluate performance)
 load_fit = False
@@ -254,7 +252,9 @@ if not load_fit:
         show()
 
     elif rbf_center_type == 'random_bounded':
-        rbf_centers = multiply(random.rand(n_lift_edmd, n),(upper_bounds-lower_bounds))+lower_bounds
+        rbf_centers = multiply(random.rand(n,n_lift_edmd),(upper_bounds-lower_bounds).reshape((upper_bounds.shape[0],1)))+lower_bounds.reshape((upper_bounds.shape[0],1))
+        #rbf_centers = multiply(random.rand(n, n_lift_edmd), (upper_bounds - lower_bounds).reshape(
+         #   (lower_bounds.shape[0], 1))) + lower_bounds.reshape((lower_bounds.shape[0], 1))
     rbf_basis = RBF(rbf_centers, n)
     rbf_basis.construct_basis()
     print('in {:.2f}s'.format(time.process_time()-t0))
@@ -271,7 +271,7 @@ if not load_fit:
 #%%
 #!  ==============================================  EVALUATE PERFORMANCE -- OPEN LOOP =========================================
 
-if save_fit:    
+if save_fit:
     data_list = [ q_d, t_d, edmd_model, keedmd_model, R, K_p, K_d]
     outfile = open(dill_filename,'wb')
     dill.dump(data_list,outfile)
@@ -357,9 +357,9 @@ if test_open_loop:
     mse_keedmd  = array([(xs_keedmd[ii] - xs_pred[ii])**2 for ii in range(Ntraj_pred)])
     mse_edmd  = array([(xs_edmd[ii] - xs_pred[ii])**2 for ii in range(Ntraj_pred)])
     mse_nom   = array([(xs_nom[ii] - xs_pred[ii])**2 for ii in range(Ntraj_pred)])
-    e_keedmd  = array([xs_keedmd[ii] - xs_pred[ii] for ii in range(Ntraj_pred)])
-    e_edmd    = array([xs_edmd[ii] - xs_pred[ii] for ii in range(Ntraj_pred)])
-    e_nom     = array([xs_nom[ii] - xs_pred[ii] for ii in range(Ntraj_pred)])
+    e_keedmd  = array(np.abs([xs_keedmd[ii] - xs_pred[ii] for ii in range(Ntraj_pred)]))
+    e_edmd    = array(np.abs([xs_edmd[ii] - xs_pred[ii] for ii in range(Ntraj_pred)]))
+    e_nom     = array(np.abs([xs_nom[ii] - xs_pred[ii] for ii in range(Ntraj_pred)]))
     mse_keedmd  = np.mean(np.mean(np.mean(mse_keedmd)))
     mse_edmd  = np.mean(np.mean(np.mean(mse_edmd)))
     mse_nom  = np.mean(np.mean(np.mean(mse_nom)))
@@ -373,7 +373,7 @@ if test_open_loop:
     folder = "core/examples/results/" + datetime.now().strftime("%m%d%Y_%H%M%S")
     os.mkdir(folder)
 
-    data_list = [mse_keedmd, mse_edmd, mse_nom, e_keedmd, e_edmd, e_nom, e_mean_keedmd, e_mean_edmd, e_mean_nom, e_std_keedmd, e_std_edmd, e_std_nom]
+    data_list = [t_pred, mse_keedmd, mse_edmd, mse_nom, e_keedmd, e_edmd, e_nom, e_mean_keedmd, e_mean_edmd, e_mean_nom, e_std_keedmd, e_std_edmd, e_std_nom]
     outfile = open(folder + "/error_data.pickle", 'wb')
     dill.dump(data_list, outfile)
     outfile.close()
@@ -408,34 +408,37 @@ if test_open_loop:
         #close()
     print('in {:.2f}s'.format(time.process_time()-t0))
 
+Cmatrix = control.ctrb(A=edmd_model.A, B=edmd_model.B)
+print('edmd controllability matrix rank is {}, ns={}, nz={}'.format(np.linalg.matrix_rank(Cmatrix),n,edmd_model.A.shape[0]))
+print(n_lift_edmd)
+
+
 
 #%%  
 #!==============================================  EVALUATE PERFORMANCE -- CLOSED LOOP =============================================
-'''t0 = time.process_time()
+t0 = time.process_time()
 print('Evaluate Performance with closed loop trajectory tracking...', end=" ")
 # Set up trajectory and controller for prediction task:
-q_d_pred = q_d[4,:,:].transpose()
-#q_d_pred = q_d_pred - np.tile(q_d_pred[:,-1:],(1,q_d_pred.shape[1]))  #ensure global end point is at origin
-q_d_pred = q_d_pred[:,:int(q_d_pred.shape[1]/2*1.71)]
+x_0 = array([2., 0.25, 0., 0.])
+mpc_controller.eval(x_0, 0)
+q_d_pred = mpc_controller.parse_result()
 
-#q_d_pred = np.zeros(q_d_pred.shape)
 x_0 = q_d_pred[:,0]
-#x_0[0] = 0
 t_pred = t_d.squeeze()
-t_pred = t_pred[:int(t_pred.shape[0]/2*1.71)]
+t_pred = t_pred[:int(t_pred.shape[0]/2*2)]
 noise_var_pred = 0.0
 output_pred = CartPoleTrajectory(system_true, q_d_pred,t_pred)
 
 # Set up MPC parameters
-Q = sparse.diags([5000,300,500,600])
+Q = sparse.diags([5000,5000,500,500])
 QN = Q
-
+D = sparse.diags([500,300,50,60])
 
 upper_bounds_MPC_control = array([np.Inf, np.Inf, np.Inf, np.Inf])  # State constraints, check they are higher than upper_bounds
 lower_bounds_MPC_control = -upper_bounds_MPC_control  # State constraints
 umax_control = np.Inf  # check it is higher than the control to generate the trajectories
-MPC_horizon = 0.5 # [s]
-plotMPC = True
+MPC_horizon = 0.25 # [s]
+plotMPC = False
 
 # Linearized with PD
 linearlize_PD_controller = PDController(output_pred, K_p, K_d, noise_var=0)
@@ -450,57 +453,26 @@ def check_controllability(A,B,n):
     rankCmatrix = np.linalg.matrix_rank(Cmatrix)
     print('controllability matrix rank is {}, ns={}, nz={}'.format(rankCmatrix,n,A.shape[0]))
     return rankCmatrix
-    
-# Check eigenvalues
-eig, eig_v = np.linalg.eig(keedmd_model.A)
-eig_max = np.max(np.real(eig))
-print('Max eig {}'.format(eig_max))
-# Controllability
-#Cmatrix = control.ctrb(A=edmd_model.A, B=edmd_model.B)
-#print('  edmd controllability matrix rank is {}, ns={}, nz={}'.format(np.linalg.matrix_rank(Cmatrix),n,edmd_model.A.shape[0]))
 
+# Check controllability of learned matrices:
 Cmatrix = control.ctrb(A=keedmd_model.A, B=keedmd_model.B)
 print('keedmd controllability matrix rank is {}, ns={}, nz={}'.format(np.linalg.matrix_rank(Cmatrix),n,keedmd_model.A.shape[0]))
 
-D = sparse.diags([50000,30000,5000,6000])
-# edmd_sys = LinearSystemDynamics(A=edmd_model.A, B=edmd_model.B)
-# edmd_controller = MPCControllerDense(linear_dynamics=edmd_sys, 
-#                                 N=int(MPC_horizon/dt),
-#                                 dt=dt, 
-#                                 umin=array([-umax_control]), 
-#                                 umax=array([+umax_control]),
-#                                 xmin=lower_bounds_MPC_control, 
-#                                 xmax=upper_bounds_MPC_control, 
-#                                 Q=Q, 
-#                                 R=R, 
-#                                 QN=QN, 
-#                                 xr=q_d_pred,
-#                                 lifting=True,
-#                                 edmd_object=edmd_model,
-#                                 plotMPC=plotMPC,
-#                                 soft=True,
-#                                 D=D,
-#                                 name='KEEDMD')
-
-# xs_edmd_MPC, us_emdm_MPC = system_true.simulate(x_0, edmd_controller, t_pred)
-# xs_edmd_MPC = xs_edmd_MPC.transpose()
-# us_emdm_MPC = us_emdm_MPC.transpose()
-    
-# if plotMPC:
-#     edmd_controller.finish_plot(xs_edmd_MPC, us_emdm_MPC, us_lin_PD, t_pred,"eDMD_thoughts.png") 
+Cmatrix = control.ctrb(A=edmd_model.A, B=edmd_model.B)
+print('edmd controllability matrix rank is {}, ns={}, nz={}'.format(np.linalg.matrix_rank(Cmatrix),n,keedmd_model.A.shape[0]))
 
 # Linearized with MPC
-linearlize_mpc_controller = MPCControllerDense(linear_dynamics=nominal_sys, 
+linearlize_mpc_controller = MPCControllerDense(linear_dynamics=nominal_sys,
                                                 N=int(MPC_horizon/dt),
-                                                dt=dt, 
-                                                umin=array([-umax_control]), 
+                                                dt=dt,
+                                                umin=array([-umax_control]),
                                                 umax=array([+umax_control]),
-                                                xmin=lower_bounds_MPC_control, 
-                                                xmax=upper_bounds_MPC_control, 
-                                                Q=Q, 
-                                                R=R, 
-                                                QN=QN, 
-                                                xr=q_d_pred,             
+                                                xmin=lower_bounds_MPC_control,
+                                                xmax=upper_bounds_MPC_control,
+                                                Q=Q,
+                                                R=R,
+                                                QN=QN,
+                                                xr=q_d_pred,
                                                 plotMPC=plotMPC,
                                                 name='Lin')
 
@@ -508,7 +480,7 @@ xs_lin_MPC, us_lin_MPC = system_true.simulate(x_0, linearlize_mpc_controller, t_
 xs_lin_MPC = xs_lin_MPC.transpose()
 us_lin_MPC = us_lin_MPC.transpose()
 if plotMPC:
-    linearlize_mpc_controller.finish_plot(xs_lin_MPC,us_lin_MPC, us_lin_PD, t_pred,"LinMPC_thoughts.pdf") 
+    linearlize_mpc_controller.finish_plot(xs_lin_MPC,us_lin_MPC, us_lin_PD, t_pred,"LinMPC_thoughts.pdf")
 
 
 figure()
@@ -518,44 +490,60 @@ xlabel('Time(ms)')
 savefig('MPC Run Time Histogram dense.png',format='pdf', dpi=1200)
 #show()
 
-#* Linearized with PD
-output_pred = CartPoleTrajectory(system_true, q_d_pred,t_pred)
-linearlize_PD_controller = PDController(output_pred, K_p, K_d, noise_var_pred)
-xs_lin_PD, us_lin_PD = system_true.simulate(x_0, linearlize_PD_controller, t_pred)
-xs_lin_PD = xs_lin_PD.transpose()
+# EDMD with MPC
+edmd_sys = LinearSystemDynamics(A=edmd_model.A, B=edmd_model.B)
+edmd_controller = MPCControllerDense(linear_dynamics=edmd_sys,
+                                 N=int(MPC_horizon/dt),
+                                 dt=dt,
+                                 umin=array([-umax_control]),
+                                 umax=array([+umax_control]),
+                                 xmin=lower_bounds_MPC_control,
+                                 xmax=upper_bounds_MPC_control,
+                                 Q=Q,
+                                 R=R,
+                                 QN=QN,
+                                 xr=q_d_pred,
+                                 lifting=True,
+                                 edmd_object=edmd_model,
+                                 plotMPC=plotMPC,
+                                 soft=True,
+                                 D=D,
+                                 name='EDMD')
+
+xs_edmd_MPC, us_emdm_MPC = system_true.simulate(x_0, edmd_controller, t_pred)
+xs_edmd_MPC = xs_edmd_MPC.transpose()
+us_edmd_MPC = us_emdm_MPC.transpose()
+    
+if plotMPC:
+     edmd_controller.finish_plot(xs_edmd_MPC, us_emdm_MPC, us_lin_PD, t_pred,"eDMD_thoughts.png")
 
 
+#KEEDMD MPC:
 keedmd_sys = LinearSystemDynamics(A=keedmd_model.A, B=keedmd_model.B)
-keedmd_controller = MPCControllerDense(linear_dynamics=keedmd_sys, 
-                                N=int(MPC_horizon/dt),
-                                dt=dt, 
-                                umin=array([-umax_control]), 
-                                umax=array([+umax_control]),
-                                xmin=lower_bounds, 
-                                xmax=upper_bounds, 
-                                Q=Q, 
-                                R=R, 
-                                QN=QN, 
-                                xr=q_d_pred,
-                                lifting=True,
-                                edmd_object=keedmd_model,
-                                plotMPC=plotMPC,
-                                name='KEEDMD')
+keedmd_controller = MPCControllerDense(linear_dynamics=keedmd_sys,
+                                     N=int(MPC_horizon / dt),
+                                     dt=dt,
+                                     umin=array([-umax_control]),
+                                     umax=array([+umax_control]),
+                                     xmin=lower_bounds_MPC_control,
+                                     xmax=upper_bounds_MPC_control,
+                                     Q=Q,
+                                     R=R,
+                                     QN=QN,
+                                     xr=q_d_pred,
+                                     lifting=True,
+                                     edmd_object=keedmd_model,
+                                     plotMPC=plotMPC,
+                                     soft=True,
+                                     D=D,
+                                     name='KEEDMD')
 
-
-xs_keedmd_MPC, us_keedmd_MPC = system_true.simulate(x_0, keedmd_controller, t_pred)
+xs_keedmd_MPC, us_keemdm_MPC = system_true.simulate(x_0, keedmd_controller, t_pred)
 xs_keedmd_MPC = xs_keedmd_MPC.transpose()
-us_keedmd_MPC = us_keedmd_MPC.transpose()
+us_keedmd_MPC = us_keemdm_MPC.transpose()
 
 if plotMPC:
-    keedmd_controller.finish_plot(xs_keedmd_MPC,us_keedmd_MPC, us_lin_PD, t_pred,"KeeDMD_thoughts.pdf")
-
-figure()
-hist(keedmd_controller.run_time*1000)
-title('MPC Run Time Histogram sparse. Mean {:.2f}ms'.format(np.mean(keedmd_controller.run_time*1000)))
-xlabel('Time(ms)')
-savefig('MPC Run Time Histogram dense.png',format='pdf', dpi=1200)
-close()#show()
+    keedmd_controller.finish_plot(xs_keedmd_MPC, us_keemdm_MPC, us_lin_PD, t_pred, "eDMD_thoughts.png")
 
 
 print('in {:.2f}s'.format(time.process_time()-t0))
@@ -572,10 +560,9 @@ figure()
 for ii in range(n):
     subplot(n, 1, ii+1)
     plot(t_pred, q_d_pred[ii,:], linestyle="--",linewidth=2, label='reference')
-    #plot(t_pred, xs_edmd_MPC[ii,:], linewidth=2, label='eDMD with MPC')
-    plot(t_pred, xs_keedmd_MPC[ii,:], linewidth=2, label='KeeDMD with MPC')
+    plot(t_pred, xs_edmd_MPC[ii,:], linewidth=2, label='eDMD with MPC')
+    plot(t_pred, xs_keedmd_MPC[ii,:], linewidth=2, label='KEEDMD with MPC')
     plot(t_pred, xs_lin_MPC[ii,:], linewidth=2, label='Linearized dynamics with MPC')
-    plot(t_pred, xs_lin_PD[ii,:], linewidth=2, label='Linearized dynamics with PD Controller')
     xlabel('Time (s)')
     ylabel(ylabels[ii])
     grid()
@@ -583,4 +570,22 @@ for ii in range(n):
         title('Closed loop performance of different models')
 legend(fontsize=10, loc='best')
 savefig(closed_filename,format='pdf', dpi=2400)
-show()'''
+show()
+
+# Calculate statistics for the different models
+mse_mpc_nom = sum(sum((xs_lin_MPC-q_d_pred)**2))/xs_lin_MPC.size
+mse_mpc_edmd = sum(sum((xs_edmd_MPC-q_d_pred)**2))/xs_edmd_MPC.size
+mse_mpc_keedmd = sum(sum((xs_keedmd_MPC-q_d_pred)**2))/xs_keedmd_MPC.size
+E_nom = np.linalg.norm(us_lin_MPC)
+E_edmd = np.linalg.norm(us_edmd_MPC)
+E_keedmd = np.linalg.norm(us_keedmd_MPC)
+
+Q_d = Q.todense()
+R_d = R.todense()
+cost_nom = sum(np.diag(np.dot(np.dot((xs_lin_MPC-q_d_pred).T,Q_d), xs_lin_MPC-q_d_pred))) + sum(np.diag(np.dot(np.dot(us_lin_MPC.T,R_d),us_lin_MPC)))
+cost_edmd = sum(np.diag(np.dot(np.dot((xs_edmd_MPC-q_d_pred).T,Q_d), xs_edmd_MPC-q_d_pred))) + sum(np.diag(np.dot(np.dot(us_edmd_MPC.T,R_d),us_edmd_MPC)))
+cost_keedmd = sum(np.diag(np.dot(np.dot((xs_keedmd_MPC-q_d_pred).T,Q_d), xs_keedmd_MPC-q_d_pred))) + sum(np.diag(np.dot(np.dot(us_keedmd_MPC.T,R_d),us_keedmd_MPC)))
+print('Tracking error (MSE), Nominal: ', mse_mpc_nom, ', EDMD: ', mse_mpc_edmd, 'KEEDMD: ', mse_mpc_keedmd)
+print('Control effort (norm), Nominal:  ', E_nom, ', EDMD: ', E_edmd, ', KEEDMD: ', E_keedmd)
+print('MPC cost, Nominal: ', cost_nom, ', EDMD: ', cost_edmd, ', KEEDMD: ', cost_keedmd)
+print('MPC cost improvement, EDMD: ', (cost_edmd/cost_nom-1)*100, '%, KEEDMD: ', (cost_keedmd/cost_nom-1)*100, '%')
