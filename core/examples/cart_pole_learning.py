@@ -60,7 +60,7 @@ nominal_sys = LinearSystemDynamics(A=A_nom, B=B_nom)
 # Simulation parameters (data collection)
 plot_traj_gen = False                # Plot trajectories generated for data collection
 traj_origin = 'gen_MPC'              # gen_MPC - solve MPC to generate desired trajectories, load_mat - load saved trajectories
-Ntraj = 20                          # Number of trajectories to collect data from
+Ntraj = 40                          # Number of trajectories to collect data from
 
 dt = 1.0e-2                         # Time step
 N = int(2./dt)                      # Number of time steps
@@ -124,10 +124,10 @@ R = sparse.eye(m)
 if not load_fit:
     if (traj_origin == 'gen_MPC'):
         t_d = t_eval
-        traj_bounds = [2,0.25,0.05,0.05] # x, theta, x_dot, theta_dot
+        traj_bounds = [2.5,0.25,0.05,0.05] # x, theta, x_dot, theta_dot
         q_d = zeros((Ntraj,N+1,n))
         Q = sparse.diags([0,0,0,0])
-        QN = sparse.diags([100000.,100000.,50000.,10000.])
+        QN = sparse.diags([100000.,100000.,10000.,10000.])
         umax = 5
         MPC_horizon = 2 # [s]
 
@@ -374,7 +374,7 @@ if test_open_loop:
     folder = "core/examples/results/" + datetime.now().strftime("%m%d%Y_%H%M%S")
     os.mkdir(folder)
 
-    data_list = [t_pred, mse_keedmd, mse_edmd, mse_nom, e_keedmd, e_edmd, e_nom, e_mean_keedmd, e_mean_edmd, e_mean_nom, e_std_keedmd, e_std_edmd, e_std_nom]
+    data_list = [t_pred, mse_keedmd, mse_edmd, mse_nom, e_keedmd, e_edmd, e_nom, e_mean_keedmd, e_mean_edmd, e_mean_nom, e_std_keedmd, e_std_edmd, e_std_nom, xs_keedmd, xs_edmd, xs_nom, xs_pred]
     outfile = open(folder + "/open_loop.pickle", 'wb')
     dill.dump(data_list, outfile)
     outfile.close()

@@ -192,7 +192,6 @@ if tune_diffeomorphism:
             t_val = ts[val_inds, :]
             X_val = xs[val_inds, :, :]
             Xd_val = q_d[val_inds, :, :]
-            print(t.shape, X.shape, Xd.shape, t_val.shape, X_val.shape, Xd_val.shape)
 
             # Fit model with current data set and hyperparameters
             eigenfunction_basis = KoopmanEigenfunctions(n=n, max_power=eigenfunction_max_power, A_cl=A_cl, BK=BK)

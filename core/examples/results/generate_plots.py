@@ -8,26 +8,55 @@ from matplotlib.pyplot import figure, grid, legend, plot, show, subplot, suptitl
 import numpy as np
 
 # Plotting parameters
-folder = 'core/examples/results/09212019_005154/'
+folder = 'core/examples/results/09212019_124115/'
 open_loop = 'open_loop.pickle'
 closed_loop = 'closed_loop.pickle'
 figname_ol = 'openloop_error.pdf'
 figname_cl = 'closedloop.pdf'
 display_plots = True
-plot_open_loop = False
-plot_closed_loop = True
+plot_open_loop_single = True
+plot_open_loop_sum = False
+plot_closed_loop = False
 n = 4
 
 #Import data and aggregate
 infile = open(folder + open_loop, 'rb')
-[t_pred, mse_keedmd, mse_edmd, mse_nom, e_keedmd, e_edmd, e_nom, e_mean_keedmd, e_mean_edmd, e_mean_nom, e_std_keedmd, e_std_edmd, e_std_nom] = dill.load(infile)
+[t_pred, mse_keedmd, mse_edmd, mse_nom, e_keedmd, e_edmd, e_nom, e_mean_keedmd, e_mean_edmd, e_mean_nom, e_std_keedmd, e_std_edmd, e_std_nom, xs_keedmd, xs_edmd, xs_nom, xs_pred] = dill.load(infile)
 infile.close()
 infile = open(folder + closed_loop, 'rb')
 [t_pred, q_d_pred, xs_lin_MPC, xs_edmd_MPC, xs_keedmd_MPC, us_lin_MPC, us_edmd_MPC, us_keedmd_MPC, mse_mpc_nom, mse_mpc_edmd, mse_mpc_keedmd, E_nom, E_edmd, E_keedmd, cost_nom, cost_edmd, cost_keedmd] = dill.load(infile)
 infile.close()
 
+if plot_open_loop_single:
+    traj_ind = 1
+    ylabels = ['$|e_x|$', '$|e_{\\theta}|$', '$\\dot{x}$', '$\\dot{\\theta}$']
+    figure(figsize=(5.8, 4))
+    for ii in range(int(n/2)):
+        subplot(2, 1, ii + 1)
+        plot(t_pred, np.abs(xs_nom[traj_ind][ii,:] - xs_pred[traj_ind][ii,:]), linewidth=2, label='Nominal', color='tab:gray')
+        plot(t_pred, np.abs(xs_edmd[traj_ind][ii,:] - xs_pred[traj_ind][ii,:]), linewidth=2, label='EDMD', color='tab:green')
+        plot(t_pred, np.abs(xs_keedmd[traj_ind][ii,:] - xs_pred[traj_ind][ii,:]), linewidth=2, label='KEEDMD', color='tab:orange')
+        ylabel(str(ylabels[ii]))
+
+        if ii == 0:
+            ylim(0., .5)
+        else:
+           ylim(0., 1.)
+
+        grid()
+        if ii == 0:
+            title('Sample Trajectory Open Loop State Prediction Error')
+            legend(fontsize=10, loc='upper left')
+        if ii == 1:
+            xlabel('Time (sec)')
+    tight_layout()
+    savefig(folder + figname_ol, format='pdf', dpi=2400)
+    show()
+    # close()
+
+
 # Plot tracking error in both states and control effort for each episode of all experiments
-if plot_open_loop:
+if plot_open_loop_sum:
     ylabels = ['x', '$\\theta$', '$\\dot{x}$', '$\\dot{\\theta}$']
     figure(figsize=(5.8, 5.5))
     for ii in range(int(n/2)):
