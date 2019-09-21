@@ -69,11 +69,10 @@ class Edmd():
                 reg_model = linear_model.MultiTaskElasticNetCV(alphas=None, copy_X=True, cv=5, eps=0.001, fit_intercept=True,
                                         l1_ratio=self.l1_ratio, max_iter=1e6, n_alphas=100, n_jobs=None,
                                         normalize=False, positive=False, precompute='auto', random_state=0,
-                                        selection='cyclic', tol=0.0001, verbose=0)
+                                        selection='random', tol=0.0001, verbose=0)
             else:
-                reg_model = linear_model.ElasticNet(alpha=self.l1, l1_ratio=self.l1_ratio, fit_intercept=False, normalize=False, max_iter=1e3)
+                reg_model = linear_model.ElasticNet(alpha=self.l1, l1_ratio=self.l1_ratio, fit_intercept=False, normalize=False, selection='random', max_iter=1e5)
             reg_model.fit(input,output)
-            print(reg_model)
 
             self.A = reg_model.coef_[:self.n_lift,:self.n_lift]
             self.B = reg_model.coef_[:self.n_lift,self.n_lift:]
@@ -91,19 +90,13 @@ class Edmd():
             X_d = X_d[:, :U.shape[1], :]
             t = t[:,:U.shape[1]]
 
-        # Filter data to exclude non-continuous dynamics:
-        if self.acceleration_bounds is not None:
-            X_filtered, X_d_filtered, U_filtered, U_nom_filtered, t_filtered = self.filter_input(X, X_d, U, U_nom, t)
-        else:
-            X_filtered, X_d_filtered, U_filtered, U_nom_filtered, t_filtered = X, X_d, U, U_nom, t
-
-        Ntraj = X_filtered.shape[0]  # Number of trajectories in dataset
-        Z = array([self.lift(X_filtered[ii,:,:].transpose(), X_d_filtered[ii,:,:].transpose()) for ii in range(Ntraj)])  # Lift x
+        Ntraj = X.shape[0]  # Number of trajectories in dataset
+        Z = array([self.lift(X[ii,:,:].transpose(), X[ii,:,:].transpose()) for ii in range(Ntraj)])  # Lift x
         Z_old = copy(Z)  #TODO: Remove after debug
         # Vectorize Z- data
         n_data = Z.shape[0] * Z.shape[1]
         self.n_lift = Z.shape[2]
-        self.m = U_filtered.shape[2]
+        self.m = U.shape[2]
         order = 'F'
         Z_vec = Z.transpose().reshape((self.n_lift, n_data), order=order)
 
@@ -112,55 +105,41 @@ class Edmd():
         self.Z_std[argwhere(self.Z_std == 0.)] = 1.
         self.Z_std[:self.n] = 1.  # Do not rescale states. Note: Assumes state is added to beginning of observables
         self.Z_std = self.Z_std.reshape((self.Z_std.shape[0], 1))
-        #self.Z_std = ones_like(self.Z_std)  #TODO: Remove after debug
+        self.Z_std = ones_like(self.Z_std)  #TODO: Remove after debug
         Z_norm = array([divide(Z[ii,:,:], self.Z_std.transpose()) for ii in range(Z.shape[0])])
-        #Z_norm = Z  #TODO: Remove after debug
+        Z_norm = Z  #TODO: Remove after debug
 
-        Z_dot = array([differentiate_vec(Z_norm[ii,:,:],t_filtered[ii,:]) for ii in range(Ntraj)])  #Numerical differentiate lifted state
+        Z_dot = array([differentiate_vec(Z_norm[ii,:,:],t[ii,:]) for ii in range(Ntraj)])  #Numerical differentiate lifted state
 
         #Vectorize remaining data
-        X_filtered, X_d_filtered, Z, Z_dot, U_filtered, U_nom_filtered, t_filtered = X_filtered.transpose().reshape((self.n,n_data),order=order), \
-                                                                       X_d_filtered.transpose().reshape((self.n, n_data),order=order), \
+        X_flat, X_d_flat, Z_flat, Z_dot_flat, U_flat, U_nom_flat, t_flat = X.transpose().reshape((self.n,n_data),order=order), \
+                                                                        X_d.transpose().reshape((self.n, n_data),order=order), \
                                                                         Z_norm.transpose().reshape((self.n_lift, n_data),order=order), \
                                                                         Z_dot.transpose().reshape((self.n_lift,n_data),order=order), \
-                                                                        U_filtered.transpose().reshape((self.m,n_data),order=order), \
-                                                                        U_nom_filtered.transpose().reshape((self.m, n_data),order=order), \
-                                                                        t_filtered.transpose().reshape((1,n_data),order=order)
+                                                                        U.transpose().reshape((self.m,n_data),order=order), \
+                                                                        U_nom.transpose().reshape((self.m, n_data),order=order), \
+                                                                        t.transpose().reshape((1,n_data),order=order)
 
         '''import matplotlib.pyplot as plt
+        ind = 4
         plt.figure()
-        plt.subplot(2,1,1)
-        plt.plot(t[0, :200], Z[2, :200], label='Z_3')
-        plt.plot(t[0, :200], Z_dot[0, :200], label='$\\dot{Z}_1$')
-        plt.plot(t[0, :200], Z_old[0, :200,2], label='Unnormalized Z_3')
+        plt.subplot(1,1,1)
+        plt.plot(t[0, :200], Z_flat[ind, :200], label='Z_3')
+        plt.plot(t[0, :200], Z_dot_flat[ind, :200], label='$\\dot{Z}_1$')
+        plt.plot(t[0, :200], Z_old[0, :200, ind], label='Unnormalized Z_3')
         plt.grid()
         plt.legend()
-        plt.title('Position derivative')
-        plt.subplot(2, 1, 2)
-        plt.plot(t[0, :200], Z[3, :200], label='Z_4')
-        plt.plot(t[0, :200], Z_dot[1, :200], label='$\\dot{Z}_2$')
-        plt.plot(t[0, :200], Z_old[0, :200, 3], label='Unnormalized Z_4')
-        plt.grid()
-        plt.legend()
-        plt.title('Angle derivative')
+        #plt.title('Position derivative')
+        #plt.subplot(2, 1, 2)
+        #plt.plot(t[0, :200], Z_flat[3, :200], label='Z_4')
+        #plt.plot(t[0, :200], Z_dot_flat[1, :200], label='$\\dot{Z}_2$')
+        #plt.plot(t[0, :200], Z_old[0, :200, 3], label='Unnormalized Z_4')
+        #plt.grid()
+        #plt.legend()
+        #plt.title('Angle derivative')
         plt.show()'''
 
-        return X_filtered, X_d_filtered, Z, Z_dot, U_filtered, U_nom_filtered, t_filtered
-
-    def filter_input(self, X, X_d, U, U_nom, t):
-        '''
-        Calculates the numerical derivative of the data and removes points that lie outside of the accepted acceleration
-        interval (used to filter out data points corresponding to impacts with the environment)
-        :param X:
-        :param U:
-        :return:
-        '''
-        X_filtered = X
-        X_d_filtered = X_d
-        U_filtered = U
-        U_nom_filtered = U_nom
-        t_filtered = t
-        return X_filtered, X_d_filtered, U_filtered, U_nom_filtered, t_filtered
+        return X_flat, X_d_flat, Z_flat, Z_dot_flat, U_flat, U_nom_flat, t_flat
 
     def lift(self, X, X_d):
         Z = self.basis.lift(X, X_d)
@@ -198,8 +177,6 @@ class Edmd():
 
         print('EDMD l1: ', self.l1, self.l1_ratio)
 
-
-
     def discretize(self,dt):
         '''
         Discretizes continous dynamics
@@ -207,4 +184,3 @@ class Edmd():
         self.dt = dt
         self.Bd = self.B*dt
         self.Ad = expm(self.A*self.dt)
-        

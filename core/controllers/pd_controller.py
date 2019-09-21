@@ -22,8 +22,10 @@ class PDController(Controller):
         self.K_p = K_p
         self.K_d = K_d
         self.noise_var = noise_var
+        self.brownian = 0.
 
     def eval(self, x, t):
         e_p = self.dynamics.proportional(x, t)
         e_d = self.dynamics.derivative(x, t)
-        return -dot(self.K_p, e_p) - dot(self.K_d, e_d) + self.noise_var*random.randn(self.m)
+        self.brownian = self.noise_var*random.randn(self.m)  #TODO: Revert to Brownian or remove additional notation
+        return -dot(self.K_p, e_p) - dot(self.K_d, e_d) + self.brownian

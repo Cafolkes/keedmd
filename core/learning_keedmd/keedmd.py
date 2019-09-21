@@ -122,7 +122,7 @@ class Keedmd(Edmd):
 
         l1_ratio = array([.1, .5, .7, .9, .95, .99, 1])  # Values to test
         reg_model_cv = linear_model.MultiTaskElasticNetCV(l1_ratio=l1_ratio, fit_intercept=False,
-                                            normalize=False, cv=5, n_jobs=-1, selection='random', max_iter=1e4)
+                                            normalize=False, cv=5, n_jobs=-1, selection='random', max_iter=1e5)
 
         # Solve least squares problem to find A and B for velocity terms:
         if self.episodic:
