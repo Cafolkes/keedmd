@@ -60,7 +60,7 @@ nominal_sys = LinearSystemDynamics(A=A_nom, B=B_nom)
 # Simulation parameters (data collection)
 plot_traj_gen = False                # Plot trajectories generated for data collection
 traj_origin = 'gen_MPC'              # gen_MPC - solve MPC to generate desired trajectories, load_mat - load saved trajectories
-Ntraj = 100                          # Number of trajectories to collect data from
+Ntraj = 20                          # Number of trajectories to collect data from
 
 dt = 1.0e-2                         # Time step
 N = int(2./dt)                      # Number of time steps
@@ -93,7 +93,7 @@ l1_eig_ratio_keedmd = 0.1
 
 # EDMD parameters
 n_lift_edmd = (eigenfunction_max_power+1)**n-1
-l1_edmd = 0.015656845050848606
+l1_edmd = 0.00687693796
 l1_ratio_edmd = 1.00
 
 # Simulation parameters (evaluate performance)
@@ -572,7 +572,7 @@ if save_traj:
 
 #! Plot the closed loop trajectory
 ylabels = ['$x$', '$\\theta$', '$\\dot{x}$', '$\\dot{\\theta}$']
-figure(figsize=(10, 5.5))
+figure(figsize=(5.5,10))
 for ii in range(n):
     subplot(n+1, 1, ii+1)
     plot(t_pred, q_d_pred[ii,:], linestyle="--",linewidth=2, label='reference')
