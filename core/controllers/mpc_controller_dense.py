@@ -328,7 +328,7 @@ class MPCControllerDense(Controller):
 
         tindex = int(t/self.dt)+1
             
-        print("Eval at t={:.2f}, x={}".format(t,x))
+        #print("Eval at t={:.2f}, x={}".format(t,x))
         # Update the local reference trajectory
         if (tindex+N) < self.Nqd: # if we haven't reach the end of q_d yet
             xr = self.q_d[:,tindex:tindex+N]
@@ -359,12 +359,12 @@ class MPCControllerDense(Controller):
 
         self.prob.update(q=q,l=l,u=u)
 
-        print('Time Setup {:.2f}ms'.format(1000*(time.time()-time_eval0)))
+        #print('Time Setup {:.2f}ms'.format(1000*(time.time()-time_eval0)))
         time_eval0 = time.time() 
         ## Solve MPC Instance
         self._osqp_result = self.prob.solve()
 
-        print('Time Solve {:.2f}ms'.format(1000*(time.time()-time_eval0)))
+        #print('Time Solve {:.2f}ms'.format(1000*(time.time()-time_eval0)))
         time_eval0 = time.time() 
 
         # Check solver status

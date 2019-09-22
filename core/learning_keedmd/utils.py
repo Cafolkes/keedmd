@@ -1,5 +1,6 @@
 from matplotlib.pyplot import figure, grid, legend, plot, show, subplot, suptitle, title, savefig, ylim, ylabel, xlabel
-from numpy import array, zeros_like
+from numpy import array, gradient, zeros, tile
+import numpy as np
 
 def plot_trajectory(X, X_d, U, U_nom, t, display=True, save=False, filename=''):
     """ Plots the position, velocity and control input
@@ -76,9 +77,26 @@ def differentiate(xs, ts):
     a centered difference, while end points apply a one-sided
     difference. Vectorized version.
     """
-    dx = zeros_like(xs)                     # dx/dt
+    #dx = zeros_like(xs)                     # dx/dt
     dt = ts[1] - ts[0]
-    dx[1:-1] = (xs[2:] - xs[:-2])/(2*dt)    # Internal mesh points
-    dx[0]  = (xs[1]  - xs[0])/dt           # End point
-    dx[-1] = (xs[-1] - xs[-2])/dt           # End point
+    #dx[1:-1] = (xs[2:] - xs[:-2])/(2*dt)    # Internal mesh points
+    #dx[0]  = (xs[1]  - xs[0])/dt           # End point
+    #dx[-1] = (xs[-1] - xs[-2])/dt           # End point
+    dx = gradient(xs, dt, edge_order=2)
     return dx
+
+def rbf(X, C, type='gauss', eps=1.):
+    N = X.shape[1]
+    n = X.shape[0]
+    Cbig = C
+    Y = zeros((C.shape[1],N))
+    for ii in range(C.shape[1]):
+        C = Cbig[:,ii]
+        C = tile(C.reshape((C.size,1)), (1, N))
+        r_sq = np.sum((X-C)**2,axis=0)
+        if type == 'gauss':
+            y = np.exp(-eps**2*r_sq)
+
+        Y[ii,:] = y
+
+    return Y
