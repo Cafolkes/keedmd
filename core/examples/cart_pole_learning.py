@@ -97,7 +97,7 @@ l1_edmd = 0.00687693796
 l1_ratio_edmd = 1.00
 
 # Simulation parameters (evaluate performance)
-load_fit = False
+load_fit = True
 test_open_loop = True
 plot_open_loop = test_open_loop
 save_traj = False
@@ -143,7 +143,9 @@ if not load_fit:
                                     QN=QN, 
                                     xr=zeros(n))
         for ii in range(Ntraj):
-            x_0 = asarray([veryrandom.uniform(-i,i)  for i in traj_bounds ])
+            x_0 = asarray([veryrandom.uniform(-i,i)  for i in traj_bounds])
+            while abs(x_0[0]) < 1.25:
+                x_0 = asarray([veryrandom.uniform(-i, i) for i in traj_bounds])
             mpc_controller.eval(x_0,0)
             q_d[ii,:,:] = mpc_controller.parse_result().transpose()
 
@@ -446,14 +448,14 @@ noise_var_pred = 0.0
 output_pred = CartPoleTrajectory(system_true, q_d_pred,t_pred)
 
 # Set up MPC parameters
-Q = sparse.diags([5000,5000,500,500])
+Q = sparse.diags([5000,5000,100,100])
 QN = Q
 D = sparse.diags([500,300,50,60])
 
 upper_bounds_MPC_control = array([np.Inf, np.Inf, np.Inf, np.Inf])  # State constraints, check they are higher than upper_bounds
 lower_bounds_MPC_control = -upper_bounds_MPC_control  # State constraints
-umax_control = np.inf  # check it is higher than the control to generate the trajectories
-MPC_horizon = 0.25 # [s]
+umax_control = 5  # check it is higher than the control to generate the trajectories
+MPC_horizon = 0.4 # [s]
 plotMPC = False
 
 # Linearized with PD

@@ -8,7 +8,7 @@ from matplotlib.pyplot import figure, grid, legend, plot, show, subplot, suptitl
 import numpy as np
 
 # Plotting parameters
-folder = 'core/examples/results/09212019_124115/'
+folder = 'core/examples/results/acc_nobounds/'
 open_loop = 'open_loop.pickle'
 closed_loop = 'closed_loop.pickle'
 figname_ol = 'openloop_error.pdf'
@@ -16,7 +16,7 @@ figname_cl = 'closedloop.pdf'
 display_plots = True
 plot_open_loop_single = True
 plot_open_loop_sum = False
-plot_closed_loop = False
+plot_closed_loop = True
 n = 4
 
 #Import data and aggregate
@@ -28,9 +28,9 @@ infile = open(folder + closed_loop, 'rb')
 infile.close()
 
 if plot_open_loop_single:
-    traj_ind = 1
+    traj_ind = 2
     ylabels = ['$|e_x|$', '$|e_{\\theta}|$', '$\\dot{x}$', '$\\dot{\\theta}$']
-    figure(figsize=(5.8, 4))
+    figure(figsize=(5.8, 5.5))
     for ii in range(int(n/2)):
         subplot(2, 1, ii + 1)
         plot(t_pred, np.abs(xs_nom[traj_ind][ii,:] - xs_pred[traj_ind][ii,:]), linewidth=2, label='Nominal', color='tab:gray')
@@ -46,9 +46,8 @@ if plot_open_loop_single:
         grid()
         if ii == 0:
             title('Sample Trajectory Open Loop State Prediction Error')
-            legend(fontsize=10, loc='upper left')
-        if ii == 1:
-            xlabel('Time (sec)')
+    xlabel('Time (sec)')
+    legend(fontsize=10, loc='lower right')
     tight_layout()
     savefig(folder + figname_ol, format='pdf', dpi=2400)
     show()
@@ -93,26 +92,26 @@ if plot_open_loop_sum:
 
 if plot_closed_loop:
     ylabels = ['$x$', '$\\theta$', '$\\dot{x}$', '$\\dot{\\theta}$']
-    figure(figsize=(5.5, 10))
-    for ii in range(n):
-        subplot(n + 1, 1, ii + 1)
+    figure(figsize=(5.8, 5.5))
+    for ii in range(int(n/2)):
+        subplot(n/2, 1, ii + 1)
         plot(t_pred, q_d_pred[ii, :], linestyle="--", linewidth=2, label='Reference')
         plot(t_pred, xs_lin_MPC[ii, :], linewidth=2, label='Nominal', color='tab:gray')
         plot(t_pred, xs_edmd_MPC[ii, :], linewidth=2, label='EDMD', color='tab:green')
         plot(t_pred, xs_keedmd_MPC[ii, :], linewidth=2, label='KEEDMD', color='tab:orange')
-        #xlabel('Time (s)')
         ylabel(ylabels[ii])
         grid()
         if ii == 0:
-            title('Trajectory Tracking with MPC')
+            title('Closed Loop Trajectory Tracking with MPC')
+    xlabel('Time (s)')
     legend(fontsize=10, loc='best')
-    subplot(n + 1, 1, n + 1)
+    '''subplot(n + 1, 1, n + 1)
     plot(t_pred[:-1], us_lin_MPC[0, :], linewidth=2, label='Nominal', color='tab:gray')
     plot(t_pred[:-1], us_edmd_MPC[0, :], linewidth=2, label='EDMD', color='tab:green')
     plot(t_pred[:-1], us_keedmd_MPC[0, :], linewidth=2, label='KEEDMD', color='tab:orange')
     xlabel('Time (s)')
     ylabel('u')
-    grid()
+    grid()'''
     tight_layout()
     savefig(folder + figname_cl, format='pdf', dpi=2400)
     show()
