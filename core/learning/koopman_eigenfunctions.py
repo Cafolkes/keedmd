@@ -251,7 +251,7 @@ class KoopmanEigenfunctions(BasisFunctions):
 
             scheduler.step(i)
             if verbose:
-                print('Epoch: ',i,' Training loss:', format(losses[-1], '08f'), ' Validation loss:', format(val_losses[-1], '08f'))
+                print(' - Epoch: ',i,' Training loss:', format(losses[-1], '08f'), ' Validation loss:', format(val_losses[-1], '08f'))
 
         return val_losses[-1]
 

@@ -13,7 +13,7 @@ from sys import argv
 from ..systems import CartPole
 from ..dynamics import LinearSystemDynamics
 from ..controllers import PDController, OpenLoopController, MPCController, MPCControllerDense
-from ..learning_keedmd import KoopmanEigenfunctions, RBF, Edmd, Keedmd, plot_trajectory, IdentityBF
+from ..learning import KoopmanEigenfunctions, RBF, Edmd, Keedmd, plot_trajectory, IdentityBF
 import time
 import dill
 import control
@@ -72,7 +72,7 @@ plot_eigen = False
 eigenfunction_max_power = 2
 l2_diffeomorphism = 0.26316
 jacobian_penalty_diffeomorphism = 3.95
-load_diffeomorphism_model = True
+load_diffeomorphism_model = False
 diffeomorphism_model_file = 'diff_model_cart_pole'
 diff_n_epochs = 100
 diff_train_frac = 0.99
@@ -97,7 +97,7 @@ l1_edmd = 0.00687693796
 l1_ratio_edmd = 1.00
 
 # Simulation parameters (evaluate performance)
-load_fit = True
+load_fit = False
 test_open_loop = True
 plot_open_loop = test_open_loop
 save_traj = False
@@ -620,4 +620,3 @@ data_list = [t_pred, q_d_pred, xs_lin_MPC, xs_edmd_MPC, xs_keedmd_MPC, us_lin_MP
 outfile = open(folder + "/closed_loop.pickle", 'wb')
 dill.dump(data_list, outfile)
 outfile.close()
-

@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 
 from .controller import Controller
-from ..learning_keedmd.edmd import Edmd
+from ..learning.edmd import Edmd
 
 
 def block_diag(M,n):
@@ -326,7 +326,7 @@ class MPCControllerDense(Controller):
 
 
 
-        tindex = int(t/self.dt)+1
+        tindex = int(np.ceil(t/self.dt))  #TODO: Remove ceil and add back +1 if bad performance
             
         #print("Eval at t={:.2f}, x={}".format(t,x))
         # Update the local reference trajectory

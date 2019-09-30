@@ -38,7 +38,7 @@ class RBF(BasisFunctions):
         -------
         basis applied to q
         """
-        #return atleast_2d(array([self.basis(q[:, ii].reshape((self.n, 1)), t[ii]) for ii in range(q.shape[1])]).squeeze())
+
         if q.ndim == 1:
             q = reshape(q,(q.shape[0],1))
 
@@ -46,7 +46,6 @@ class RBF(BasisFunctions):
 
     def construct_basis(self):
         if self.type == 'gaussian':
-            #self.basis = lambda q, t: array([diag(rbf_kernel(q.reshape(q.shape[1],self.n), tile(self.rbf_centers[ii,:],(q.shape[1],1)), self.gamma)).transpose() for ii in range(self.Nlift)])
             self.basis = lambda q, q_t: rbf(q, self.rbf_centers, eps=self.gamma)
         else:
             raise Exception('RBF kernels other than Gaussian not implemented')

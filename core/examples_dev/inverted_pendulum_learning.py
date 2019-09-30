@@ -9,7 +9,7 @@ import numpy as np
 from scipy.io import loadmat, savemat
 from ..dynamics import RoboticDynamics, LinearSystemDynamics, AffineDynamics, SystemDynamics
 from ..controllers import PDController, OpenLoopController, MPCController, MPCControllerDense
-from ..learning_keedmd import KoopmanEigenfunctions, RBF, Edmd, Keedmd, plot_trajectory, IdentityBF
+from ..learning import KoopmanEigenfunctions, RBF, Edmd, Keedmd, plot_trajectory, IdentityBF
 import time
 import dill
 import control

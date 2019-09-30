@@ -13,7 +13,7 @@ from sys import argv
 from core.systems import CartPole
 from core.dynamics import LinearSystemDynamics
 from core.controllers import PDController, OpenLoopController, MPCController
-from core.learning_keedmd import KoopmanEigenfunctions, RBF, Edmd, Keedmd, plot_trajectory_ep
+from core.learning import KoopmanEigenfunctions, RBF, Edmd, Keedmd, plot_trajectory_ep
 import time
 
 import random as veryrandom

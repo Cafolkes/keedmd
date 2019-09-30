@@ -14,7 +14,7 @@ import matplotlib.cm as cm
 
 
 from .controller import Controller
-from ..learning_keedmd.edmd import Edmd
+from ..learning.edmd import Edmd
 
 
 def block_diag(M,n):

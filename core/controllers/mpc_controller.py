@@ -11,7 +11,7 @@ import osqp
 import matplotlib.pyplot as plt
 
 from .controller import Controller
-from ..learning_keedmd.edmd import Edmd
+from ..learning.edmd import Edmd
 
 
 class MPCController(Controller):

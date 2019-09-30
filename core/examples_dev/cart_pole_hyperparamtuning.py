@@ -26,7 +26,7 @@ from numpy import linspace, ones, sin, tanh, tile, zeros, pi, random, interp, do
 import numpy as np
 from core.dynamics import LinearSystemDynamics
 from core.controllers import PDController, OpenLoopController, MPCController, MPCControllerDense
-from core.learning_keedmd import KoopmanEigenfunctions, RBF, Edmd, Keedmd, plot_trajectory, IdentityBF
+from core.learning import KoopmanEigenfunctions, RBF, Edmd, Keedmd, plot_trajectory, IdentityBF
 import time
 import dill
 from pathlib import Path
