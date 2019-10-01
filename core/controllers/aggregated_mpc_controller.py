@@ -6,6 +6,16 @@ from .controller import Controller
 class AggregatedMpcController(Controller):
 
     def __init__(self, dynamics, controller_list, w, noise_var=0.):
+        """__init__ Create a new MPC aggregated Contrllero
+        
+        Arguments:
+            dynamics {dynamical system} -- Dynamics for the controller
+            controller_list {list[Nctrl]} -- list to store all controllers
+            w {list[Nctrl]} -- weights for each controller
+        
+        Keyword Arguments:
+            noise_var {float} -- variance for the perturbation noise (default: {0.})
+        """
 
         Controller.__init__(self, dynamics)
         self.weights = w
@@ -17,6 +27,15 @@ class AggregatedMpcController(Controller):
         self.u_pert_lst = []
 
     def eval(self, x, t):
+        """eval Function to evaluate the list of controllers
+        
+        Arguments:
+            x {numpy array [ns,]} -- state
+            t {float} -- time
+        
+        Returns:
+            control action -- numpy array [Nu,]
+        """
         u_seq_agg = zeros((self.m,self.controller_list[0].N))
         u_nom = zeros((self.m,))
         for ii in range(self.Nctrl):

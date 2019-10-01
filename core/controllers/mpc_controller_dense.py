@@ -36,32 +36,29 @@ class MPCControllerDense(Controller):
     """
     def __init__(self, linear_dynamics, N, dt, umin, umax, xmin, xmax, 
                 Q, R, QN, xr, plotMPC=False, plotMPC_filename="",lifting=False, edmd_object=None, name="noname", soft=False, D=None):
-        """Create an MPC Controller object.
-
-        Sizes:
-        - N: number of timesteps for predictions
-        - Nqd: number of timesteps of the desired trajectory
-        - nx: number of states (original or lifted)
-        - ns: number or original states
-        - nu: number of control inputs
-
-        Inputs:
-        - initilized linear_dynamics, LinearSystemDynamics object. It takes Ac and Bc from it.
-        - number of timesteps, N, integer
-        - time step, dt, float
-        - minimum control,  umin, numpy 1d array [nu,]
-        - maximum control,  umax, numpy 1d array [nu,]
-        - minimum state,    xmin, numpy 1d array [ns,]
-        - maximum state,    xmax, numpy 1d array [ns,]
-        - state cost matrix    Q, sparse numpy 2d array [ns,ns]. In practice it is always diagonal. 
-        - control cost matrix, R, sparse numpy 2d array [nu,nu]. In practice it is always diagonal. 
-        - final state cost matrix,  QN, sparse numpy 2d array [ns,ns]. In practice it is always diagonal. 
-        - reference state trajectory, xr, numpy 2d array [ns,Nqd] OR numpy 1d array [ns,]
-        (Optional)
-        - flag to plot MPC thoughts, plotMPC=False, boolean
-        - filename to save the previosu plot, plotMPC_filename="", string
-        - flag to use or not lifting, lifting=False, boolean
-        - object to store the eDMD data, edmd_object=Edmd(). It has been initialized. s
+        """__init__ [summary]
+        
+        Arguments:
+            linear_dynamics {dynamical sytem} -- it contains the A and B matrices in continous time
+            N {integer} -- number of timesteps
+            dt {float} -- time step in seconds
+            umin {numpy array [Nu,]} -- minimum control bound
+            umax {numpy array [Nu,]} -- maximum control bound
+            xmin {numpy array [Ns,]} -- minimum state bound
+            xmax {numpy array [Ns,]} -- maximum state bound
+            Q {numpy array [Ns,Ns]} -- state cost matrix
+            R {numpy array [Nu,Nu]} -- control cost matrix
+            QN {numpy array [Ns,]} -- final state cost
+            xr {numpy array [Ns,]} -- reference trajectory
+        
+        Keyword Arguments:
+            plotMPC {bool} -- flag to plot results (default: {False})
+            plotMPC_filename {str} -- plotting filename (default: {""})
+            lifting {bool} -- flag to use state lifting (default: {False})
+            edmd_object {edmd object} -- lifting object. It contains projection matrix and lifting function (default: {Edmd()})
+            name {str} -- name for all saved files (default: {"noname"})
+            soft {bool} -- flag to enable soft constraints (default: {False})
+            D {[type]} -- cost matrix for the soft variables (default: {None})
         """
 
         Controller.__init__(self, linear_dynamics)

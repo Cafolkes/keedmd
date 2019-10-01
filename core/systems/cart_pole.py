@@ -5,6 +5,17 @@ from core.dynamics import RoboticDynamics
 
 class CartPole(RoboticDynamics):
     def __init__(self, m_c, m_p, l, g=9.81):
+        """CartPole Cart pole dynamics
+        
+        Arguments:
+            RoboticDynamics {dynamical system} -- dynamics
+            m_c {float} -- cart mass
+            m_p {float} -- pendulum mass
+            l {float} -- pendulum length
+        
+        Keyword Arguments:
+            g {float} -- gravity (default: {9.81})
+        """
         RoboticDynamics.__init__(self, 2, 1)
         self.params = m_c, m_p, l, g
 

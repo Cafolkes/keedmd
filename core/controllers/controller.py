@@ -14,14 +14,14 @@ class Controller:
         self.dynamics = dynamics
 
     def eval(self, x, t):
-        """Compute general representation of an action.
-
-        Inputs:
-        State, x: numpy array
-        Time, t: float
-
-        Outputs:
-        Action: object
+        """eval Function to evaluate controller
+        
+        Arguments:
+            x {numpy array [ns,]} -- state
+            t {float} -- time
+        
+        Returns:
+            control action -- numpy array [Nu,]
         """
 
         pass
