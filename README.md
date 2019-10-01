@@ -34,4 +34,7 @@ To run the code, run one of the examples in
 ```
 keedmd/core/examples
 ```
-currently cart pole and inverted pendulum examples are implemented. Run the example scripts as a module with the root folder of repository as the working directory.
+currently cart pole and inverted pendulum examples are implemented. Run the example scripts as a module with the root folder of repository as the working directory. For example, in a Python 3 environment run
+```
+python -m keedmd.core.examples.cart_pole.py
+```
