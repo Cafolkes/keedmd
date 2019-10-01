@@ -67,16 +67,36 @@ def plot_trajectory_ep(X, X_d, U, U_nom, t, display=True, save=False, filename='
         show()
 
 def differentiate_vec(xs, ts, L=3):
+    """differentiate_vec Numerically differencitate a vector
+    
+    Arguments:
+        xs {numpy array [Nt,Ns]} -- state as a block matrix
+        ts {numpy array [Nt,]} -- time vecotr
+    
+    Keyword Arguments:
+        L {integer} -- differenciation order, only L=3 (default: {3})
+    
+    Returns:
+        numpy array [Nt,Ns] -- numerical derivative
+    """
     assert(xs.shape[0] == ts.shape[0])
     return array([differentiate(xs[:,ii], ts) for ii in range(xs.shape[1])]).transpose()
 
 def differentiate(xs, ts):
-    """
-    Compute the discrete derivative of a Python function
+    """differentiate     Compute the discrete derivative of a Python function
     f on [a,b] using n intervals. Internal points apply
     a centered difference, while end points apply a one-sided
     difference. Vectorized version.
+    
+    
+    Arguments:
+        xs {numpy array [Nt,]} -- state as a vector
+        ts {numpy array [Nt,]} -- time vecotr
+    
+    Returns:
+        numpy array [Nt,] -- numerical derivative
     """
+
     #dx = zeros_like(xs)                     # dx/dt
     dt = ts[1] - ts[0]
     #dx[1:-1] = (xs[2:] - xs[:-2])/(2*dt)    # Internal mesh points
@@ -86,6 +106,19 @@ def differentiate(xs, ts):
     return dx
 
 def rbf(X, C, type='gauss', eps=1.):
+    """rbf Radial Basis Function
+    
+    Arguments:
+        X {numpy array [Ns,Nz]} -- state
+        C {numpy array [Ns,Nc]} -- centers. 
+    
+    Keyword Arguments:
+        type {str} -- RBF type (default: {'gauss'})
+        eps {float} -- epsilon for gauss (default: {1.})
+    
+    Returns:
+        numpy array [] -- [description]
+    """
     N = X.shape[1]
     n = X.shape[0]
     Cbig = C

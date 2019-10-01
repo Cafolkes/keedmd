@@ -245,7 +245,7 @@ class MPCControllerDense(Controller):
             Adelta = sparse.csc_matrix(np.vstack([np.eye(N*ns),np.zeros((N*nu,N*ns))]))
             A = sparse.hstack([A, Adelta])
 
-        plot_matrices = True
+        plot_matrices = False
         if plot_matrices:
             #! Visualize Matrices
             fig = plt.figure()
@@ -377,19 +377,35 @@ class MPCControllerDense(Controller):
         return  self._osqp_result.x[:nu]
 
     def parse_result(self,x,u):
+        """parse_result obtain state from MPC optimization
+        
+        Arguments:
+            x {numpy array [Ns,]} -- initial state
+            u {numpy array [Nu*N]} -- control action
+        
+        Returns:
+            numpy array [Ns,N] -- state in the MPC optimization
+        """
         return  np.transpose(np.reshape( self.a @ x + self.B @ u, (self.N+1,self.nx)))
 
     def get_control_prediction(self):
+        """get_control_prediction parse control command from MPC optimization
+        
+        Returns:
+            numpy array [N,Nu] -- control command along MPC optimization
+        """
         return np.transpose(np.reshape( self._osqp_result.x[-self.N*self.nu:], (self.N,self.nu)))
 
     def plot_MPC(self, current_time, x0, xr, tindex):
-        """plot mpc
+        """plot_MPC Plot MPC thoughts
         
-       
-        - current_time (float): time now
-        - xr (2darray [N,ns]): local reference trajectory
-        - tindex (int): index of the current time
+        Arguments:
+            current_time {float} -- current time
+            x0 {numpy array [Ns,]} -- current state
+            xr {numpy array [Ns,N]} -- reference state
+            tindex {float} -- time index along reference trajectory
         """
+
         #* Unpack OSQP results
         nu = self.nu
         nx = self.nx
@@ -417,6 +433,16 @@ class MPCControllerDense(Controller):
             self.axs[ii+self.ns].plot(time,osqp_sim_forces[ii,:],color=[0,1-pos,pos])
 
     def update(self, xmin=None, xmax=None, umax=None, umin= None, Q=None):
+        """update Change QP parameters
+        
+        Keyword Arguments:
+            xmin {numpy array [Ns,]} -- minimum state bound (default: {None})
+            xmax {numpy array [Ns,]} -- maximum state bound (default: {None})
+            umax {numpy array [Nu,]} -- maximum command bound (default: {None})
+            umin {numpy array [Nu,]} -- minimum command bound (default: {None})
+            Q {numpy array [Ns,Ns]} -- state cost matrix (default: {None})
+        
+        """
         
         N, ns, nu = [self.N, self.ns, self.nu]
         if xmin is not None and xmax is not None:

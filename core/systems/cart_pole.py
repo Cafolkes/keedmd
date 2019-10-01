@@ -5,7 +5,7 @@ from core.dynamics import RoboticDynamics
 
 class CartPole(RoboticDynamics):
     def __init__(self, m_c, m_p, l, g=9.81):
-        """CartPole Cart pole dynamics
+        """CartPole Cart pole dynamics. See Robotic Dynamics for more details.
         
         Arguments:
             RoboticDynamics {dynamical system} -- dynamics

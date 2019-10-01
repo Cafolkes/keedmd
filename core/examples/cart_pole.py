@@ -55,7 +55,7 @@ K_d = -array([[8.0734, 7.4294]])        # Derivative control gains
 nominal_sys = LinearSystemDynamics(A=A_nom, B=B_nom)
 
 # Simulation parameters (data collection)
-Ntraj = 40                          # Number of trajectories to collect data from
+Ntraj = 10                          # Number of trajectories to collect data from
 dt = 1.0e-2                         # Time step
 N = int(2./dt)                      # Number of time steps
 t_eval = dt * arange(N + 1)         # Simulation time points
@@ -72,7 +72,7 @@ MPC_horizon = 2 # [s]
 eigenfunction_max_power = 2
 l2_diffeomorphism = 0.26316
 jacobian_penalty_diffeomorphism = 3.95
-diff_n_epochs = 100
+diff_n_epochs = 5
 diff_train_frac = 0.99
 diff_n_hidden_layers = 3
 diff_layer_width = 30
@@ -95,7 +95,7 @@ l1_edmd = 0.00687693796
 l1_ratio_edmd = 1.00
 
 # Open loop evaluation parameters
-Ntraj_pred = 40
+Ntraj_pred = 10
 noise_var_pred = 0.5
 traj_bounds_pred = [2, 0.5, 0.1, 0.1]  # x, theta, x_dot, theta_dot
 q_d_pred = zeros((Ntraj_pred, N + 1, n))

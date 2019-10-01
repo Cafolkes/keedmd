@@ -1,7 +1,25 @@
-# core
-Python simulation and hardware library for learning and control
+# KEEDMD
+This repository 
 
-## macOS setup
+Forked from a python simulation and hardware library for learning and control
+## Usage
+Execute the examples in 'core/examples' as modules from the root folder:
+```
+python3 -m core.examples.cart_pole
+```
+or
+```
+python3 -m core.examples.inverted_pendulum
+```
+Each example:
+- Collects some data with a stabilizing controller
+- Compute principal eigenvalues
+- Fit the diffeomorphism using PyTorch
+- Fit a linear model using SkLearn
+- Test prediction error
+- Test closed loop error
+
+## Setup
 Set up virtual environment 
 ```
 python3 -m venv .venv

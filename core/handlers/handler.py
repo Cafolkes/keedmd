@@ -5,6 +5,18 @@ class Handler(object):
     Class to handle Episodic Learning. This class is a template only.
     """
     def __init__(self, n, m, Nlift, Nep, w, initial_controller, pert_noise):
+        """Handler 
+        
+        Arguments:
+            object {[type]} -- [description]
+            n {integer} -- number of states, Ns
+            m {integer} -- number of control commands, Nu
+            Nlift {integer} -- number of lifting functions
+            Nep {integer} -- number of episodes
+            w {numpy array [Nep,]} -- weights for each controller
+            initial_controller {controller} -- initial stabilying controller
+            pert_noise {float>0} -- perturbation noise to learn new controllers 
+        """
         self.n = n
         self.m = m
         self.Nlift = Nlift
@@ -23,12 +35,26 @@ class Handler(object):
 
 
     def run(self):
+        """run evaluate all controllers
+        """
         pass
 
     def process(self):
+        """process filter data
+        """
         pass
 
     def aggregate_data(self, X, Xd, U, Unom, t, edmd_object):
+        """aggregate_data 
+        
+        Arguments:
+            X {numpy array []} -- state vector array
+            Xd {numpy array []} -- desired vector array
+            U {numpy array []} -- control input
+            Unom {numpy array []} -- nominal control input
+            t {numpy array [Nt,]} -- time vector
+            edmd_object {edmd} -- edmd object
+        """
         X, Xd, Z, Zdot, U, Unom, t = edmd_object.process(array(X.transpose()), 
                                                          array(Xd.transpose()), 
                                                          array(U.transpose()), 
@@ -57,9 +83,20 @@ class Handler(object):
             self.t_agg = delete(self.t_agg, 0, axis=1)
 
     def aggregate_ctrl(self, controller):
+        """aggregate_ctrl 
+        
+        Arguments:
+            controller {controller} -- controller to be added
+        """     
         self.controller_list.append(controller)
 
     def get_ctrl(self, q, q_d):
+        """get_ctrl 
+        
+        Arguments:
+            q {numpy array [Ns,?]} -- state
+            q_d {numpy array [Ns,?]} -- desired state
+        """
         assert(q.shape[0] == self.n)
         assert(q_d.shape[0] == self.n)
 

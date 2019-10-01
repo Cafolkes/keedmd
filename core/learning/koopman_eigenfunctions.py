@@ -17,6 +17,15 @@ class KoopmanEigenfunctions(BasisFunctions):
     Class for construction and lifting using Koopman eigenfunctions
     """
     def __init__(self, n, max_power, A_cl, BK):
+        """KoopmanEigenfunctions 
+        
+        Arguments:
+            BasisFunctions {basis_function} -- function to lift the state
+            n {integer} -- number of states
+            max_power {integer} -- maximum number to exponenciate each original principal eigenvalue
+            A_cl {numpy array [Ns,Ns]} -- closed loop matrix in continuous time
+            BK {numpy array [Ns,Nu]} -- control matrix 
+        """
         self.n = n
         self.max_power = max_power
         self.A_cl = A_cl
@@ -29,6 +38,12 @@ class KoopmanEigenfunctions(BasisFunctions):
         self.diffeomorphism_model = None
 
     def construct_basis(self, ub=None, lb=None):
+        """construct_basis define basis functions
+        
+        Keyword Arguments:
+            ub {numpy array [Ns,]} -- upper bound for unit scaling (default: {None})
+            lb {numpy array [Ns,]} -- lower bound for unit scaling (default: {None})
+        """
         self.eigfunc_lin = self.construct_linear_eigfuncs()
         self.scale_func = self.construct_scaling_function(ub,lb)
         self.basis = lambda q, t: self.eigfunc_lin(self.scale_func(self.diffeomorphism(q, t)))
@@ -72,6 +87,14 @@ class KoopmanEigenfunctions(BasisFunctions):
         return (q + diff_pred).transpose()
 
     def build_diffeomorphism_model(self, n_hidden_layers = 2, layer_width=50, batch_size = 64, dropout_prob=0.1):
+        """build_diffeomorphism_model 
+        
+        Keyword Arguments:
+            n_hidden_layers {int} --  (default: {2})
+            layer_width {int} --  (default: {50})
+            batch_size {int} --  (default: {64})
+            dropout_prob {float} --  (default: {0.1})
+        """
         
 
         # Set up model architecture for h(x,t):
@@ -91,6 +114,30 @@ class KoopmanEigenfunctions(BasisFunctions):
         self.A_cl = from_numpy(self.A_cl)
 
     def fit_diffeomorphism_model(self, X, t, X_d, learning_rate=1e-2, learning_decay=0.95, n_epochs=50, train_frac=0.8, l2=1e1, jacobian_penalty=1., batch_size=64, initialize=True, verbose=True, X_val=None, t_val=None, Xd_val=None):
+        """fit_diffeomorphism_model 
+        
+        Arguments:
+            X {numpy array [Ntraj,Nt,Ns]} -- state
+            t {numpy array [Ntraj,Nt]} -- time vector
+            X_d {numpy array [Ntraj,Nt,Ns]} -- desired state
+        
+        Keyword Arguments:
+            learning_rate {[type]} --  (default: {1e-2})
+            learning_decay {float} --  (default: {0.95})
+            n_epochs {int} --  (default: {50})
+            train_frac {float} -- ratio of training and testing (default: {0.8})
+            l2 {[type]} -- L2 penalty term (default: {1e1})
+            jacobian_penalty {[type]} --  (default: {1.})
+            batch_size {int} --  (default: {64})
+            initialize {bool} -- flag to warm start (default: {True})
+            verbose {bool} --  (default: {True})
+            X_val {numpy array [Ntraj,Nt,Ns]} -- state in validation set (default: {None})
+            t_val {numpy array [Ntraj,Nt]} -- time in validation set (default: {None})
+            Xd_val {numpy array [Ntraj,Nt,Ns]} -- desired state in validation set (default: {None})
+        
+        Returns:
+            float -- val_losses[-1]
+        """
         X, X_dot, X_d, t = self.process(X=X, t=t, X_d=X_d)
         y_target = X_dot - dot(self.A_cl, X.transpose()).transpose()# - dot(self.BK, X_d.transpose()).transpose()
 
@@ -306,4 +353,13 @@ class KoopmanEigenfunctions(BasisFunctions):
         show()  # TODO: Create plot of all collected trajectories (subplot with one plot for each state), not mission critical
 
     def lift(self, q, q_d):
+        """lift 
+        
+        Arguments:
+            q {numpy array [Ns,Nt]} -- state    
+            q_d {numpy array [Ns,Nt]} -- desired state 
+        
+        Returns:
+            [type] -- [description]
+        """
         return array([self.basis(q[:,ii].reshape((self.n,1)), q_d[:,ii].reshape((self.n,1))) for ii in range(q.shape[1])])

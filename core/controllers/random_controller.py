@@ -36,6 +36,15 @@ class RandomController(Controller):
         return multivariate_normal(zeros(self.m), self.cov)
 
     def eval(self, x, t):
+        """eval Function to evaluate the controller
+        
+        Arguments:
+            x {numpy array [ns,]} -- state
+            t {float} -- time
+        
+        Returns:
+            control action -- numpy array [Nu,]
+        """
         if self.counter == 0:
             self.pert = self.sample()
             self.counter = self.reps + 1
@@ -47,5 +56,7 @@ class RandomController(Controller):
         return u_nom + u_pert
 
     def reset(self):
+        """reset reset the controller 
+        """
         self.counter = self.reps
         self.controller.reset()
