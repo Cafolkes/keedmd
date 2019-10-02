@@ -25,6 +25,15 @@ class PDController(Controller):
         self.brownian = 0.
 
     def eval(self, x, t):
+        """eval Function to evaluate the controller
+        
+        Arguments:
+            x {numpy array [ns,]} -- state
+            t {float} -- time
+        
+        Returns:
+            control action -- numpy array [Nu,]
+        """
         e_p = self.dynamics.proportional(x, t)
         e_d = self.dynamics.derivative(x, t)
         self.brownian = self.noise_var*random.randn(self.m)  #TODO: Revert to Brownian or remove additional notation

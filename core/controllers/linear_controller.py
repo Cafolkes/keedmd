@@ -19,4 +19,13 @@ class LinearController(Controller):
         self.K = K
 
     def eval(self, x, t):
+        """eval Function to evaluate the controller
+        
+        Arguments:
+            x {numpy array [ns,]} -- state
+            t {float} -- time
+        
+        Returns:
+            control action -- numpy array [Nu,]
+        """
         return -dot(self.K, self.dynamics.eval(x, t))

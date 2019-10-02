@@ -3,7 +3,19 @@ from numpy import array, cos, sin
 from core.dynamics import RoboticDynamics, SystemDynamics
 
 class InvertedPendulum(RoboticDynamics):
+    
+    
     def __init__(self, m, l, g=9.81):
+        """InvertedPendulum 
+        
+        Arguments:
+            RoboticDynamics {dynamical system} -- dynamics
+            m {float} -- mass
+            l {float} -- length
+        
+        Keyword Arguments:
+            g {float} -- gravity (default: {9.81})
+        """
         SystemDynamics.__init__(self, 2, 1)
         RoboticDynamics.__init__(self, array([[1]]))
         self.params = m, l, g

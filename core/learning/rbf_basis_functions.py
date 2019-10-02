@@ -9,13 +9,15 @@ class RBF(BasisFunctions):
     """
 
     def __init__(self, rbf_centers, n, gamma=1., type='gaussian'):
-        """
-        Parameters
-        ----------
-        n : int
-            number of basis functions
-        Nlift : int
-            Number of lifing functions
+        """__init__ [summary]
+        
+        Arguments:
+            rbf_centers {numpy array [Ns,Nc]} -- points for the RBFs
+            n {integer} -- Ns, number of states
+        
+        Keyword Arguments:
+            gamma {float} -- gamma value for gaussian RBF (default: {1.})
+            type {str} -- RBF Type (default: {'gaussian'})
         """
         self.n = n
         self.Nlift = rbf_centers.shape[1]
@@ -26,19 +28,15 @@ class RBF(BasisFunctions):
         self.basis = None
 
     def lift(self, q, q_d):
+        """lift Lift the state using the basis function
+        
+        Arguments:
+            q {numpy array [Ns,Nt]} -- state
+            q_d {numpy array [Nt,Nt]} -- desired state
+        
+        Returns:
+            numpy array [Nz,Nt] -- lifted state
         """
-        Call this function to get the variables in lifted space
-
-        Parameters
-        ----------
-        q : numpy array
-            State vector
-
-        Returns
-        -------
-        basis applied to q
-        """
-
         if q.ndim == 1:
             q = reshape(q,(q.shape[0],1))
 

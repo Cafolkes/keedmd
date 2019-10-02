@@ -81,6 +81,7 @@ diff_learn_rate = 0.0737                            # Leaning rate
 diff_learn_rate_decay = 0.9                         # Learning rate decay
 diff_dropout_prob = 0.5                             # Dropout rate
 
+
 # KEEDMD parameters
 l1_pos_keedmd = 9.85704592e-5                       # l1 regularization strength for position states
 l1_pos_ratio_keedmd = 0.1                           # l1-l2 ratio for position states
@@ -99,6 +100,7 @@ Ntraj_pred = 40                                     # Number of trajectories to 
 noise_var_pred = 0.5                                # Exploration noise to perturb controller
 traj_bounds_pred = [2, 0.5, 0.1, 0.1]               # State constraints, [x, theta, x_dot, theta_dot]
 q_d_pred = zeros((Ntraj_pred, N + 1, n))            # Desired trajectories (initialization)
+
 
 # Closed loop evaluation parameters
 x_0_mpc = array([2., 0.25, 0., 0.])                 # Initial condition

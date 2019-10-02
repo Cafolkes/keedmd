@@ -36,32 +36,29 @@ class MPCControllerDense(Controller):
     """
     def __init__(self, linear_dynamics, N, dt, umin, umax, xmin, xmax, 
                 Q, R, QN, xr, plotMPC=False, plotMPC_filename="",lifting=False, edmd_object=None, name="noname", soft=False, D=None):
-        """Create an MPC Controller object.
-
-        Sizes:
-        - N: number of timesteps for predictions
-        - Nqd: number of timesteps of the desired trajectory
-        - nx: number of states (original or lifted)
-        - ns: number or original states
-        - nu: number of control inputs
-
-        Inputs:
-        - initilized linear_dynamics, LinearSystemDynamics object. It takes Ac and Bc from it.
-        - number of timesteps, N, integer
-        - time step, dt, float
-        - minimum control,  umin, numpy 1d array [nu,]
-        - maximum control,  umax, numpy 1d array [nu,]
-        - minimum state,    xmin, numpy 1d array [ns,]
-        - maximum state,    xmax, numpy 1d array [ns,]
-        - state cost matrix    Q, sparse numpy 2d array [ns,ns]. In practice it is always diagonal. 
-        - control cost matrix, R, sparse numpy 2d array [nu,nu]. In practice it is always diagonal. 
-        - final state cost matrix,  QN, sparse numpy 2d array [ns,ns]. In practice it is always diagonal. 
-        - reference state trajectory, xr, numpy 2d array [ns,Nqd] OR numpy 1d array [ns,]
-        (Optional)
-        - flag to plot MPC thoughts, plotMPC=False, boolean
-        - filename to save the previosu plot, plotMPC_filename="", string
-        - flag to use or not lifting, lifting=False, boolean
-        - object to store the eDMD data, edmd_object=Edmd(). It has been initialized. s
+        """__init__ [summary]
+        
+        Arguments:
+            linear_dynamics {dynamical sytem} -- it contains the A and B matrices in continous time
+            N {integer} -- number of timesteps
+            dt {float} -- time step in seconds
+            umin {numpy array [Nu,]} -- minimum control bound
+            umax {numpy array [Nu,]} -- maximum control bound
+            xmin {numpy array [Ns,]} -- minimum state bound
+            xmax {numpy array [Ns,]} -- maximum state bound
+            Q {numpy array [Ns,Ns]} -- state cost matrix
+            R {numpy array [Nu,Nu]} -- control cost matrix
+            QN {numpy array [Ns,]} -- final state cost
+            xr {numpy array [Ns,]} -- reference trajectory
+        
+        Keyword Arguments:
+            plotMPC {bool} -- flag to plot results (default: {False})
+            plotMPC_filename {str} -- plotting filename (default: {""})
+            lifting {bool} -- flag to use state lifting (default: {False})
+            edmd_object {edmd object} -- lifting object. It contains projection matrix and lifting function (default: {Edmd()})
+            name {str} -- name for all saved files (default: {"noname"})
+            soft {bool} -- flag to enable soft constraints (default: {False})
+            D {[type]} -- cost matrix for the soft variables (default: {None})
         """
 
         Controller.__init__(self, linear_dynamics)
@@ -248,7 +245,7 @@ class MPCControllerDense(Controller):
             Adelta = sparse.csc_matrix(np.vstack([np.eye(N*ns),np.zeros((N*nu,N*ns))]))
             A = sparse.hstack([A, Adelta])
 
-        plot_matrices = True
+        plot_matrices = False
         if plot_matrices:
             #! Visualize Matrices
             fig = plt.figure()
@@ -380,19 +377,35 @@ class MPCControllerDense(Controller):
         return  self._osqp_result.x[:nu]
 
     def parse_result(self,x,u):
+        """parse_result obtain state from MPC optimization
+        
+        Arguments:
+            x {numpy array [Ns,]} -- initial state
+            u {numpy array [Nu*N]} -- control action
+        
+        Returns:
+            numpy array [Ns,N] -- state in the MPC optimization
+        """
         return  np.transpose(np.reshape( self.a @ x + self.B @ u, (self.N+1,self.nx)))
 
     def get_control_prediction(self):
+        """get_control_prediction parse control command from MPC optimization
+        
+        Returns:
+            numpy array [N,Nu] -- control command along MPC optimization
+        """
         return np.transpose(np.reshape( self._osqp_result.x[-self.N*self.nu:], (self.N,self.nu)))
 
     def plot_MPC(self, current_time, x0, xr, tindex):
-        """plot mpc
+        """plot_MPC Plot MPC thoughts
         
-       
-        - current_time (float): time now
-        - xr (2darray [N,ns]): local reference trajectory
-        - tindex (int): index of the current time
+        Arguments:
+            current_time {float} -- current time
+            x0 {numpy array [Ns,]} -- current state
+            xr {numpy array [Ns,N]} -- reference state
+            tindex {float} -- time index along reference trajectory
         """
+
         #* Unpack OSQP results
         nu = self.nu
         nx = self.nx
@@ -420,6 +433,16 @@ class MPCControllerDense(Controller):
             self.axs[ii+self.ns].plot(time,osqp_sim_forces[ii,:],color=[0,1-pos,pos])
 
     def update(self, xmin=None, xmax=None, umax=None, umin= None, Q=None):
+        """update Change QP parameters
+        
+        Keyword Arguments:
+            xmin {numpy array [Ns,]} -- minimum state bound (default: {None})
+            xmax {numpy array [Ns,]} -- maximum state bound (default: {None})
+            umax {numpy array [Nu,]} -- maximum command bound (default: {None})
+            umin {numpy array [Nu,]} -- minimum command bound (default: {None})
+            Q {numpy array [Ns,Ns]} -- state cost matrix (default: {None})
+        
+        """
         
         N, ns, nu = [self.N, self.ns, self.nu]
         if xmin is not None and xmax is not None:

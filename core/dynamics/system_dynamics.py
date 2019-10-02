@@ -21,6 +21,15 @@ class SystemDynamics(Dynamics):
         self.m = m
 
     def eval(self, x, t):
+        """eval Function to evaluate the controller
+        
+        Arguments:
+            x {numpy array [Ns,]} -- state
+            t {float} -- time
+        
+        Returns:
+            control action -- numpy array [Nu,]
+        """
         return x
 
     def simulate(self, x_0, controller, ts, processed=True, atol=1e-6, rtol=1e-6):

@@ -26,6 +26,15 @@ class LQRController(Controller):
         self.R = R
 
     def eval(self, x, t):
+        """eval Function to evaluate the controller
+        
+        Arguments:
+            x {numpy array [ns,]} -- state
+            t {float} -- time
+        
+        Returns:
+            control action -- numpy array [Nu,]
+        """
         _, B = self.dynamics.linear_system()
         return -solve(self.R, dot(B.T, dot(self.P, self.dynamics.eval(x, t)))) / 2
 

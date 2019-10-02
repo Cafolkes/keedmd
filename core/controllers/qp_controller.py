@@ -161,6 +161,15 @@ class QPController(Controller):
         return qp
 
     def eval(self, x, t):
+        """eval Function to evaluate the controller
+        
+        Arguments:
+            x {numpy array [ns,]} -- state
+            t {float} -- time
+        
+        Returns:
+            control action -- numpy array [Nu,]
+        """
         static_cost = sum(self.static_costs)
         dynamic_cost = sum([cost(x, t) for cost in self.dynamic_costs])
         obj = Minimize(static_cost + dynamic_cost)

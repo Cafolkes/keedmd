@@ -4,7 +4,7 @@ from numpy import zeros, random
 
 class DroneHandler(Handler):
     """
-    Class to handle Episodic Learning. This class is a template only.
+    Class to use with Bintel Drone at CAST. Not used. See Bintel repository
     """
     def __init__(self,n,m,Nlift,Nep,w):
         super().__init__(n,m,Nlift,Nep,w)

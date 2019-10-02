@@ -84,6 +84,19 @@ class Edmd():
                 raise Exception('Warning: Learning of C not implemented for regularized regression.')
 
     def process(self, X, X_d, U, U_nom, t):
+        """process filter data
+        
+        Arguments:
+            X {numpy array []} -- state
+            X_d {numpy array []} -- desired state
+            U {numpy array } -- command
+            U_nom {numpy array } -- nominal command
+            t {numpy array [Nt,]} -- time vector
+        
+        Returns:
+            [type] --  state flat, desired state flat, lifted state flat, 
+                       lifted state dot flat, control flat, nominal control flat, time flat
+        """
         # Remove points where not every input is available:
         if U.shape[1] < X.shape[1]:
             X = X[:,:U.shape[1],:]
@@ -142,6 +155,15 @@ class Edmd():
         return X_flat, X_d_flat, Z_flat, Z_dot_flat, U_flat, U_nom_flat, t_flat
 
     def lift(self, X, X_d):
+        """lift Lift the state using the basis function
+        
+        Arguments:
+            X {numpy array [Ns,Nt]} -- state
+            X_d {numpy array [Nt,Nt]} -- desired state
+        
+        Returns:
+            numpy array [Nz,Nt] -- lifted state
+        """
         Z = self.basis.lift(X, X_d)
         if not X.shape[1] == Z.shape[1]:
             Z = Z.transpose()
@@ -150,9 +172,19 @@ class Edmd():
         return output_norm.transpose()
 
     def predict(self,X, U):
+        """predict compute the right hand side of z dot
+        
+        Arguments:
+            X {numpy array [Ns,Nt]} -- state        
+            U {numpy array [Nu,Nt]} -- control input
+        
+        Returns:
+            numpy array [Ns,Nt] -- Az+Bu in z_dot = Az+Bu
+        """
         return dot(self.C, dot(self.A,X) + dot(self.B, U))
 
     def tune_fit(self, X, X_d, Z, Z_dot, U, U_nom):
+        
         l1_ratio = array([.1, .5, .7, .9, .95, .99, 1])  # Values to test
 
         # Construct EDMD matrices using Elastic Net L1 and L2 regularization
