@@ -43,75 +43,77 @@ class CartPoleTrajectory(CartPole):
 
 # Define true system
 system_true = CartPole(m_c=.5, m_p=.2, l=.4)
-n, m = 4, 1  # Number of states and actuators
-upper_bounds = array([3.0, pi/3, 2, 2])  # Upper State constraints
-lower_bounds = -upper_bounds  # Lower State constraints
+n, m = 4, 1  # Number of states and actuators       # Number of states and actuators
+upper_bounds = array([3.0, pi/3, 2, 2])             # Upper State constraints
+lower_bounds = -upper_bounds                        # Lower State constraints
 
 # Define nominal model and nominal controller:
 A_nom = array([[0., 0., 1., 0.], [0., 0., 0., 1.], [0., -3.924, 0., 0.], [0., 34.335, 0., 0.]])  # Linearization of the true system around the origin
-B_nom = array([[0.],[0.],[2.],[-5.]])   # Linearization of the true system around the origin
-K_p = -array([[7.3394, 39.0028]])       # Proportional control gains
-K_d = -array([[8.0734, 7.4294]])        # Derivative control gains
+B_nom = array([[0.],[0.],[2.],[-5.]])               # Linearization of the true system around the origin
+K_p = -array([[7.3394, 39.0028]])                   # Proportional control gains
+K_d = -array([[8.0734, 7.4294]])                    # Derivative control gains
 nominal_sys = LinearSystemDynamics(A=A_nom, B=B_nom)
 
 # Simulation parameters (data collection)
-Ntraj = 10                          # Number of trajectories to collect data from
-dt = 1.0e-2                         # Time step
-N = int(2./dt)                      # Number of time steps
-t_eval = dt * arange(N + 1)         # Simulation time points
-noise_var = 0.5                     # Exploration noise to perturb controller
-traj_bounds = [2.5,0.25,0.05,0.05] # [x, theta, x_dot, theta_dot]
-q_d = zeros((Ntraj,N+1,n))
-Q = sparse.diags([0,0,0,0])
-QN = sparse.diags([100000.,100000.,10000.,10000.])
-R = sparse.eye(m)
-umax = 5
-MPC_horizon = 2 # [s]
+Ntraj = 40                                          # Number of trajectories to collect data from
+dt = 1.0e-2                                         # Time step length
+N = int(2./dt)                                      # Number of time steps
+t_eval = dt * arange(N + 1)                         # Simulation time points
+noise_var = 0.5                                     # Exploration noise to perturb controller
+traj_bounds = [2.5,0.25,0.05,0.05]                  # State constraints, [x, theta, x_dot, theta_dot]
+q_d = zeros((Ntraj,N+1,n))                          # Desired trajectories (initialization)
+Q = sparse.diags([0,0,0,0])                         # MPC state penalty matrix
+QN = sparse.diags([100000.,100000.,10000.,10000.])  # MPC final state penalty matrix
+R = sparse.eye(m)                                   # MPC control penalty matrix
+umax = 5                                            # MPC actuation constraint
+MPC_horizon = 2 # [s]                               # MPC time horizon
 
 # Koopman eigenfunction parameters
-eigenfunction_max_power = 2
-l2_diffeomorphism = 0.26316
-jacobian_penalty_diffeomorphism = 3.95
-diff_n_epochs = 5
-diff_train_frac = 0.99
-diff_n_hidden_layers = 3
-diff_layer_width = 30
-diff_batch_size = 16
-diff_learn_rate = 0.0737
-diff_learn_rate_decay = 0.9
-diff_dropout_prob = 0.5
+eigenfunction_max_power = 2                         # Max power of variables in eigenfunction products
+l2_diffeomorphism = 0.26316                         # l2 regularization strength
+jacobian_penalty_diffeomorphism = 3.95              # Estimator jacobian regularization strength
+diff_n_epochs = 100                                 # Number of epochs
+diff_train_frac = 0.99                              # Fraction of data to be used for training
+diff_n_hidden_layers = 3                            # Number of hidden layers
+diff_layer_width = 30                               # Number of units in each layer
+diff_batch_size = 16                                # Batch size
+diff_learn_rate = 0.0737                            # Leaning rate
+diff_learn_rate_decay = 0.9                         # Learning rate decay
+diff_dropout_prob = 0.5                             # Dropout rate
+
 
 # KEEDMD parameters
-l1_pos_keedmd = 9.85704592e-5
-l1_pos_ratio_keedmd = 0.1
-l1_vel_keedmd = 0.00667665
-l1_vel_ratio_keedmd = 1.0
-l1_eig_keedmd = 0.00135646
-l1_eig_ratio_keedmd = 0.1
+l1_pos_keedmd = 9.85704592e-5                       # l1 regularization strength for position states
+l1_pos_ratio_keedmd = 0.1                           # l1-l2 ratio for position states
+l1_vel_keedmd = 0.00667665                          # l1 regularization strength for velocity states
+l1_vel_ratio_keedmd = 1.0                           # l1-l2 ratio for velocity states
+l1_eig_keedmd = 0.00135646                          # l1 regularization strength for eigenfunction states
+l1_eig_ratio_keedmd = 0.1                           # l1-l2 ratio for eigenfunction states
 
 # EDMD parameters (benchmark to compare against)
-n_lift_edmd = (eigenfunction_max_power+1)**n-1
-l1_edmd = 0.00687693796
-l1_ratio_edmd = 1.00
+n_lift_edmd = (eigenfunction_max_power+1)**n-1      # Lifting dimension EDMD (same number as for KEEDMD)
+l1_edmd = 0.00687693796                             # l1 regularization strength
+l1_ratio_edmd = 1.00                                # l1-l2 ratio
 
 # Open loop evaluation parameters
-Ntraj_pred = 10
-noise_var_pred = 0.5
-traj_bounds_pred = [2, 0.5, 0.1, 0.1]  # x, theta, x_dot, theta_dot
-q_d_pred = zeros((Ntraj_pred, N + 1, n))
+Ntraj_pred = 40                                     # Number of trajectories to use to evaluate open loop performance
+noise_var_pred = 0.5                                # Exploration noise to perturb controller
+traj_bounds_pred = [2, 0.5, 0.1, 0.1]               # State constraints, [x, theta, x_dot, theta_dot]
+q_d_pred = zeros((Ntraj_pred, N + 1, n))            # Desired trajectories (initialization)
+
 
 # Closed loop evaluation parameters
-x_0_mpc = array([2., 0.25, 0., 0.])
-t_pred_mpc = t_eval.squeeze()
-noise_var_mpc = 0.0
-Q_mpc = sparse.diags([5000,5000,100,100])
-QN_mpc = Q
-R_mpc = sparse.eye(m)
-D_mpc = sparse.diags([500,300,50,60])
-upper_bounds_mpc = array([np.Inf, np.Inf, np.Inf, np.Inf])  # State constraints
-lower_bounds_mpc = -upper_bounds_mpc  # State constraints
-umax_mpc = 5.
-horizon_mpc = 0.4
+x_0_mpc = array([2., 0.25, 0., 0.])                 # Initial condition
+t_pred_mpc = t_eval.squeeze()                       # Time steps
+noise_var_mpc = 0.0                                 # Exploration noise to perturb controller
+Q_mpc = sparse.diags([5000,5000,100,100])           # MPC state penalty matrix
+QN_mpc = Q                                          # MPC final state penalty matrix
+R_mpc = sparse.eye(m)                               # MPC control penalty matrix
+D_mpc = sparse.diags([500,300,50,60])               # MPC state constraint violation penalty matrix
+upper_bounds_mpc = array([np.Inf, np.Inf, np.Inf, np.Inf])  # MPC state constraints
+lower_bounds_mpc = -upper_bounds_mpc                # MPC state constraints
+umax_mpc = 5.                                       # MPC actuation constraint
+horizon_mpc = 0.4                                   # MPC time horizon
 
 
 
