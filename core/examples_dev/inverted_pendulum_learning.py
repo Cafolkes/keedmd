@@ -111,13 +111,13 @@ t_eval = dt * arange(N + 1)         # Simulation time points
 noise_var = .5                     # Exploration noise to perturb controller
 
 # Koopman eigenfunction parameters
-plot_eigen = False
+plot_eigen = True
 eigenfunction_max_power = 4
 l2_diffeomorphism = 0.26316                 #Fix for current architecture
 jacobian_penalty_diffeomorphism = 3.95   #Fix for current architecture
-load_diffeomorphism_model = True
+load_diffeomorphism_model = False
 diffeomorphism_model_file = 'diff_model'
-diff_n_epochs = 100
+diff_n_epochs = 1 #TODO: Set back to 100
 diff_train_frac = 0.95
 diff_n_hidden_layers = 2
 diff_layer_width = 20
@@ -148,7 +148,7 @@ save_fit = not load_fit
 Ntraj_pred = 30
 experiment_filename = '09172019_235447'
 #datetime.now().strftime("%m%d%Y_%H%M%S/")
-folder = 'core/examples/cart_pole_data/'+experiment_filename
+folder = 'core/examples_dev/cart_pole_data/'+experiment_filename
 if not os.path.exists(folder):
     os.mkdir(folder)
 dill_filename = folder+'models_traj.dat'
@@ -186,7 +186,7 @@ if plot_traj:
         plot(ts[ii], xs[ii][:, 1])
         show()
 
-xs, us, us_nom, ts = array(xs), array(us), array(us_nom), array(ts)  #TODO: Update us_nom if used in KeeDMD
+xs, us, us_nom, ts = array(xs), array(us), array(us_nom), array(ts)
 
 #%%
 #!  ===============================================     FIT MODELS      ===============================================
@@ -209,7 +209,7 @@ if not load_fit:
     eigenfunction_basis.construct_basis(ub=upper_bounds, lb=lower_bounds)
 
     if plot_eigen:
-        eigenfunction_basis.plot_eigenfunction_evolution(xs[-1], zeros_like(xs[-1]), t_eval)
+        eigenfunction_basis.plot_eigenfunction_evolution(xs, zeros_like(xs), t_eval)
 
     print('in {:.2f}s'.format(time.process_time()-t0))
     t0 = time.process_time()
