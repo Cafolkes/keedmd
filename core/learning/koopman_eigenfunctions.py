@@ -1,6 +1,7 @@
 from matplotlib.pyplot import figure, grid, legend, plot, show, subplot, suptitle, title
 from numpy import array, linalg, transpose, diag, dot, ones, zeros, unique, power, prod, exp, log, divide, real, iscomplex, any
 from numpy import concatenate as npconcatenate
+import numpy as np
 from itertools import combinations_with_replacement, permutations
 from .utils import differentiate_vec
 from .basis_functions import BasisFunctions
@@ -11,6 +12,7 @@ from torch.utils.data.dataset import Dataset, TensorDataset
 from torch.utils.data.dataset import random_split
 from torch.utils.data.dataloader import DataLoader
 from torch.autograd.gradcheck import zero_gradients
+from torchviz import make_dot
 
 class KoopmanEigenfunctions(BasisFunctions):
     """
@@ -84,7 +86,8 @@ class KoopmanEigenfunctions(BasisFunctions):
         self.diffeomorphism_model.eval()
         input = npconcatenate((q,q_d),axis=1)
         diff_pred = self.diffeomorphism_model(from_numpy(input)).detach().numpy()
-        return (q + diff_pred).transpose()
+        #return (q + diff_pred).transpose() #TODO: Return to this to get diffeomorphism with learning
+        return q.T
 
     def build_diffeomorphism_model(self, n_hidden_layers = 2, layer_width=50, batch_size = 64, dropout_prob=0.1):
         """build_diffeomorphism_model 
@@ -240,11 +243,9 @@ class KoopmanEigenfunctions(BasisFunctions):
 
                 # Do necessary calculations for loss formulation and regularization:
                 h_dot, zero_jacobian = calc_gradients(xt, xdot, yhat, zero_input, y_zero, model.training)
-                #optimizer.zero_grad() #TODO: Remove(?)
                 loss = loss_fn(h_dot, zero_jacobian, y, yhat, model.training)
                 loss.backward()
                 optimizer.step()
-                #optimizer.zero_grad() #TODO: Remove(?)
                 return loss.item()
             return train_step
 
@@ -274,6 +275,7 @@ class KoopmanEigenfunctions(BasisFunctions):
                 xt = x_batch[:,:2*self.n]  # [x, x_d]
                 xdot = x_batch[:,2*self.n:]  # [xdot]
                 batch_loss.append(train_step(xt, xdot, y_batch))
+                optimizer.zero_grad()
             losses.append(sum(batch_loss)/len(batch_loss))
             batch_loss = []
 
@@ -330,27 +332,42 @@ class KoopmanEigenfunctions(BasisFunctions):
         self.diffeomorphism_model.load_state_dict(load(filename))
 
     def plot_eigenfunction_evolution(self, X, X_d, t):
-        X = X.transpose()
-        X_d = X_d.transpose()
+        #X = X.transpose()
+        #X_d = X_d.transpose()
         eigval_system = LinearSystemDynamics(A=diag(self.Lambda),B=zeros((self.Lambda.shape[0],1)))
         eigval_ctrl = ConstantController(eigval_system,0.)
-        x0 = X[:,:1]
-        x0_d = X_d[:,:1]
-        z0 = self.lift(x0, x0_d)
-        eigval_evo, us = eigval_system.simulate(z0.flatten(), eigval_ctrl, t)
-        eigval_evo = eigval_evo.transpose()
-        eigfunc_evo = self.lift(X, X_d).transpose()
 
+        eigval_evo = []
+        eigfunc_evo = []
+        for ii in range(X.shape[0]):
+            x0 = X[ii,:1,:].T
+            x0_d = X_d[ii,:1,:].T
+            z0 = self.lift(x0, x0_d)
+            eigval_evo_tmp,_ = eigval_system.simulate(z0.flatten(), eigval_ctrl, t)
+            eigval_evo_tmp = eigval_evo_tmp.transpose()
+            eigfunc_evo_tmp = self.lift(X[ii,:,:].T, X_d[ii,:,:].T).transpose()
+            eigval_evo.append(eigval_evo_tmp)
+            eigfunc_evo.append(eigfunc_evo_tmp)
 
-        figure()
-        for ii in range(1,17):
-            subplot(4, 4, ii)
-            plot(t, eigval_evo[ii,:], linewidth=2, label='$eigval evo$')
-            plot(t, eigfunc_evo[ii,:], linewidth=2, label='$eigfunc evo$')
-            title('Eigenvalue VS eigenfunction evolution')
+        # Calculate error statistics
+        eigval_evo = array(eigval_evo)
+        eigfunc_evo = array(eigfunc_evo)
+        norm_factor = np.mean(np.sum(eigval_evo**2, axis=2), axis=0)
+        eig_error = np.abs(eigval_evo - eigfunc_evo)
+        eig_error_norm = array([eig_error[:,ii,:]/norm_factor[ii] for ii in range(eigval_evo.shape[1])])
+        eig_error_mean = np.mean(eig_error_norm, axis=1)
+        eig_error_std = np.std(eig_error_norm, axis=1)
+
+        figure(figsize=(15,15))
+        suptitle('Eigenfunction VS Eigenvalue Evolution')
+        for ii in range(1,26):
+            subplot(5, 5, ii)
+            plot(t, eig_error_mean[ii-1,:], linewidth=2, label='Mean')
+            plot(t, eig_error_std[ii-1,:], linewidth=1, label='Standard dev')
+            title('Eigenfunction ' + str(ii-1))
             grid()
         legend(fontsize=12)
-        show()  # TODO: Create plot of all collected trajectories (subplot with one plot for each state), not mission critical
+        show()
 
     def lift(self, q, q_d):
         """lift 
