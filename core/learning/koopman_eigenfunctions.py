@@ -62,6 +62,10 @@ class KoopmanEigenfunctions(BasisFunctions):
             lambd = real(lambd)
             w = real(w)
 
+        # Scale up w to get kronecker delta
+        w_scaling = diag(dot(v.T, w))
+        w = divide(w, w_scaling.reshape(1,w.shape[0]))
+
         p = array([ii for ii in range(self.max_power+1)])
         combinations = array(list(combinations_with_replacement(p, self.n)))
         powers = array([list(permutations(c,self.n)) for c in combinations]) # Find all permutations of powers
@@ -293,12 +297,12 @@ class KoopmanEigenfunctions(BasisFunctions):
         eig_error_std = np.std(eig_error_norm, axis=1)
 
         figure(figsize=(15,15))
-        suptitle('Eigenfunction VS Eigenvalue Evolution')
+        #suptitle('Eigenfunction VS Eigenvalue Evolution')
         for ii in range(1,26):
             subplot(5, 5, ii)
             plot(t, eig_error_mean[ii-1,:], linewidth=2, label='Mean')
             plot(t, eig_error_std[ii-1,:], linewidth=1, label='Standard dev')
-            title('Eigenfunction ' + str(ii-1))
+            title('efunc ' + str(ii-1))
             grid()
         legend(fontsize=12)
         show()

@@ -117,14 +117,14 @@ l2_diffeomorphism = 0.0  #0.26316                 #Fix for current architecture
 jacobian_penalty_diffeomorphism = 0.0 #3.95   #Fix for current architecture
 load_diffeomorphism_model = False
 diffeomorphism_model_file = 'diff_model'
-diff_n_epochs = 200
-diff_train_frac = 0.95
-diff_n_hidden_layers = 4
+diff_n_epochs = 200  # TODO: set back to 200
+diff_train_frac = 0.9
+diff_n_hidden_layers = 3
 diff_layer_width = 100
-diff_batch_size = 8
-diff_learn_rate = 0.021#0.0737                  #Fix for current architecture
-diff_learn_rate_decay = 0.975            #Fix for current architecture
-diff_dropout_prob = 0.0
+diff_batch_size = 16
+diff_learn_rate = 0.06842#0.0737                  #Fix for current architecture
+diff_learn_rate_decay = 0.99            #Fix for current architecture
+diff_dropout_prob = 0.25
 
 # KEEDMD parameters
 l1_pos_keedmd = 9.85518509349373e-07
