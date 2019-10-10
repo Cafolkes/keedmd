@@ -219,7 +219,7 @@ if not load_fit:
     print(' - Fitting KEEDMD model...', end =" ")
     keedmd_model = Keedmd(eigenfunction_basis, n, l1_pos=l1_pos_keedmd, l1_ratio_pos=l1_pos_ratio_keedmd, l1_vel=l1_vel_keedmd, l1_ratio_vel=l1_vel_ratio_keedmd, l1_eig=l1_eig_keedmd, l1_ratio_eig=l1_eig_ratio_keedmd, K_p=K_p, K_d=K_d)
     X, X_d, Z, Z_dot, U, U_nom, t = keedmd_model.process(xs, zeros_like(xs), us, us_nom, ts)
-    keedmd_model.fit(X, X_d, Z, Z_dot, U, U_nom)
+    keedmd_model.tune_fit(X, X_d, Z, Z_dot, U, U_nom)
     print('in {:.2f}s'.format(time.process_time()-t0))
 
     # Construct basis of RBFs for EDMD:
@@ -250,6 +250,9 @@ if not load_fit:
     X, X_d, Z, Z_dot, U, U_nom, t = edmd_model.process(xs, zeros_like(xs), us, us_nom, ts)
     edmd_model.fit(X, X_d, Z, Z_dot, U, U_nom)
     print('in {:.2f}s'.format(time.process_time()-t0))
+
+    print(keedmd_model.A)
+    print(keedmd_model.B)
 
 
 #%%

@@ -63,8 +63,8 @@ class KoopmanEigenfunctions(BasisFunctions):
             w = real(w)
 
         # Scale up w to get kronecker delta
-        w_scaling = diag(dot(v.T, w))
-        w = divide(w, w_scaling.reshape(1,w.shape[0]))
+        #w_scaling = diag(dot(v.T, w))
+        #w = divide(w, w_scaling.reshape(1,w.shape[0]))
 
         p = array([ii for ii in range(self.max_power+1)])
         combinations = array(list(combinations_with_replacement(p, self.n)))
