@@ -190,8 +190,9 @@ class KoopmanEigenfunctions(BasisFunctions):
         losses = []
         batch_val_loss = []
         val_losses = []
-        model = self.diffeomorphism_model.to(device)
-        train_step = make_train_step(model , self.diffeomorphism_model.diffeomorphism_loss, optimizer)
+        #self.diffeomorphism_model = self.diffeomorphism_model.to(device)
+        print(device)
+        train_step = make_train_step(self.diffeomorphism_model , self.diffeomorphism_model.diffeomorphism_loss, optimizer)
 
         # Initialize model weights:
         def init_normal(m):

@@ -15,11 +15,13 @@ class DiffeomorphismNet(nn.Module):
         self.jacobian_penalty = jacobian_penalty
 
         N, d_h_in, H, d_h_out = batch_size, 2 * self.n, layer_width, self.n
-        self.fc_in = nn.Linear(d_h_in, H).double()
+
+        device = 'cuda' if cuda.is_available() else 'cpu'
+        self.fc_in = nn.Linear(d_h_in, H).double().to(device)
         self.fc_hidden = []
         for _ in range(self.n_hidden_layers):
-            self.fc_hidden.append(nn.Linear(H, H).double())
-        self.fc_out = nn.Linear(H, d_h_out).double()
+            self.fc_hidden.append(nn.Linear(H, H).double().to(device))
+        self.fc_out = nn.Linear(H, d_h_out).double().to(device)
 
     def forward(self, x):
         xt = x[:, :2 * self.n]  # [x, x_d]
