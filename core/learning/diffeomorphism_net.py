@@ -11,12 +11,12 @@ class DiffeomorphismNet(nn.Module):
         self.layer_width = layer_width
         self.batch_size = batch_size
         self.dropout_prob = dropout_prob
-        self.A_cl = A_cl
         self.jacobian_penalty = jacobian_penalty
 
         N, d_h_in, H, d_h_out = batch_size, 2 * self.n, layer_width, self.n
 
         device = 'cuda' if cuda.is_available() else 'cpu'
+        self.A_cl = A_cl.to(device)
         self.fc_in = nn.Linear(d_h_in, H).double().to(device)
         self.fc_hidden = []
         for _ in range(self.n_hidden_layers):
