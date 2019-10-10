@@ -56,7 +56,7 @@ class DiffeomorphismNet(nn.Module):
         #print('Gradient network: ', h_grad[test_dim,test_dim,:self.n])
         #print('In network: ', h_grad.shape, xdot.unsqueeze(-1).shape)
         h_dot = bmm(h_grad[:,:,:self.n], xdot.unsqueeze(-1))
-        h_dot = h_dot.squeeze()
+        h_dot = h_dot.squeeze(-1)
 
         # Calculate zero Jacobian:
         h_zero = []
@@ -81,14 +81,17 @@ class DiffeomorphismNet(nn.Module):
 
         return y_pred
 
-    def diffeomorphism_loss(self, y_true, y_pred):
+    def diffeomorphism_loss(self, y_true, y_pred, is_training):
         h = y_pred[:,:self.n]
         h_dot = y_pred[:,self.n:2*self.n]
         zerograd = y_pred[:,2*self.n:]
         cur_batch_size = y_pred.shape[0]
         A_cl_batch = self.A_cl.unsqueeze(0).expand(cur_batch_size, self.n, self.n)
 
-        return mean((y_true - (h_dot - bmm(A_cl_batch, h.unsqueeze(-1)).squeeze()))**2) + self.jacobian_penalty*mean(zerograd**2)
+        if is_training:
+            return mean((y_true - (h_dot - bmm(A_cl_batch, h.unsqueeze(-1)).squeeze()))**2) + self.jacobian_penalty*mean(zerograd**2)
+        else:
+            return mean((y_true - (h_dot - bmm(A_cl_batch, h.unsqueeze(-1)).squeeze())) ** 2)
 
     def predict(self, x):
 

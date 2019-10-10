@@ -113,18 +113,18 @@ noise_var = .5                     # Exploration noise to perturb controller
 # Koopman eigenfunction parameters
 plot_eigen = True
 eigenfunction_max_power = 4
-l2_diffeomorphism = 0  #0.26316                 #Fix for current architecture
-jacobian_penalty_diffeomorphism = 0#3.95   #Fix for current architecture
+l2_diffeomorphism = 0.0  #0.26316                 #Fix for current architecture
+jacobian_penalty_diffeomorphism = 0.0 #3.95   #Fix for current architecture
 load_diffeomorphism_model = False
 diffeomorphism_model_file = 'diff_model'
-diff_n_epochs = 100
+diff_n_epochs = 200
 diff_train_frac = 0.95
-diff_n_hidden_layers = 2
+diff_n_hidden_layers = 4
 diff_layer_width = 100
-diff_batch_size = 16
-diff_learn_rate = 1e-2#0.0737                  #Fix for current architecture
-diff_learn_rate_decay = 0.9            #Fix for current architecture
-diff_dropout_prob = 0.5
+diff_batch_size = 8
+diff_learn_rate = 0.021#0.0737                  #Fix for current architecture
+diff_learn_rate_decay = 0.975            #Fix for current architecture
+diff_dropout_prob = 0.0
 
 # KEEDMD parameters
 l1_pos_keedmd = 9.85518509349373e-07

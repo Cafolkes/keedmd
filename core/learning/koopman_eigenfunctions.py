@@ -179,7 +179,7 @@ class KoopmanEigenfunctions(BasisFunctions):
                 # Do necessary calculations for loss formulation and regularization:
                 #h_dot, zero_jacobian = calc_gradients(x, y_pred, [], [],
                  #                                     model.training)  # TODO: Remove after model verification
-                loss = loss_fn(y, y_pred)
+                loss = loss_fn(y, y_pred, model.training)
                 loss.backward()
                 optimizer.step()
                 return loss.item()
@@ -189,7 +189,6 @@ class KoopmanEigenfunctions(BasisFunctions):
         losses = []
         batch_val_loss = []
         val_losses = []
-        #self.diffeomorphism_model = self.diffeomorphism_model.to(device)
         train_step = make_train_step(self.diffeomorphism_model , self.diffeomorphism_model.diffeomorphism_loss, optimizer)
 
         # Initialize model weights:
@@ -229,7 +228,7 @@ class KoopmanEigenfunctions(BasisFunctions):
                     #xdot_val = x_val[:, 2*self.n:]  # [xdot]
                     y_pred = self.diffeomorphism_model(x_val)  # Predict
                     #jacobian_xdot_val, zero_jacobian_val = calc_gradients(xt_val, xdot_val, yhat, None, None, self.diffeomorphism_model.training)
-                    batch_val_loss.append(self.diffeomorphism_model.diffeomorphism_loss(y_val, y_pred)) # Compute validation loss
+                    batch_val_loss.append(self.diffeomorphism_model.diffeomorphism_loss(y_val, y_pred, self.diffeomorphism_model.training)) # Compute validation loss
                 val_losses.append(sum(batch_val_loss)/len(batch_val_loss))  # Save validation loss
                 batch_val_loss = []
 
