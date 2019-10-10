@@ -105,7 +105,7 @@ save_fit = not load_fit
 Ntraj_pred = 30
 experiment_filename = 'test_1/'
 #datetime.now().strftime("%m%d%Y_%H%M%S/")
-folder = 'core/examples/cart_pole_data/'+experiment_filename
+folder = 'core/examples_dev/results/'+experiment_filename
 if not os.path.exists(folder):
     os.makedirs(folder)
 dill_filename = folder+'models_traj.dat'

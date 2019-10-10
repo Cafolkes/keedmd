@@ -1,25 +1,7 @@
 #%%
 """Cart Pendulum Example"""
-from matplotlib.pyplot import figure, grid, legend, plot, show, subplot, suptitle, title, ylim, xlabel, ylabel, fill_between, close
-from os import path
-import os
-import sys
-from matplotlib.pyplot import figure, grid, legend, plot, show, subplot, suptitle, title, scatter, savefig, hist
-from numpy import arange, array, concatenate, cos, identity
-from numpy import linspace, ones, sin, tanh, tile, zeros, pi, random, interp, dot, multiply, asarray
-import numpy as np
-#from numpy.random import uniform
+from ..dynamics import RoboticDynamics, LinearSystemDynamics, AffineDynamics, SystemDynamics
 from scipy.io import loadmat, savemat
-from sys import argv
-from core.systems import CartPole
-import time
-import dill
-import control
-from datetime import datetime
-import random as veryrandom
-import scipy.sparse as sparse
-from matplotlib.pyplot import figure, grid, legend, plot, show, subplot, suptitle, title, ylim, xlabel, ylabel, \
-    fill_between
 from matplotlib.pyplot import figure, grid, legend, plot, show, subplot, suptitle, title, scatter, savefig, hist
 from numpy import arange, array, concatenate, cos, identity, dstack
 from numpy import linspace, ones, sin, tanh, tile, zeros, pi, random, interp, dot, multiply, asarray, zeros_like
@@ -30,10 +12,59 @@ from core.learning import KoopmanEigenfunctions, RBF, Edmd, Keedmd, plot_traject
 import time
 import dill
 from pathlib import Path
-class CartPoleTrajectory(CartPole):
+class InvertedPendulum(AffineDynamics, SystemDynamics):
+    """Inverted pendulum model.
+    States are x = (theta, theta_dot), where theta is the angle of the pendulum
+    in rad clockwise from upright and theta_dot is the angular rate of the
+    pendulum in rad/s clockwise. The input is u = (tau), where tau is torque in
+    N * m, applied clockwise at the base of the pendulum.
+    Attributes:
+    Mass (kg), m: float
+    Gravitational acceleration (m/s^2), g: float
+    Length (m), l: float
+    """
+
+    def __init__(self, m, g, l):
+        """Initialize an InvertedPendulum object.
+        Inputs:
+        Mass (kg), m: float
+        Gravitational acceleration (m/s^2), g: float
+        Length (m), l: float
+        """
+
+        AffineDynamics.__init__(self)
+        SystemDynamics.__init__(self,n=2,m=1)
+        self.m, self.g, self.l = m, g, l
+
+    def drift(self, x, t):
+        theta, theta_dot = x
+        return array([theta_dot, self.g / self.l * sin(theta)])
+
+    def act(self, x, t):
+        return array([[0], [1 / (self.m * (self.l ** 2))]])
+
+
+class InvertedPendulumFp(RoboticDynamics):
+    def __init__(self, robotic_dynamics, xf):
+        RoboticDynamics.__init__(self, 1, 1)
+        self.robotic_dynamics = robotic_dynamics
+        self.xf = xf
+
+    def eval(self, q, t):
+        if len(q.shape) == 1:
+            return q - self.xf
+        else:
+            return q - self.xf.reshape((self.xf.size,1))
+
+    def drift(self, q, t):
+        return self.robotic_dynamics.drift(q, t)
+
+    def act(self, q, t):
+        return self.robotic_dynamics.act(q, t)
+
+class InvertedPendulumTrajectory(InvertedPendulum):
     def __init__(self, robotic_dynamics, q_d, t_d):
-        m_c, m_p, l, g = robotic_dynamics.params
-        CartPole.__init__(self, m_c, m_p, l, g)
+        RoboticDynamics.__init__(self, 1., 1.)
         self.robotic_dynamics = robotic_dynamics
         self.q_d = q_d
         self.t_d = t_d
@@ -50,6 +81,7 @@ class CartPoleTrajectory(CartPole):
     def act(self, q, t):
         return self.robotic_dynamics.act(q, t)
 
+
 # %%
 # ! ===============================================   SET PARAMETERS    ===============================================
 
@@ -60,7 +92,7 @@ datafile_lst = [folder + '09132019_222031/episodic_data.pickle', folder + '09132
 # Diffeomorphism tuning parameters:
 tune_diffeomorphism = True
 n, m = 4, 1  # Number of states and actuators
-n_search = 20
+n_search = 1000
 n_folds = 2
 diffeomorphism_model_file = 'diff_model'
 NN_parameter_file = 'scripts/NN_parameters.pickle'
@@ -69,7 +101,7 @@ l2_diffeomorphism = np.linspace(0.,5., 20)
 jacobian_penalty_diffeomorphism = np.linspace(0.,5., 20)
 diff_n_epochs = [50, 100, 200, 500]
 diff_n_hidden_layers = [1, 2, 3, 4]
-diff_layer_width = [10, 20, 30, 40, 50]
+diff_layer_width = [10, 25, 50, 100, 200]
 diff_batch_size = [8, 16, 32]
 diff_learn_rate = np.linspace(1e-5, 1e-1, 20)  # Fix for current architecture
 diff_learn_rate_decay = [0.8, 0.9, 0.95, 0.975, 0.99, 1.0]
@@ -86,79 +118,65 @@ l1_edmd = 1e-2
 l1_ratio_edmd = 0.5  # 1e-2
 
 # Define true system
-system_true = CartPole(m_c=.5, m_p=.2, l=.4)
-upper_bounds = array([3.0, pi / 3, 2, 2])  # Upper State constraints
+system_true = InvertedPendulum(m=1., l=1., g=9.81)
+n, m = 2, 1  # Number of states and actuators
+upper_bounds = array([pi/3, 2.0])  # Upper State constraints
 lower_bounds = -upper_bounds  # Lower State constraints
 
 # Define nominal model and nominal controller:
-A_nom = array([[0., 0., 1., 0.], [0., 0., 0., 1.], [0., -3.924, 0., 0.],
-               [0., 34.335, 0., 0.]])  # Linearization of the true system around the origin
-B_nom = array([[0.], [0.], [2.], [-5.]])  # Linearization of the true system around the origin
-K_p = -array([[7.3394, 39.0028]])  # Proportional control gains
-K_d = -array([[8.0734, 7.4294]])  # Derivative control gains
+A_nom = array([[0., 1.], [9.81, 0.]])  # Linearization of the true system around the origin
+B_nom = array([[0.],[1.]])  # Linearization of the true system around the origin
+K_p = -array([[-19.6708]])  # Proportional control gains
+K_d = -array([[-6.3515]])  # Derivative control gains
 K = concatenate((K_p, K_d),axis=1)
 BK = dot(B_nom, K)
 A_cl = A_nom + BK
-
 nominal_sys = LinearSystemDynamics(A=A_nom, B=B_nom)
 
 # Simulation parameters (data collection)
-plot_traj_gen = False  # Plot trajectories generated for data collection
+plot_traj = False  # Plot trajectories generated for data collection
 traj_origin = 'load_mat'  # gen_MPC - solve MPC to generate desired trajectories, load_mat - load saved trajectories
 Ntraj = 20  # Number of trajectories to collect data from
 dt = 1.0e-2  # Time step
 N = int(2. / dt)  # Number of time steps
 t_eval = dt * arange(N + 1)  # Simulation time points
-noise_var = 0.1  # Exploration noise to perturb controller
+noise_var = 0.5  # Exploration noise to perturb controller
 
-# %%
-# ! ===============================================    COLLECT DATA     ===============================================
-# * Load trajectories
-print("Collect data.")
-print(" - Generate optimal desired path..", end=" ")
+#%%
+#! ===============================================    COLLECT DATA     ===============================================
+#* Load trajectories
+print("Collect data:")
+print(' - Simulate system with {} trajectories using PD controller...'.format(Ntraj))
 t0 = time.process_time()
-
-R = sparse.eye(m)
-t_d = t_eval
-traj_bounds = [2, 0.25, 0.05, 0.05]  # x, theta, x_dot, theta_dot
-q_d = zeros((Ntraj, N + 1, n))
-Q = sparse.diags([0, 0, 0, 0])
-QN = sparse.diags([100000., 100000., 50000., 10000.])
-umax = 5
-MPC_horizon = 2  # [s]
-
-mpc_controller = MPCController(linear_dynamics=nominal_sys,
-                           N=int(MPC_horizon / dt),
-                           dt=dt,
-                           umin=array([-umax]),
-                           umax=array([+umax]),
-                           xmin=lower_bounds,
-                           xmax=upper_bounds,
-                           Q=Q,
-                           R=R,
-                           QN=QN,
-                           xr=zeros(n))
-for ii in range(Ntraj):
-    x_0 = asarray([veryrandom.uniform(-i, i) for i in traj_bounds])
-    mpc_controller.eval(x_0, 0)
-    q_d[ii, :, :] = mpc_controller.parse_result().transpose()
-
-outputs = [CartPoleTrajectory(system_true, q_d[i,:,:].transpose(), t_d) for i in range(Ntraj)]
-pd_controllers = [PDController(outputs[i], K_p, K_d, noise_var) for i in range(Ntraj)]
-pd_controllers_nom = [PDController(outputs[i], K_p, K_d, 0.) for i in range(Ntraj)]  # Duplicate of controllers with no noise perturbation
+# Simulate system from each initial condition
+xf = zeros((2,))
+outputs = InvertedPendulumFp(system_true, xf)
+pd_controllers = PDController(outputs, K_p, K_d, noise_var)
+pd_controllers_nom = PDController(outputs, K_p, K_d, 0.)  # Duplicate of controllers with no noise perturbation
 xs, us, us_nom, ts = [], [], [], []
 for ii in range(Ntraj):
-    x_0 = q_d[ii,0,:]
-    xs_tmp, us_tmp = system_true.simulate(x_0, pd_controllers[ii], t_eval)
-    us_nom_tmp = pd_controllers_nom[ii].eval(xs_tmp.transpose(), t_eval).transpose()
+    #x_0 = multiply(random.rand(2,), array([pi,4])) - array([pi/3, 2.])
+    x_0 = np.random.rand(2)
+    x_0 /= np.linalg.norm(x_0)
+    xs_tmp, us_tmp = system_true.simulate(x_0, pd_controllers, t_eval)
+    us_nom_tmp = pd_controllers_nom.eval(xs_tmp.transpose(), t_eval).transpose()
     xs.append(xs_tmp)
     us.append(us_tmp)
     us_nom.append(us_nom_tmp[:us_tmp.shape[0],:])
     ts.append(t_eval)
 
+if plot_traj:
+    for ii in range(4):
+        figure()
+        plot(ts[ii],xs[ii][:,0])
+        plot(ts[ii], xs[ii][:, 1])
+        show()
+
 xs, us, us_nom, ts = array(xs), array(us), array(us_nom), array(ts)
+
 # %%
 # !  ======================================     TUNE DIFFEOMORPHISM MODEL      ========================================
+print('Start random parameter search:')
 t0 = time.process_time()
 
 cv_inds = np.arange(start=0, stop=xs.shape[0])
@@ -188,10 +206,10 @@ if tune_diffeomorphism:
             train_inds = np.delete(cv_inds,np.linspace(ff*val_num,(ff+1)*val_num-1,val_num, dtype=int))
             t = ts[train_inds,:]
             X = xs[train_inds,:,:]
-            Xd = q_d[train_inds,:,:]
+            Xd = np.zeros_like(xs[train_inds,:,:])
             t_val = ts[val_inds, :]
             X_val = xs[val_inds, :, :]
-            Xd_val = q_d[val_inds, :, :]
+            Xd_val = np.zeros_like(xs[val_inds, :, :])
 
             # Fit model with current data set and hyperparameters
             eigenfunction_basis = KoopmanEigenfunctions(n=n, max_power=eigenfunction_max_power, A_cl=A_cl, BK=BK)
@@ -203,8 +221,8 @@ if tune_diffeomorphism:
             score_tmp = eigenfunction_basis.fit_diffeomorphism_model(X=X, t=t, X_d=Xd, l2=l2,
                                                             learning_rate=learn_rate,
                                                             learning_decay=rate_decay, n_epochs=n_epochs,
-                                                            train_frac=1.0, batch_size=batch_size, initialize=True,
-                                                            verbose=False, X_val=X_val, t_val=t_val, Xd_val=Xd_val)
+                                                            train_frac=None, batch_size=batch_size, initialize=True,
+                                                            verbose=True, X_val=X_val, t_val=t_val, Xd_val=Xd_val)
             fold_score.append(score_tmp)
 
         test_score.append(sum(fold_score)/len(fold_score))
@@ -216,7 +234,7 @@ if tune_diffeomorphism:
             savemat('core/examples/cart_pole_best_params.mat',
                     {'l2': l2_b, 'jac_pen':jac_pen_b, 'n_epochs': n_epochs_b, 'n_hidden': n_hidden_b, 'layer_width': layer_width_b, 'batch_size': batch_size_b, 'learn_rate': learn_rate_b, 'rate_decay': rate_decay_b, 'dropout': dropout_b, 'test_score': test_score_b})
 
-        print('Experiment ', ii, ' test loss with current configuration: ', test_score[-1], 'best score: ', best_score)
+        print('Experiment ', ii, ' test loss with current configuration: ', format(test_score[-1], '08f'), 'best score: ', format(best_score, '08f'))
         print('Best parameters: ', l2_b, jac_pen_b, n_epochs_b, n_hidden_b, layer_width_b, batch_size_b, learn_rate_b, rate_decay_b, dropout_b)
 
 # Load best/stored diffeomorphism model and construct basis:
