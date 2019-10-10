@@ -222,7 +222,7 @@ if tune_diffeomorphism:
                                                             learning_rate=learn_rate,
                                                             learning_decay=rate_decay, n_epochs=n_epochs,
                                                             train_frac=None, batch_size=batch_size, initialize=True,
-                                                            verbose=True, X_val=X_val, t_val=t_val, Xd_val=Xd_val)
+                                                            verbose=False, X_val=X_val, t_val=t_val, Xd_val=Xd_val)
             fold_score.append(score_tmp)
 
         test_score.append(sum(fold_score)/len(fold_score))

@@ -181,7 +181,7 @@ class KoopmanEigenfunctions(BasisFunctions):
                  #                                     model.training)  # TODO: Remove after model verification
 
                 loss = loss_fn(y, y_pred)
-                loss.backward(retain_graph=True)
+                loss.backward()
                 optimizer.step()
                 return loss.item()
             return train_step
@@ -190,7 +190,8 @@ class KoopmanEigenfunctions(BasisFunctions):
         losses = []
         batch_val_loss = []
         val_losses = []
-        train_step = make_train_step(self.diffeomorphism_model, self.diffeomorphism_model.diffeomorphism_loss, optimizer)
+        model = self.diffeomorphism_model.to(device)
+        train_step = make_train_step(model , self.diffeomorphism_model.diffeomorphism_loss, optimizer)
 
         # Initialize model weights:
         def init_normal(m):

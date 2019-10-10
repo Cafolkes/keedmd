@@ -34,9 +34,9 @@ class DiffeomorphismNet(nn.Module):
             h.append(F.relu(self.fc_hidden[ii](h[-1])))
         h_out = self.fc_out(h[-1])
 
-        import torch
-        test_data = 0
-        test_dim = 0
+        #import torch
+        #test_data = 0
+        #test_dim = 0
         #print('Numerical jacobian: ', torch.autograd.grad(h_out[test_data,test_dim], xt, retain_graph=True, allow_unused=True)[0][0,:self.n])
 
         # Define diffeomorphism Jacobian model:
