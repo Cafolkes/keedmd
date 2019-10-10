@@ -68,20 +68,20 @@ t_eval = dt * arange(N + 1)         # Simulation time points
 noise_var = 0.5                     # Exploration noise to perturb controller
 
 # Koopman eigenfunction parameters
-plot_eigen = False
+plot_eigen = True
 eigenfunction_max_power = 2
-l2_diffeomorphism = 0.26316
-jacobian_penalty_diffeomorphism = 3.95
+l2_diffeomorphism = 0.0  #0.26316                 #Fix for current architecture
+jacobian_penalty_diffeomorphism = 0.0 #3.95   #Fix for current architecture
 load_diffeomorphism_model = False
-diffeomorphism_model_file = 'diff_model_cart_pole'
-diff_n_epochs = 100
-diff_train_frac = 0.99
+diffeomorphism_model_file = 'diff_model'
+diff_n_epochs = 100  # TODO: set back to 200
+diff_train_frac = 0.9
 diff_n_hidden_layers = 3
-diff_layer_width = 30
+diff_layer_width = 100
 diff_batch_size = 16
-diff_learn_rate = 0.0737
-diff_learn_rate_decay = 0.9
-diff_dropout_prob = 0.5
+diff_learn_rate = 0.06842#0.0737                  #Fix for current architecture
+diff_learn_rate_decay = 0.99            #Fix for current architecture
+diff_dropout_prob = 0.25
 
 # KEEDMD parameters
 l1_pos_keedmd = 9.85704592e-5
@@ -216,17 +216,17 @@ if not load_fit:
     A_cl = A_nom - dot(B_nom,concatenate((K_p, K_d),axis=1))
     BK = dot(B_nom,concatenate((K_p, K_d),axis=1))
     eigenfunction_basis = KoopmanEigenfunctions(n=n, max_power=eigenfunction_max_power, A_cl=A_cl, BK=BK)
-    eigenfunction_basis.build_diffeomorphism_model(n_hidden_layers = diff_n_hidden_layers, layer_width=diff_layer_width, batch_size= diff_batch_size, dropout_prob=diff_dropout_prob)
+    eigenfunction_basis.build_diffeomorphism_model(jacobian_penalty=jacobian_penalty_diffeomorphism, n_hidden_layers = diff_n_hidden_layers, layer_width=diff_layer_width, batch_size= diff_batch_size, dropout_prob=diff_dropout_prob)
     if load_diffeomorphism_model:
         eigenfunction_basis.load_diffeomorphism_model(diffeomorphism_model_file)
     else:
-        eigenfunction_basis.fit_diffeomorphism_model(X=xs, t=ts, X_d=q_d, l2=l2_diffeomorphism, jacobian_penalty=jacobian_penalty_diffeomorphism,
+        eigenfunction_basis.fit_diffeomorphism_model(X=xs, t=ts, X_d=q_d, l2=l2_diffeomorphism,
             learning_rate=diff_learn_rate, learning_decay=diff_learn_rate_decay, n_epochs=diff_n_epochs, train_frac=diff_train_frac, batch_size=diff_batch_size)
         eigenfunction_basis.save_diffeomorphism_model(diffeomorphism_model_file)
     eigenfunction_basis.construct_basis(ub=upper_bounds, lb=lower_bounds)
 
     if plot_eigen:
-        eigenfunction_basis.plot_eigenfunction_evolution(xs[-1], t_eval)
+        eigenfunction_basis.plot_eigenfunction_evolution(xs, np.zeros_like(xs), t_eval)
 
     print('in {:.2f}s'.format(time.process_time()-t0))
     t0 = time.process_time()

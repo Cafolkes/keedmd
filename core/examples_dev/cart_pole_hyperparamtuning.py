@@ -60,19 +60,19 @@ datafile_lst = [folder + '09132019_222031/episodic_data.pickle', folder + '09132
 # Diffeomorphism tuning parameters:
 tune_diffeomorphism = True
 n, m = 4, 1  # Number of states and actuators
-n_search = 20
+n_search = 500
 n_folds = 2
 diffeomorphism_model_file = 'diff_model'
 NN_parameter_file = 'scripts/NN_parameters.pickle'
 
-l2_diffeomorphism = 0.0 #np.linspace(0.,5., 20)
+l2_diffeomorphism = np.linspace(0.,5., 20)
 jacobian_penalty_diffeomorphism = np.linspace(0.,5., 20)
-diff_n_epochs = [50, 100, 200]
-diff_n_hidden_layers = [2, 3, 4]
-diff_layer_width = [10, 20, 30, 40, 50]
-diff_batch_size = [16, 32, 64, 128]
+diff_n_epochs = [50, 100, 200, 500]
+diff_n_hidden_layers = [1, 2, 3, 4]
+diff_layer_width = [10, 25, 50, 100, 200]
+diff_batch_size = [8, 16, 32]
 diff_learn_rate = np.linspace(1e-5, 1e-1, 20)  # Fix for current architecture
-diff_learn_rate_decay = [0.9, 0.95, 0.975, 0.99, 1.0]
+diff_learn_rate_decay = [0.8, 0.9, 0.95, 0.975, 0.99, 1.0]
 diff_dropout_prob = [0., 0.05, 0.1, 0.25, 0.5]
 
 # KEEDMD tuning parameters

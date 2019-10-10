@@ -114,24 +114,24 @@ noise_var = .5                     # Exploration noise to perturb controller
 plot_eigen = True
 eigenfunction_max_power = 4
 l2_diffeomorphism = 0.0  #0.26316                 #Fix for current architecture
-jacobian_penalty_diffeomorphism = 0.0 #3.95   #Fix for current architecture
+jacobian_penalty_diffeomorphism = 0.0  #3.95   #Fix for current architecture
 load_diffeomorphism_model = False
 diffeomorphism_model_file = 'diff_model'
-diff_n_epochs = 200  # TODO: set back to 200
+diff_n_epochs = 200
 diff_train_frac = 0.9
 diff_n_hidden_layers = 3
 diff_layer_width = 100
 diff_batch_size = 16
-diff_learn_rate = 0.06842#0.0737                  #Fix for current architecture
+diff_learn_rate = 0.06842               #Fix for current architecture
 diff_learn_rate_decay = 0.99            #Fix for current architecture
 diff_dropout_prob = 0.25
 
 # KEEDMD parameters
-l1_pos_keedmd = 9.85518509349373e-07
+l1_pos_keedmd = 8.195946542380519e-07
 l1_pos_ratio_keedmd = 1.0
-l1_vel_keedmd = 0.00979960592061635
-l1_vel_ratio_keedmd = 0.99
-l1_eig_keedmd = 0.003213783025880654
+l1_vel_keedmd = 0.008926319071231337
+l1_vel_ratio_keedmd = 1.0
+l1_eig_keedmd = 0.0010856707261463175
 l1_eig_ratio_keedmd = 0.1
 
 # EDMD parameters
@@ -219,7 +219,7 @@ if not load_fit:
     print(' - Fitting KEEDMD model...', end =" ")
     keedmd_model = Keedmd(eigenfunction_basis, n, l1_pos=l1_pos_keedmd, l1_ratio_pos=l1_pos_ratio_keedmd, l1_vel=l1_vel_keedmd, l1_ratio_vel=l1_vel_ratio_keedmd, l1_eig=l1_eig_keedmd, l1_ratio_eig=l1_eig_ratio_keedmd, K_p=K_p, K_d=K_d)
     X, X_d, Z, Z_dot, U, U_nom, t = keedmd_model.process(xs, zeros_like(xs), us, us_nom, ts)
-    keedmd_model.tune_fit(X, X_d, Z, Z_dot, U, U_nom)
+    keedmd_model.fit(X, X_d, Z, Z_dot, U, U_nom)
     print('in {:.2f}s'.format(time.process_time()-t0))
 
     # Construct basis of RBFs for EDMD:
@@ -250,9 +250,6 @@ if not load_fit:
     X, X_d, Z, Z_dot, U, U_nom, t = edmd_model.process(xs, zeros_like(xs), us, us_nom, ts)
     edmd_model.fit(X, X_d, Z, Z_dot, U, U_nom)
     print('in {:.2f}s'.format(time.process_time()-t0))
-
-    print(keedmd_model.A)
-    print(keedmd_model.B)
 
 
 #%%
