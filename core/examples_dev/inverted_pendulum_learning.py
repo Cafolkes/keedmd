@@ -357,8 +357,10 @@ if test_open_loop:
 
             ylim(0., .5)
             grid()
+            ylabel(str(ylabels[ii]))
             if ii == 0:
                 title('Predicted state evolution of different models with open loop control')
+        xlabel('Time (sec)')
         legend(fontsize=10, loc='best')
         savefig(open_filename,format='pdf', dpi=2400)
         show()

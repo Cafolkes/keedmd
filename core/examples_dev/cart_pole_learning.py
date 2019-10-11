@@ -71,15 +71,15 @@ noise_var = 0.5                     # Exploration noise to perturb controller
 plot_eigen = True
 eigenfunction_max_power = 2
 l2_diffeomorphism = 0.0  #0.26316                 #Fix for current architecture
-jacobian_penalty_diffeomorphism = 0.0 #3.95   #Fix for current architecture
+jacobian_penalty_diffeomorphism = 4.47368 #3.95   #Fix for current architecture
 load_diffeomorphism_model = False
 diffeomorphism_model_file = 'diff_model'
-diff_n_epochs = 100  # TODO: set back to 200
+diff_n_epochs = 250  # TODO: set back to 500
 diff_train_frac = 0.9
-diff_n_hidden_layers = 3
-diff_layer_width = 100
-diff_batch_size = 16
-diff_learn_rate = 0.06842#0.0737                  #Fix for current architecture
+diff_n_hidden_layers = 1
+diff_layer_width = 10
+diff_batch_size = 8
+diff_learn_rate = 0.01579#0.0737                  #Fix for current architecture
 diff_learn_rate_decay = 0.99            #Fix for current architecture
 diff_dropout_prob = 0.25
 
@@ -385,44 +385,29 @@ if test_open_loop:
     plot_open_loop=True
     if plot_open_loop:
         ylabels = ['x', '$\\theta$', '$\\dot{x}$', '$\\dot{\\theta}$']
-        figure(figsize=(6,9))
+        figure(figsize=(5.8,10))
         for ii in range(n):
-            subplot(4, 1, ii+1)
-            plot(t_pred, np.abs(e_mean_nom[ii,:]), linewidth=2, label='$nom$')
-            fill_between(t_pred, np.zeros_like(e_mean_nom[ii,:]), e_std_nom[ii,:], alpha=0.2)
+            subplot(n, 1, ii+1)
+            plot(t_eval, np.abs(e_mean_nom[ii,:]), linewidth=2, label='$nom$')
+            fill_between(t_eval, np.zeros_like(e_mean_nom[ii,:]), e_std_nom[ii,:], alpha=0.2)
 
-            plot(t_pred, np.abs(e_mean_edmd[ii,:]), linewidth=2, label='$edmd$')
-            fill_between(t_pred, np.zeros_like(e_mean_edmd[ii, :]), e_std_edmd[ii, :], alpha=0.2)
+            plot(t_eval, np.abs(e_mean_edmd[ii,:]), linewidth=2, label='$edmd$')
+            fill_between(t_eval, np.zeros_like(e_mean_edmd[ii, :]), e_std_edmd[ii, :], alpha=0.2)
 
-            plot(t_pred, np.abs(e_mean_keedmd[ii,:]), linewidth=2, label='$keedmd$')
-            fill_between(t_pred, np.zeros_like(e_mean_keedmd[ii,:]), e_std_keedmd[ii, :], alpha=0.2)
+            plot(t_eval, np.abs(e_mean_keedmd[ii,:]), linewidth=2, label='$keedmd$')
+            fill_between(t_eval, np.zeros_like(e_mean_keedmd[ii,:]), e_std_keedmd[ii, :], alpha=0.2)
 
-            if ii == 1 or ii == 3:
-                ylim(0., 2.)
-            else:
-                ylim(0.,.5)
-
+            ylabel(str(ylabels[ii]))
+            ylim(0., 2.)
             grid()
             if ii == 0:
                 title('Predicted state evolution of different models with open loop control')
+        xlabel('Time (sec)')
         legend(fontsize=10, loc='best')
         savefig(open_filename,format='pdf', dpi=2400)
-        close()
-        
-
-        figure(figsize=(6,9))
-        title('Predicted state evolution of different models with open loop control')
-        legend(fontsize=10, loc='best')        
-        for ii in range(n_lift_edmd):
-            subplot(2, 1, 1)
-            plot(t_pred, zs_edmd[:,ii], linewidth=2, label='$edmd$')
-            grid()
-
-            subplot(2, 1, 2)
-            plot(t_pred, zs_keedmd[:,ii], linewidth=2, label='$keedmd$')
-            grid()                
-        savefig(open_all_filename,format='pdf', dpi=2400)
-        close()
+        show()
+        #close()
+    print('in {:.2f}s'.format(time.process_time()-t0))
 
     print('in {:.2f}s'.format(time.process_time()-t0))
 
