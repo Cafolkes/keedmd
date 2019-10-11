@@ -15,13 +15,13 @@ class DiffeomorphismNet(nn.Module):
 
         N, d_h_in, H, d_h_out = batch_size, 2 * self.n, layer_width, self.n
 
-        device = 'cuda' if cuda.is_available() else 'cpu'
-        self.A_cl = A_cl.to(device)
-        self.fc_in = nn.Linear(d_h_in, H).double().to(device)
+        self.device = 'cuda' if cuda.is_available() else 'cpu'
+        self.A_cl = A_cl.to(self.device)
+        self.fc_in = nn.Linear(d_h_in, H).double().to(self.device)
         self.fc_hidden = []
         for _ in range(self.n_hidden_layers):
-            self.fc_hidden.append(nn.Linear(H, H).double().to(device))
-        self.fc_out = nn.Linear(H, d_h_out).double().to(device)
+            self.fc_hidden.append(nn.Linear(H, H).double().to(self.device))
+        self.fc_out = nn.Linear(H, d_h_out).double().to(self.device)
 
     def forward(self, x):
         xt = x[:, :2 * self.n]  # [x, x_d]
@@ -94,7 +94,7 @@ class DiffeomorphismNet(nn.Module):
             return mean((y_true - (h_dot - bmm(A_cl_batch, h.unsqueeze(-1)).squeeze())) ** 2)
 
     def predict(self, x):
-
+        x.to(self.device)
         h = self.fc_in(x)
         for ii in range(self.n_hidden_layers):
             h = F.relu(self.fc_hidden[ii](h))
