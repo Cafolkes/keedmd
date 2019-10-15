@@ -70,17 +70,16 @@ MPC_horizon = 2 # [s]                               # MPC time horizon
 
 # Koopman eigenfunction parameters
 eigenfunction_max_power = 2                         # Max power of variables in eigenfunction products
-l2_diffeomorphism = 0.26316                         # l2 regularization strength
-jacobian_penalty_diffeomorphism = 3.95              # Estimator jacobian regularization strength
-diff_n_epochs = 100                                 # Number of epochs
-diff_train_frac = 0.99                              # Fraction of data to be used for training
-diff_n_hidden_layers = 3                            # Number of hidden layers
-diff_layer_width = 30                               # Number of units in each layer
-diff_batch_size = 16                                # Batch size
-diff_learn_rate = 0.0737                            # Leaning rate
-diff_learn_rate_decay = 0.9                         # Learning rate decay
-diff_dropout_prob = 0.5                             # Dropout rate
-
+l2_diffeomorphism = 0.0                             # l2 regularization strength
+jacobian_penalty_diffeomorphism = 4.47368           # Estimator jacobian regularization strength
+diff_n_epochs = 250                                 # Number of epochs
+diff_train_frac = 0.9                               # Fraction of data to be used for training
+diff_n_hidden_layers = 1                            # Number of hidden layers
+diff_layer_width = 10                               # Number of units in each layer
+diff_batch_size = 8                                 # Batch size
+diff_learn_rate = 0.01579                           # Leaning rate
+diff_learn_rate_decay = 0.99                        # Learning rate decay
+diff_dropout_prob = 0.25                            # Dropout rate
 
 # KEEDMD parameters
 l1_pos_keedmd = 9.85704592e-5                       # l1 regularization strength for position states
@@ -171,9 +170,9 @@ t0 = time.process_time()
 A_cl = A_nom - dot(B_nom,concatenate((K_p, K_d),axis=1))
 BK = dot(B_nom,concatenate((K_p, K_d),axis=1))
 eigenfunction_basis = KoopmanEigenfunctions(n=n, max_power=eigenfunction_max_power, A_cl=A_cl, BK=BK)
-eigenfunction_basis.build_diffeomorphism_model(n_hidden_layers = diff_n_hidden_layers, layer_width=diff_layer_width, batch_size= diff_batch_size, dropout_prob=diff_dropout_prob)
-eigenfunction_basis.fit_diffeomorphism_model(X=xs, t=ts, X_d=q_d, l2=l2_diffeomorphism, jacobian_penalty=jacobian_penalty_diffeomorphism,
-    learning_rate=diff_learn_rate, learning_decay=diff_learn_rate_decay, n_epochs=diff_n_epochs, train_frac=diff_train_frac, batch_size=diff_batch_size)
+eigenfunction_basis.build_diffeomorphism_model(jacobian_penalty=jacobian_penalty_diffeomorphism, n_hidden_layers = diff_n_hidden_layers, layer_width=diff_layer_width, batch_size= diff_batch_size, dropout_prob=diff_dropout_prob)
+eigenfunction_basis.fit_diffeomorphism_model(X=xs, t=ts, X_d=q_d, l2=l2_diffeomorphism, learning_rate=diff_learn_rate,
+                                             learning_decay=diff_learn_rate_decay, n_epochs=diff_n_epochs, train_frac=diff_train_frac, batch_size=diff_batch_size)
 eigenfunction_basis.construct_basis(ub=upper_bounds, lb=lower_bounds)
 
 print('in {:.2f}s'.format(time.process_time()-t0))
@@ -184,7 +183,7 @@ print(' - Fitting KEEDMD model...', end =" ")
 t0 = time.process_time()
 keedmd_model = Keedmd(eigenfunction_basis, n, l1_pos=l1_pos_keedmd, l1_ratio_pos=l1_pos_ratio_keedmd, l1_vel=l1_vel_keedmd, l1_ratio_vel=l1_vel_ratio_keedmd, l1_eig=l1_eig_keedmd, l1_ratio_eig=l1_eig_ratio_keedmd, K_p=K_p, K_d=K_d)
 X, X_d, Z, Z_dot, U, U_nom, t = keedmd_model.process(xs, q_d, us, us_nom, ts)
-keedmd_model.fit(X, X_d, Z, Z_dot, U, U_nom)
+keedmd_model.tune_fit(X, X_d, Z, Z_dot, U, U_nom)
 
 print('in {:.2f}s'.format(time.process_time()-t0))
 
@@ -408,7 +407,6 @@ outfile.close()
 # Plot errors of different models and statistics, open loop
 ylabels = ['x', '$\\theta$', '$\\dot{x}$', '$\\dot{\\theta}$']
 figure(figsize=(6,8))
-title('Mean absolute open loop prediction error (+ 1 std)')
 for ii in range(n):
     subplot(4, 1, ii+1)
     plot(t_pred, np.abs(e_mean_nom[ii,:]), linewidth=2, label='Nominal', color='tab:gray')
@@ -422,6 +420,8 @@ for ii in range(n):
 
     ylabel(ylabels[ii])
     grid()
+    if ii == 0:
+        title('Mean absolute open loop prediction error (+ 1 std)')
     if ii == 1 or ii == 3:
         ylim(0., 2.)
     else:
@@ -433,7 +433,6 @@ show()
 #! Plot the closed loop trajectory:
 ylabels = ['$x$', '$\\theta$', '$\\dot{x}$', '$\\dot{\\theta}$']
 figure(figsize=(6,10))
-title('Closed loop trajectory tracking performance')
 for ii in range(n):
     subplot(n+1, 1, ii+1)
     plot(t_pred, qd_mpc[ii,:], linestyle="--",linewidth=2, label='Reference')
@@ -442,6 +441,8 @@ for ii in range(n):
     plot(t_pred, xs_keedmd_mpc[ii,:], linewidth=2, label='KEEDMD',color='tab:orange')
     ylabel(ylabels[ii])
     grid()
+    if ii == 0:
+        title('Closed loop trajectory tracking performance')
 xlabel('Time (s)')
 legend(fontsize=10, loc='upper left')
 subplot(n + 1, 1, n + 1)
