@@ -74,10 +74,10 @@ l2_diffeomorphism = 0.0  #0.26316                 #Fix for current architecture
 jacobian_penalty_diffeomorphism = 4.47368 #3.95   #Fix for current architecture
 load_diffeomorphism_model = False
 diffeomorphism_model_file = 'diff_model'
-diff_n_epochs = 250  # TODO: set back to 500
+diff_n_epochs = 2  # TODO: set back to 500
 diff_train_frac = 0.9
-diff_n_hidden_layers = 1
-diff_layer_width = 10
+diff_n_hidden_layers = 2
+diff_layer_width = 50
 diff_batch_size = 8
 diff_learn_rate = 0.01579#0.0737                  #Fix for current architecture
 diff_learn_rate_decay = 0.99            #Fix for current architecture
@@ -198,6 +198,8 @@ if not load_fit:
     if save_traj:
       savemat('./core/examples/results/cart_pendulum_pd_data.mat', {'xs': xs, 't_eval': t_eval, 'us': us, 'us_nom':us_nom})
     xs, us, us_nom, ts = array(xs), array(us), array(us_nom), array(ts)
+    #es = xs - q_d  # Tracking error
+
 
 
     plot_traj = False

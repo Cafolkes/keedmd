@@ -25,8 +25,8 @@ class DiffeomorphismNet(nn.Module):
 
     def forward(self, x):
         xt = x[:, :2 * self.n]  # [x, x_d]
-        xdot = x[:, 2 * self.n:3 * self.n]  # [xdot]
-        x_zero = cat((x[:, 3 * self.n:], x[:, self.n:2 * self.n]), 1)
+        xtdot = x[:, 2 * self.n:4 * self.n]  # [x_dot, xd_dot]
+        x_zero = cat((x[:, 4 * self.n:], x[:, self.n:2 * self.n]), 1)
         cur_batch_size = x.shape[0]
 
         # Define diffeomorphism model:
@@ -55,7 +55,8 @@ class DiffeomorphismNet(nn.Module):
         h_grad = bmm(self.fc_out.weight.unsqueeze(0).expand(cur_batch_size,self.n,self.layer_width), h_grad)
         #print('Gradient network: ', h_grad[test_dim,test_dim,:self.n])
         #print('In network: ', h_grad.shape, xdot.unsqueeze(-1).shape)
-        h_dot = bmm(h_grad[:,:,:self.n], xdot.unsqueeze(-1))
+        #h_dot = bmm(h_grad[:,:,:self.n], xtdot[:,:self.n].unsqueeze(-1))
+        h_dot = bmm(h_grad, xtdot.unsqueeze(-1))
         h_dot = h_dot.squeeze(-1)
 
         # Calculate zero Jacobian:
