@@ -134,7 +134,7 @@ class KoopmanEigenfunctions(BasisFunctions):
             float -- val_losses[-1]
         """
         X, X_dot, X_d, X_d_dot, t = self.process(X=X, t=t, X_d=X_d)
-        y_target = X_dot - dot(self.A_cl, X.transpose()).transpose()# - dot(self.BK, X_d.transpose()).transpose()
+        y_target = X_dot - dot(self.A_cl, X.transpose()).transpose() - dot(self.BK, X_d.transpose()).transpose()  #TODO: Modify if necessary
 
         device = 'cuda' if cuda.is_available() else 'cpu'
 
@@ -158,7 +158,7 @@ class KoopmanEigenfunctions(BasisFunctions):
         else:
             #Uses X,... as training data and X_val,... as validation data
             X_val, X_dot_val, Xd_val, Xd_dot_val, t_val = self.process(X=X_val, t=t_val, X_d=Xd_val)
-            y_target_val = X_dot_val - dot(self.A_cl, X_val.transpose()).transpose()  # - dot(self.BK, X_d.transpose()).transpose()
+            y_target_val = X_dot_val - dot(self.A_cl, X_val.transpose()).transpose() - dot(self.BK, X_d.transpose()).transpose()  #TODO: Modify if necessary
             X_val_tensor = from_numpy(npconcatenate((X_val, Xd_val, X_dot_val, Xd_dot_val, np.zeros_like(X_val)),axis=1)) #[x (1,n), x_d (1,n), x_dot (1,n), zeros (1,n)]
             y_val_tensor = from_numpy(y_target_val)
             X_val_tensor.requires_grad_(True)

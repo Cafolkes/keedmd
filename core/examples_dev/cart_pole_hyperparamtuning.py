@@ -216,7 +216,7 @@ if tune_diffeomorphism:
             savemat('core/examples/cart_pole_best_params.mat',
                     {'l2': l2_b, 'jac_pen':jac_pen_b, 'n_epochs': n_epochs_b, 'n_hidden': n_hidden_b, 'layer_width': layer_width_b, 'batch_size': batch_size_b, 'learn_rate': learn_rate_b, 'rate_decay': rate_decay_b, 'dropout': dropout_b, 'test_score': test_score_b})
 
-        print('Experiment ', ii, ' test loss with current configuration: ', test_score[-1], 'best score: ', best_score)
+        print('Experiment ', ii, ' test loss with current configuration: ', format(test_score[-1], '08f'), 'best score: ', format(best_score, '08f'))
         print('Best parameters: ', l2_b, jac_pen_b, n_epochs_b, n_hidden_b, layer_width_b, batch_size_b, learn_rate_b, rate_decay_b, dropout_b)
 
 # Load best/stored diffeomorphism model and construct basis:
