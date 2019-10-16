@@ -1,5 +1,5 @@
 from matplotlib.pyplot import figure, grid, legend, plot, show, subplot, suptitle, title
-from numpy import array, linalg, transpose, diag, dot, ones, zeros, unique, power, prod, exp, log, divide, real, iscomplex, any
+from numpy import array, linalg, transpose, diag, dot, ones, zeros, unique, power, prod, exp, log, divide, real, iscomplex, any, ones_like
 from numpy import concatenate as npconcatenate
 import numpy as np
 from itertools import combinations_with_replacement, permutations
@@ -237,10 +237,10 @@ class KoopmanEigenfunctions(BasisFunctions):
 
     def process(self, X, t, X_d):
         # Shift dynamics to make origin a fixed point
-        X_f = X_d[:,-1,:]
-        X_shift = array([X[ii,:,:] - X_f[ii,:] for ii in range(len(X))])
-        X_d = array([X_d[ii,:,:].reshape((X_d.shape[1],X_d.shape[2])) - X_f[ii,:] for ii in range(len(X))])
-
+        #X_f = X_d[:,-1,:]
+        #X_shift = array([X[ii,:,:] - X_f[ii,:] for ii in range(len(X))])
+        #X_d = array([X_d[ii,:,:].reshape((X_d.shape[1],X_d.shape[2])) - X_f[ii,:] for ii in range(len(X))])
+        X_shift = X
         # Calculate numerical derivatives
         X_dot = array([differentiate_vec(X_shift[ii, :, :], t[ii, :]) for ii in range(X_shift.shape[0])])
         X_d_dot = array([differentiate_vec(X_d[ii, :, :], t[ii, :]) for ii in range(X_d.shape[0])])
@@ -286,7 +286,8 @@ class KoopmanEigenfunctions(BasisFunctions):
         # Calculate error statistics
         eigval_evo = array(eigval_evo)
         eigfunc_evo = array(eigfunc_evo)
-        norm_factor = np.mean(np.sum(eigval_evo**2, axis=2), axis=0)
+        norm_factor = np.sum(np.sum(eigval_evo**2, axis=2), axis=0)
+        norm_factor = ones_like(norm_factor)  #TODO: Remove if plotting normalization is desired
         eig_error = np.abs(eigval_evo - eigfunc_evo)
         eig_error_norm = array([eig_error[:,ii,:]/norm_factor[ii] for ii in range(eigval_evo.shape[1])])
         eig_error_mean = np.mean(eig_error_norm, axis=1)
