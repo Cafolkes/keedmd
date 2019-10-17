@@ -12,7 +12,7 @@ from scipy.io import loadmat, savemat
 from sys import argv
 from ..systems import CartPole
 from ..dynamics import LinearSystemDynamics
-from ..controllers import PDController, OpenLoopController, MPCController, MPCControllerDense
+from ..controllers import Controller, PDController, OpenLoopController, MPCController, MPCControllerDense
 from ..learning import KoopmanEigenfunctions, RBF, Edmd, Keedmd, plot_trajectory, IdentityBF
 import time
 import dill
@@ -40,6 +40,21 @@ class CartPoleTrajectory(CartPole):
 
     def act(self, q, t):
         return self.robotic_dynamics.act(q, t)
+
+class CompositeController(Controller):
+    def __init__(self, controller_1, controller_2, C):
+        self.controller_1 = controller_1
+        self.controller_2 = controller_2
+        self.C = C
+
+    def eval(self, x, t):
+        u_1 = self.controller_1.eval(x, t)
+        u_2 = self.controller_2.eval(dot(self.C, x), t)
+
+        return array([u_1.item(), u_2.item()])
+
+
+
 
 #%% 
 #! ===============================================   SET PARAMETERS    ===============================================
@@ -74,12 +89,12 @@ l2_diffeomorphism = 0.0  #0.26316                 #Fix for current architecture
 jacobian_penalty_diffeomorphism = 0.0 #4.47368 #3.95   #Fix for current architecture
 load_diffeomorphism_model = False
 diffeomorphism_model_file = 'diff_model'
-diff_n_epochs = 10  # TODO: set back to 500
-diff_train_frac = 0.9
+diff_n_epochs = 100  # TODO: set back to 500
+diff_train_frac = 0.8
 diff_n_hidden_layers = 2
 diff_layer_width = 50
 diff_batch_size = 8
-diff_learn_rate = 0.01579#0.0737                  #Fix for current architecture
+diff_learn_rate = 0.001579#0.0737                  #Fix for current architecture
 diff_learn_rate_decay = 0.99            #Fix for current architecture
 diff_dropout_prob = 0.25
 
@@ -236,7 +251,7 @@ if not load_fit:
     print(' - Fitting KEEDMD model...', end =" ")
     keedmd_model = Keedmd(eigenfunction_basis, n, l1_pos=l1_pos_keedmd, l1_ratio_pos=l1_pos_ratio_keedmd, l1_vel=l1_vel_keedmd, l1_ratio_vel=l1_vel_ratio_keedmd, l1_eig=l1_eig_keedmd, l1_ratio_eig=l1_eig_ratio_keedmd, K_p=K_p, K_d=K_d)
     X, X_d, Z, Z_dot, U, U_nom, t = keedmd_model.process(xs, q_d, us, us_nom, ts)
-    keedmd_model.tune_fit(X, X_d, Z, Z_dot, U, U_nom)
+    keedmd_model.fit(X, X_d, Z, Z_dot, U, U_nom)
     print('in {:.2f}s'.format(time.process_time()-t0))
     
     # Construct basis of RBFs for EDMD:
@@ -332,11 +347,11 @@ if test_open_loop:
         xs_pred_tmp = xs_pred_tmp.transpose()
 
         # Create systems for each of the learned models and simulate with open loop control signal us_pred:
-        keedmd_controller = OpenLoopController(keedmd_sys, us_pred_tmp, t_pred[:us_pred_tmp.shape[0]])
+        keedmd_ol_ctrl = OpenLoopController(keedmd_sys, us_pred_tmp, t_pred[:us_pred_tmp.shape[0]])
+        keedmd_controller = CompositeController(keedmd_ol_ctrl, pd_controller_pred, keedmd_model.C)
         z0_keedmd = keedmd_model.lift(x0_pred.reshape(x0_pred.shape[0],1), q_d_pred[ii,:1,:].transpose()).squeeze()
         zs_keedmd,_ = keedmd_sys.simulate(z0_keedmd,keedmd_controller,t_pred)
-        es_keedmd_tmp = dot(keedmd_model.C,zs_keedmd.transpose())
-        xs_keedmd_tmp = es_keedmd_tmp + q_d_pred[ii,:,:].T
+        xs_keedmd_tmp = dot(keedmd_model.C,zs_keedmd.transpose())
 
         edmd_controller = OpenLoopController(edmd_sys, us_pred_tmp, t_pred[:us_pred_tmp.shape[0]])
         z0_edmd = edmd_model.lift(x0_pred.reshape(x0_pred.shape[0],1), q_d_pred[ii,:1,:].transpose()).squeeze()

@@ -225,13 +225,17 @@ class KoopmanEigenfunctions(BasisFunctions):
                     #xdot_val = x_val[:, 2*self.n:]  # [xdot]
                     y_pred = self.diffeomorphism_model(x_val)  # Predict
                     #jacobian_xdot_val, zero_jacobian_val = calc_gradients(xt_val, xdot_val, yhat, None, None, self.diffeomorphism_model.training)
-                    batch_val_loss.append(self.diffeomorphism_model.diffeomorphism_loss(y_val, y_pred, self.diffeomorphism_model.training)) # Compute validation loss
+                    batch_val_loss.append(float(self.diffeomorphism_model.diffeomorphism_loss(y_val, y_pred, self.diffeomorphism_model.training))) # Compute validation loss
                 val_losses.append(sum(batch_val_loss)/len(batch_val_loss))  # Save validation loss
                 batch_val_loss = []
 
             scheduler.step(i)
             if verbose:
                 print(' - Epoch: ',i,' Training loss:', format(losses[-1], '08f'), ' Validation loss:', format(val_losses[-1], '08f'))
+                print('Improvement metric (for early stopping): ', sum(abs(array(val_losses[-min(3,len(val_losses)):])-val_losses[-1]))/(3*val_losses[-min(3,len(val_losses))]))
+            if i > n_epochs/4 and sum(abs(array(val_losses[-min(3,len(val_losses)):])-val_losses[-1]))/(3*val_losses[-min(3,len(val_losses))]) < 0.05:
+                print('Early stopping activated')
+                break
 
         return val_losses[-1]
 
