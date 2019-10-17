@@ -157,13 +157,15 @@ for ii in range(Ntraj):
     ts.append(t_eval)
 
 xs, us, us_nom, ts = array(xs), array(us), array(us_nom), array(ts)
+es = xs - q_d  # Tracking error
+
 # %%
 # !  ======================================     TUNE DIFFEOMORPHISM MODEL      ========================================
 t0 = time.process_time()
 
-cv_inds = np.arange(start=0, stop=xs.shape[0])
+cv_inds = np.arange(start=0, stop=es.shape[0])
 np.random.shuffle(cv_inds)
-val_num = int(np.floor(xs.shape[0]/n_folds))
+val_num = int(np.floor(es.shape[0]/n_folds))
 
 if tune_diffeomorphism:
     test_score = []
@@ -187,10 +189,10 @@ if tune_diffeomorphism:
             val_inds = cv_inds[ff*val_num:(ff+1)*val_num]
             train_inds = np.delete(cv_inds,np.linspace(ff*val_num,(ff+1)*val_num-1,val_num, dtype=int))
             t = ts[train_inds,:]
-            X = xs[train_inds,:,:]
+            X = es[train_inds,:,:]
             Xd = q_d[train_inds,:,:]
             t_val = ts[val_inds, :]
-            X_val = xs[val_inds, :, :]
+            X_val = es[val_inds, :, :]
             Xd_val = q_d[val_inds, :, :]
 
             # Fit model with current data set and hyperparameters
