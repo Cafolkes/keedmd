@@ -1,5 +1,5 @@
 from matplotlib.pyplot import figure, grid, legend, plot, show, subplot, suptitle, title
-from numpy import array, linalg, transpose, diag, dot, ones, zeros, unique, power, prod, exp, log, divide, real, iscomplex, any
+from numpy import array, linalg, transpose, diag, dot, ones, zeros, unique, power, prod, exp, log, divide, real, iscomplex, any, ones_like
 from numpy import concatenate as npconcatenate
 import numpy as np
 from itertools import combinations_with_replacement, permutations
@@ -133,14 +133,14 @@ class KoopmanEigenfunctions(BasisFunctions):
         Returns:
             float -- val_losses[-1]
         """
-        X, X_dot, X_d, t = self.process(X=X, t=t, X_d=X_d)
-        y_target = X_dot - dot(self.A_cl, X.transpose()).transpose()# - dot(self.BK, X_d.transpose()).transpose()
+        X, X_dot, X_d, X_d_dot, t = self.process(X=X, t=t, X_d=X_d)
+        y_target = X_dot - dot(self.A_cl, X.transpose()).transpose()# - dot(self.BK, X_d.transpose()).transpose()  #TODO: Modify if necessary
 
         device = 'cuda' if cuda.is_available() else 'cpu'
 
         # Prepare data for pytorch:
         manual_seed(42)  # Fix seed for reproducibility
-        X_tensor = from_numpy(npconcatenate((X, X_d, X_dot, np.zeros_like(X)),axis=1)) #[x (1,n), x_d (1,n), x_dot (1,n), zeros (1,n)]
+        X_tensor = from_numpy(npconcatenate((X, X_d, X_dot, X_d_dot, np.zeros_like(X)),axis=1)) #[x (1,n), x_d (1,n), x_dot (1,n), zeros (1,n)]
         y_tensor = from_numpy(y_target)
         X_tensor.requires_grad_(True)
 
@@ -157,9 +157,9 @@ class KoopmanEigenfunctions(BasisFunctions):
             val_loader = DataLoader(dataset=val_dataset, batch_size=batch_size)
         else:
             #Uses X,... as training data and X_val,... as validation data
-            X_val, X_dot_val, Xd_val, t_val = self.process(X=X_val, t=t_val, X_d=Xd_val)
-            y_target_val = X_dot_val - dot(self.A_cl, X_val.transpose()).transpose()  # - dot(self.BK, X_d.transpose()).transpose()
-            X_val_tensor = from_numpy(npconcatenate((X_val, Xd_val, X_dot_val, np.zeros_like(X_val)),axis=1)) #[x (1,n), x_d (1,n), x_dot (1,n), zeros (1,n)]
+            X_val, X_dot_val, Xd_val, Xd_dot_val, t_val = self.process(X=X_val, t=t_val, X_d=Xd_val)
+            y_target_val = X_dot_val - dot(self.A_cl, X_val.transpose()).transpose()# - dot(self.BK, X_d.transpose()).transpose()  #TODO: Modify if necessary
+            X_val_tensor = from_numpy(npconcatenate((X_val, Xd_val, X_dot_val, Xd_dot_val, np.zeros_like(X_val)),axis=1)) #[x (1,n), x_d (1,n), x_dot (1,n), zeros (1,n)]
             y_val_tensor = from_numpy(y_target_val)
             X_val_tensor.requires_grad_(True)
             val_dataset = TensorDataset(X_val_tensor, y_val_tensor)
@@ -176,13 +176,6 @@ class KoopmanEigenfunctions(BasisFunctions):
             def train_step(x, y):
                 model.train() # Set model to training mode
                 y_pred = model(x)
-
-                #params = list(model.parameters())
-                #print( 'Model weights:\n', params[0], '\n', params[1]) #Print current weights (used to verify calculated Jacobian) #TODO
-
-                # Do necessary calculations for loss formulation and regularization:
-                #h_dot, zero_jacobian = calc_gradients(x, y_pred, [], [],
-                 #                                     model.training)  # TODO: Remove after model verification
                 loss = loss_fn(y, y_pred, model.training)
                 loss.backward()
                 optimizer.step()
@@ -232,13 +225,17 @@ class KoopmanEigenfunctions(BasisFunctions):
                     #xdot_val = x_val[:, 2*self.n:]  # [xdot]
                     y_pred = self.diffeomorphism_model(x_val)  # Predict
                     #jacobian_xdot_val, zero_jacobian_val = calc_gradients(xt_val, xdot_val, yhat, None, None, self.diffeomorphism_model.training)
-                    batch_val_loss.append(self.diffeomorphism_model.diffeomorphism_loss(y_val, y_pred, self.diffeomorphism_model.training)) # Compute validation loss
+                    batch_val_loss.append(float(self.diffeomorphism_model.diffeomorphism_loss(y_val, y_pred, self.diffeomorphism_model.training))) # Compute validation loss
                 val_losses.append(sum(batch_val_loss)/len(batch_val_loss))  # Save validation loss
                 batch_val_loss = []
 
             scheduler.step(i)
             if verbose:
                 print(' - Epoch: ',i,' Training loss:', format(losses[-1], '08f'), ' Validation loss:', format(val_losses[-1], '08f'))
+                print('Improvement metric (for early stopping): ', sum(abs(array(val_losses[-min(3,len(val_losses)):])-val_losses[-1]))/(3*val_losses[-min(3,len(val_losses))]))
+            if i > n_epochs/4 and sum(abs(array(val_losses[-min(3,len(val_losses)):])-val_losses[-1]))/(3*val_losses[-min(3,len(val_losses))]) < 0.05:
+                print('Early stopping activated')
+                break
 
         return val_losses[-1]
 
@@ -250,18 +247,21 @@ class KoopmanEigenfunctions(BasisFunctions):
 
         # Calculate numerical derivatives
         X_dot = array([differentiate_vec(X_shift[ii, :, :], t[ii, :]) for ii in range(X_shift.shape[0])])
+        X_d_dot = array([differentiate_vec(X_d[ii, :, :], t[ii, :]) for ii in range(X_d.shape[0])])
 
         assert(X_shift.shape == X_dot.shape)
         assert(X_d.shape == X_dot.shape)
+        assert(X_d_dot.shape == X_dot.shape)
         assert(t.shape == X_shift[:,:,0].shape)
 
         # Reshape to have input-output data
-        X_shift = X_shift.reshape((X_shift.shape[0]*X_shift.shape[1],X_shift.shape[2]))
+        X_shift = X_shift.reshape((X_shift.shape[0]*X_shift.shape[1], X_shift.shape[2]))
         X_dot = X_dot.reshape((X_dot.shape[0] * X_dot.shape[1], X_dot.shape[2]))
         X_d = X_d.reshape((X_d.shape[0] * X_d.shape[1], X_d.shape[2]))
+        X_d_dot = X_d_dot.reshape((X_d_dot.shape[0] * X_d_dot.shape[1], X_d_dot.shape[2]))
         t = t.reshape((t.shape[0] * t.shape[1],))
 
-        return X_shift, X_dot, X_d, t
+        return X_shift, X_dot, X_d, X_d_dot, t
 
     def save_diffeomorphism_model(self, filename):
         save(self.diffeomorphism_model.state_dict(), filename)
@@ -290,7 +290,8 @@ class KoopmanEigenfunctions(BasisFunctions):
         # Calculate error statistics
         eigval_evo = array(eigval_evo)
         eigfunc_evo = array(eigfunc_evo)
-        norm_factor = np.mean(np.sum(eigval_evo**2, axis=2), axis=0)
+        norm_factor = np.sum(np.sum(eigval_evo**2, axis=2), axis=0)
+        norm_factor = ones_like(norm_factor)  #TODO: Remove if plotting normalization is desired
         eig_error = np.abs(eigval_evo - eigfunc_evo)
         eig_error_norm = array([eig_error[:,ii,:]/norm_factor[ii] for ii in range(eigval_evo.shape[1])])
         eig_error_mean = np.mean(eig_error_norm, axis=1)
