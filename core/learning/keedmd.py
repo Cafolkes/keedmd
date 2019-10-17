@@ -116,10 +116,10 @@ class Keedmd(Edmd):
             if self.K_p is None or self.K_p is None:
                 raise Exception('Nominal controller gains not defined.')
             # Take nominal controller into account:
-            #self.A[self.n:,:self.n] -= dot(self.B[self.n:,:],concatenate((self.K_p, self.K_d), axis=1))
-            B_apnd = zeros_like(self.B)
-            B_apnd[self.n:,:] = -self.B[self.n:, :]
-            self.B = concatenate((self.B,B_apnd), axis=1)
+            self.A[self.n:,:self.n] -= dot(self.B[self.n:,:],concatenate((self.K_p, self.K_d), axis=1))
+            #B_apnd = zeros_like(self.B)   #TODO: Revert to run modified controller adjustment
+            #B_apnd[self.n:,:] = -self.B[self.n:, :]
+            #self.B = concatenate((self.B,B_apnd), axis=1)
 
 
 
