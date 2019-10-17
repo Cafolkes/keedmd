@@ -109,23 +109,23 @@ noise_var = 0.5                                         # Exploration noise to p
 
 # Koopman eigenfunction parameters
 eigenfunction_max_power = 5                             # Max power of variables in eigenfunction products
-l2_diffeomorphism = 0.26316                             # l2 regularization strength
-jacobian_penalty_diffeomorphism = 3.95                  # Estimator jacobian regularization strength
-diff_n_epochs = 100                                     # Number of epochs
-diff_train_frac = 0.99                                  # Fraction of data to be used for training
+l2_diffeomorphism = 0.0                                 # l2 regularization strength
+jacobian_penalty_diffeomorphism = 0.0                   # Estimator jacobian regularization strength
+diff_n_epochs = 200                                     # Number of epochs
+diff_train_frac = 0.9                                   # Fraction of data to be used for training
 diff_n_hidden_layers = 3                                # Number of hidden layers
-diff_layer_width = 30                                   # Number of units in each layer
+diff_layer_width = 100                                  # Number of units in each layer
 diff_batch_size = 16                                    # Batch size
-diff_learn_rate = 0.0737                                # Leaning rate
-diff_learn_rate_decay = 0.9                             # Learning rate decay
-diff_dropout_prob = 0.5                                 # Dropout rate
+diff_learn_rate = 0.06842                               # Leaning rate
+diff_learn_rate_decay = 0.99                            # Learning rate decay
+diff_dropout_prob = 0.25                                # Dropout rate
 
 # KEEDMD parameters
-l1_pos_keedmd = 9.85518509349373e-07                    # l1 regularization strength for position states
+l1_pos_keedmd = 8.195946542380519e-07                   # l1 regularization strength for position states
 l1_pos_ratio_keedmd = 1.0                               # l1-l2 ratio for position states
-l1_vel_keedmd = 0.00979960592061635                     # l1 regularization strength for velocity states
-l1_vel_ratio_keedmd = 0.99                              # l1-l2 ratio for velocity states
-l1_eig_keedmd = 0.003213783025880654                    # l1 regularization strength for eigenfunction states
+l1_vel_keedmd = 0.008926319071231337                    # l1 regularization strength for velocity states
+l1_vel_ratio_keedmd = 1.0                               # l1-l2 ratio for velocity states
+l1_eig_keedmd = 0.0010856707261463175                   # l1 regularization strength for eigenfunction states
 l1_eig_ratio_keedmd = 0.1                               # l1-l2 ratio for eigenfunction states
 
 # EDMD parameters (benchmark to compare against)
@@ -145,7 +145,7 @@ R_mpc = sparse.eye(m)                                   # MPC control penalty ma
 D_mpc = sparse.diags([1,1])                             # MPC state constraint violation penalty matrix
 upper_bounds_mpc = array([np.Inf, np.Inf])              # MPC state constraints
 lower_bounds_mpc = -upper_bounds_mpc                    # MPC state constraints
-umax_mpc = 50                                           # MPC actuation constraint
+umax_mpc = np.Inf                                       # MPC actuation constraint
 horizon_mpc = 1.0                                       # MPC time horizon
 test_traj = loadmat('core/examples/traj_pendulum.mat')  # Closed loop desired trajectory
 t_pred = test_traj['t_plot']
@@ -188,8 +188,8 @@ t0 = time.process_time()
 A_cl = A_nom - dot(B_nom,concatenate((K_p, K_d),axis=1))
 BK = dot(B_nom,concatenate((K_p, K_d),axis=1))
 eigenfunction_basis = KoopmanEigenfunctions(n=n, max_power=eigenfunction_max_power, A_cl=A_cl, BK=BK)
-eigenfunction_basis.build_diffeomorphism_model(n_hidden_layers = diff_n_hidden_layers, layer_width=diff_layer_width, batch_size= diff_batch_size, dropout_prob=diff_dropout_prob)
-eigenfunction_basis.fit_diffeomorphism_model(X=xs, t=ts, X_d=zeros_like(xs), l2=l2_diffeomorphism, jacobian_penalty=jacobian_penalty_diffeomorphism,
+eigenfunction_basis.build_diffeomorphism_model(jacobian_penalty=jacobian_penalty_diffeomorphism, n_hidden_layers = diff_n_hidden_layers, layer_width=diff_layer_width, batch_size= diff_batch_size, dropout_prob=diff_dropout_prob)
+eigenfunction_basis.fit_diffeomorphism_model(X=xs, t=ts, X_d=zeros_like(xs), l2=l2_diffeomorphism,
     learning_rate=diff_learn_rate, learning_decay=diff_learn_rate_decay, n_epochs=diff_n_epochs, train_frac=diff_train_frac, batch_size=diff_batch_size)
 eigenfunction_basis.construct_basis(ub=upper_bounds, lb=lower_bounds)
 
@@ -394,7 +394,6 @@ print('MPC cost improvement, EDMD: ', (cost_edmd / cost_nom - 1) * 100, '%, KEED
 # Plot errors of different models and statistics, open loop
 ylabels = ['$\\theta$', '$\\dot{\\theta}$']
 figure(figsize=(6,4))
-title('Mean absolute open loop prediction error (+ 1 std)')
 for ii in range(n):
     subplot(n, 1, ii+1)
     plot(t_eval, np.abs(e_mean_nom[ii,:]), linewidth=2, label='Nominal', color='tab:gray')
@@ -408,6 +407,8 @@ for ii in range(n):
 
     ylabel(ylabels[ii])
     grid()
+    if ii == 0:
+        title('Mean absolute open loop prediction error (+ 1 std)')
     if ii == 1 or ii == 3:
         ylim(0., 2.)
     else:
@@ -418,7 +419,6 @@ show()
 
 #! Plot the closed loop trajectory:
 figure(figsize=(6,6))
-title('Closed loop trajectory tracking performance')
 for ii in range(n):
     subplot(n+1, 1, ii+1)
     plot(t_pred, qd_mpc[ii,:], linestyle="--",linewidth=2, label='Reference')
@@ -427,6 +427,8 @@ for ii in range(n):
     plot(t_pred, xs_keedmd_mpc[ii, :], linewidth=2, label='KEEDMD',color='tab:orange')
     ylabel(ylabels[ii])
     grid()
+    if ii == 0:
+        title('Closed loop trajectory tracking performance')
 xlabel('Time (s)')
 legend(fontsize=10, loc='upper left')
 subplot(n + 1, 1, n + 1)

@@ -12,7 +12,7 @@ from scipy.io import loadmat, savemat
 from sys import argv
 from ..systems import CartPole
 from ..dynamics import LinearSystemDynamics
-from ..controllers import PDController, OpenLoopController, MPCController, MPCControllerDense
+from ..controllers import Controller, PDController, OpenLoopController, MPCController, MPCControllerDense
 from ..learning import KoopmanEigenfunctions, RBF, Edmd, Keedmd, plot_trajectory, IdentityBF
 import time
 import dill
@@ -41,6 +41,21 @@ class CartPoleTrajectory(CartPole):
     def act(self, q, t):
         return self.robotic_dynamics.act(q, t)
 
+class CompositeController(Controller):
+    def __init__(self, controller_1, controller_2, C):
+        self.controller_1 = controller_1
+        self.controller_2 = controller_2
+        self.C = C
+
+    def eval(self, x, t):
+        u_1 = self.controller_1.eval(x, t)
+        u_2 = self.controller_2.eval(dot(self.C, x), t)
+
+        return array([u_1.item(), u_2.item()])
+
+
+
+
 #%% 
 #! ===============================================   SET PARAMETERS    ===============================================
 
@@ -68,25 +83,25 @@ t_eval = dt * arange(N + 1)         # Simulation time points
 noise_var = 0.5                     # Exploration noise to perturb controller
 
 # Koopman eigenfunction parameters
-plot_eigen = False
+plot_eigen = True
 eigenfunction_max_power = 2
-l2_diffeomorphism = 0.26316
-jacobian_penalty_diffeomorphism = 3.95
+l2_diffeomorphism = 0.0  #0.26316                 #Fix for current architecture
+jacobian_penalty_diffeomorphism = 0.0 #4.47368 #3.95   #Fix for current architecture
 load_diffeomorphism_model = False
-diffeomorphism_model_file = 'diff_model_cart_pole'
-diff_n_epochs = 100
-diff_train_frac = 0.99
-diff_n_hidden_layers = 3
-diff_layer_width = 30
-diff_batch_size = 16
-diff_learn_rate = 0.0737
-diff_learn_rate_decay = 0.9
-diff_dropout_prob = 0.5
+diffeomorphism_model_file = 'diff_model'
+diff_n_epochs = 100  # TODO: set back to 500
+diff_train_frac = 0.8
+diff_n_hidden_layers = 2
+diff_layer_width = 50
+diff_batch_size = 8
+diff_learn_rate = 0.001579#0.0737                  #Fix for current architecture
+diff_learn_rate_decay = 0.99            #Fix for current architecture
+diff_dropout_prob = 0.25
 
 # KEEDMD parameters
 l1_pos_keedmd = 9.85704592e-5
 l1_pos_ratio_keedmd = 0.1
-l1_vel_keedmd = 0.00667665
+l1_vel_keedmd = 1e-4
 l1_vel_ratio_keedmd = 1.0
 l1_eig_keedmd = 0.00135646
 l1_eig_ratio_keedmd = 0.1
@@ -105,7 +120,7 @@ save_fit = not load_fit
 Ntraj_pred = 30
 experiment_filename = 'test_1/'
 #datetime.now().strftime("%m%d%Y_%H%M%S/")
-folder = 'core/examples/cart_pole_data/'+experiment_filename
+folder = 'core/examples_dev/results/'+experiment_filename
 if not os.path.exists(folder):
     os.makedirs(folder)
 dill_filename = folder+'models_traj.dat'
@@ -198,7 +213,7 @@ if not load_fit:
     if save_traj:
       savemat('./core/examples/results/cart_pendulum_pd_data.mat', {'xs': xs, 't_eval': t_eval, 'us': us, 'us_nom':us_nom})
     xs, us, us_nom, ts = array(xs), array(us), array(us_nom), array(ts)
-
+    #es = xs - q_d  # Tracking error
 
     plot_traj = False
     if plot_traj:
@@ -216,17 +231,17 @@ if not load_fit:
     A_cl = A_nom - dot(B_nom,concatenate((K_p, K_d),axis=1))
     BK = dot(B_nom,concatenate((K_p, K_d),axis=1))
     eigenfunction_basis = KoopmanEigenfunctions(n=n, max_power=eigenfunction_max_power, A_cl=A_cl, BK=BK)
-    eigenfunction_basis.build_diffeomorphism_model(n_hidden_layers = diff_n_hidden_layers, layer_width=diff_layer_width, batch_size= diff_batch_size, dropout_prob=diff_dropout_prob)
+    eigenfunction_basis.build_diffeomorphism_model(jacobian_penalty=jacobian_penalty_diffeomorphism, n_hidden_layers = diff_n_hidden_layers, layer_width=diff_layer_width, batch_size= diff_batch_size, dropout_prob=diff_dropout_prob)
     if load_diffeomorphism_model:
         eigenfunction_basis.load_diffeomorphism_model(diffeomorphism_model_file)
     else:
-        eigenfunction_basis.fit_diffeomorphism_model(X=xs, t=ts, X_d=q_d, l2=l2_diffeomorphism, jacobian_penalty=jacobian_penalty_diffeomorphism,
+        eigenfunction_basis.fit_diffeomorphism_model(X=xs, t=ts, X_d=q_d, l2=l2_diffeomorphism,
             learning_rate=diff_learn_rate, learning_decay=diff_learn_rate_decay, n_epochs=diff_n_epochs, train_frac=diff_train_frac, batch_size=diff_batch_size)
         eigenfunction_basis.save_diffeomorphism_model(diffeomorphism_model_file)
     eigenfunction_basis.construct_basis(ub=upper_bounds, lb=lower_bounds)
 
     if plot_eigen:
-        eigenfunction_basis.plot_eigenfunction_evolution(xs[-1], t_eval)
+        eigenfunction_basis.plot_eigenfunction_evolution(xs, np.zeros_like(xs), t_eval)
 
     print('in {:.2f}s'.format(time.process_time()-t0))
     t0 = time.process_time()
@@ -323,7 +338,7 @@ if test_open_loop:
     xs_nom = []
 
     for ii in range(Ntraj_pred):
-        output_pred = CartPoleTrajectory(system_true, q_d_pred[ii,:,:].transpose(),t_pred)
+        output_pred = CartPoleTrajectory(system_true, q_d_pred[ii,:,:].T, t_pred)
         pd_controller_pred = PDController(output_pred, K_p, K_d, noise_var_pred)
 
         # Simulate true system (baseline):
@@ -332,7 +347,8 @@ if test_open_loop:
         xs_pred_tmp = xs_pred_tmp.transpose()
 
         # Create systems for each of the learned models and simulate with open loop control signal us_pred:
-        keedmd_controller = OpenLoopController(keedmd_sys, us_pred_tmp, t_pred[:us_pred_tmp.shape[0]])
+        keedmd_ol_ctrl = OpenLoopController(keedmd_sys, us_pred_tmp, t_pred[:us_pred_tmp.shape[0]])
+        keedmd_controller = CompositeController(keedmd_ol_ctrl, pd_controller_pred, keedmd_model.C)
         z0_keedmd = keedmd_model.lift(x0_pred.reshape(x0_pred.shape[0],1), q_d_pred[ii,:1,:].transpose()).squeeze()
         zs_keedmd,_ = keedmd_sys.simulate(z0_keedmd,keedmd_controller,t_pred)
         xs_keedmd_tmp = dot(keedmd_model.C,zs_keedmd.transpose())
@@ -385,44 +401,29 @@ if test_open_loop:
     plot_open_loop=True
     if plot_open_loop:
         ylabels = ['x', '$\\theta$', '$\\dot{x}$', '$\\dot{\\theta}$']
-        figure(figsize=(6,9))
+        figure(figsize=(5.8,10))
         for ii in range(n):
-            subplot(4, 1, ii+1)
-            plot(t_pred, np.abs(e_mean_nom[ii,:]), linewidth=2, label='$nom$')
-            fill_between(t_pred, np.zeros_like(e_mean_nom[ii,:]), e_std_nom[ii,:], alpha=0.2)
+            subplot(n, 1, ii+1)
+            plot(t_eval, np.abs(e_mean_nom[ii,:]), linewidth=2, label='$nom$')
+            fill_between(t_eval, np.zeros_like(e_mean_nom[ii,:]), e_std_nom[ii,:], alpha=0.2)
 
-            plot(t_pred, np.abs(e_mean_edmd[ii,:]), linewidth=2, label='$edmd$')
-            fill_between(t_pred, np.zeros_like(e_mean_edmd[ii, :]), e_std_edmd[ii, :], alpha=0.2)
+            plot(t_eval, np.abs(e_mean_edmd[ii,:]), linewidth=2, label='$edmd$')
+            fill_between(t_eval, np.zeros_like(e_mean_edmd[ii, :]), e_std_edmd[ii, :], alpha=0.2)
 
-            plot(t_pred, np.abs(e_mean_keedmd[ii,:]), linewidth=2, label='$keedmd$')
-            fill_between(t_pred, np.zeros_like(e_mean_keedmd[ii,:]), e_std_keedmd[ii, :], alpha=0.2)
+            plot(t_eval, np.abs(e_mean_keedmd[ii,:]), linewidth=2, label='$keedmd$')
+            fill_between(t_eval, np.zeros_like(e_mean_keedmd[ii,:]), e_std_keedmd[ii, :], alpha=0.2)
 
-            if ii == 1 or ii == 3:
-                ylim(0., 2.)
-            else:
-                ylim(0.,.5)
-
+            ylabel(str(ylabels[ii]))
+            ylim(0., 2.)
             grid()
             if ii == 0:
                 title('Predicted state evolution of different models with open loop control')
+        xlabel('Time (sec)')
         legend(fontsize=10, loc='best')
         savefig(open_filename,format='pdf', dpi=2400)
-        close()
-        
-
-        figure(figsize=(6,9))
-        title('Predicted state evolution of different models with open loop control')
-        legend(fontsize=10, loc='best')        
-        for ii in range(n_lift_edmd):
-            subplot(2, 1, 1)
-            plot(t_pred, zs_edmd[:,ii], linewidth=2, label='$edmd$')
-            grid()
-
-            subplot(2, 1, 2)
-            plot(t_pred, zs_keedmd[:,ii], linewidth=2, label='$keedmd$')
-            grid()                
-        savefig(open_all_filename,format='pdf', dpi=2400)
-        close()
+        show()
+        #close()
+    print('in {:.2f}s'.format(time.process_time()-t0))
 
     print('in {:.2f}s'.format(time.process_time()-t0))
 

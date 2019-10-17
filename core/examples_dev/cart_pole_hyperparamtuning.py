@@ -60,17 +60,17 @@ datafile_lst = [folder + '09132019_222031/episodic_data.pickle', folder + '09132
 # Diffeomorphism tuning parameters:
 tune_diffeomorphism = True
 n, m = 4, 1  # Number of states and actuators
-n_search = 20
+n_search = 500
 n_folds = 2
 diffeomorphism_model_file = 'diff_model'
 NN_parameter_file = 'scripts/NN_parameters.pickle'
 
 l2_diffeomorphism = np.linspace(0.,5., 20)
 jacobian_penalty_diffeomorphism = np.linspace(0.,5., 20)
-diff_n_epochs = [50, 100, 200, 500]
+diff_n_epochs = [50, 100, 200]
 diff_n_hidden_layers = [1, 2, 3, 4]
-diff_layer_width = [10, 20, 30, 40, 50]
-diff_batch_size = [8, 16, 32]
+diff_layer_width = [10, 25, 50, 100, 200]
+diff_batch_size = [16, 32, 64]
 diff_learn_rate = np.linspace(1e-5, 1e-1, 20)  # Fix for current architecture
 diff_learn_rate_decay = [0.8, 0.9, 0.95, 0.975, 0.99, 1.0]
 diff_dropout_prob = [0., 0.05, 0.1, 0.25, 0.5]
@@ -157,6 +157,8 @@ for ii in range(Ntraj):
     ts.append(t_eval)
 
 xs, us, us_nom, ts = array(xs), array(us), array(us_nom), array(ts)
+#es = xs - q_d  # Tracking error
+
 # %%
 # !  ======================================     TUNE DIFFEOMORPHISM MODEL      ========================================
 t0 = time.process_time()
@@ -195,11 +197,12 @@ if tune_diffeomorphism:
 
             # Fit model with current data set and hyperparameters
             eigenfunction_basis = KoopmanEigenfunctions(n=n, max_power=eigenfunction_max_power, A_cl=A_cl, BK=BK)
-            eigenfunction_basis.build_diffeomorphism_model(n_hidden_layers=n_hidden, layer_width=layer_width,
-                                                       batch_size=batch_size, dropout_prob=dropout)
+            eigenfunction_basis.build_diffeomorphism_model(jacobian_penalty=jac_pen,n_hidden_layers=n_hidden,
+                                                            layer_width=layer_width,
+                                                            batch_size=batch_size,
+                                                            dropout_prob=dropout)
 
             score_tmp = eigenfunction_basis.fit_diffeomorphism_model(X=X, t=t, X_d=Xd, l2=l2,
-                                                            jacobian_penalty=jac_pen,
                                                             learning_rate=learn_rate,
                                                             learning_decay=rate_decay, n_epochs=n_epochs,
                                                             train_frac=1.0, batch_size=batch_size, initialize=True,
@@ -215,7 +218,7 @@ if tune_diffeomorphism:
             savemat('core/examples/cart_pole_best_params.mat',
                     {'l2': l2_b, 'jac_pen':jac_pen_b, 'n_epochs': n_epochs_b, 'n_hidden': n_hidden_b, 'layer_width': layer_width_b, 'batch_size': batch_size_b, 'learn_rate': learn_rate_b, 'rate_decay': rate_decay_b, 'dropout': dropout_b, 'test_score': test_score_b})
 
-        print('Experiment ', ii, ' test loss with current configuration: ', test_score[-1], 'best score: ', best_score)
+        print('Experiment ', ii, ' test loss with current configuration: ', format(test_score[-1], '08f'), 'best score: ', format(best_score, '08f'))
         print('Best parameters: ', l2_b, jac_pen_b, n_epochs_b, n_hidden_b, layer_width_b, batch_size_b, learn_rate_b, rate_decay_b, dropout_b)
 
 # Load best/stored diffeomorphism model and construct basis:
