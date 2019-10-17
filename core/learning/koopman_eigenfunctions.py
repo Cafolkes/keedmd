@@ -237,10 +237,10 @@ class KoopmanEigenfunctions(BasisFunctions):
 
     def process(self, X, t, X_d):
         # Shift dynamics to make origin a fixed point
-        #X_f = X_d[:,-1,:]
-        #X_shift = array([X[ii,:,:] - X_f[ii,:] for ii in range(len(X))])
-        #X_d = array([X_d[ii,:,:].reshape((X_d.shape[1],X_d.shape[2])) - X_f[ii,:] for ii in range(len(X))])
-        X_shift = X
+        X_f = X_d[:,-1,:]
+        X_shift = array([X[ii,:,:] - X_f[ii,:] for ii in range(len(X))])
+        X_d = array([X_d[ii,:,:].reshape((X_d.shape[1],X_d.shape[2])) - X_f[ii,:] for ii in range(len(X))])
+
         # Calculate numerical derivatives
         X_dot = array([differentiate_vec(X_shift[ii, :, :], t[ii, :]) for ii in range(X_shift.shape[0])])
         X_d_dot = array([differentiate_vec(X_d[ii, :, :], t[ii, :]) for ii in range(X_d.shape[0])])

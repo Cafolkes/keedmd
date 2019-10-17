@@ -74,7 +74,7 @@ l2_diffeomorphism = 0.0  #0.26316                 #Fix for current architecture
 jacobian_penalty_diffeomorphism = 0.0 #4.47368 #3.95   #Fix for current architecture
 load_diffeomorphism_model = False
 diffeomorphism_model_file = 'diff_model'
-diff_n_epochs = 100  # TODO: set back to 500
+diff_n_epochs = 10  # TODO: set back to 500
 diff_train_frac = 0.9
 diff_n_hidden_layers = 2
 diff_layer_width = 50
@@ -86,7 +86,7 @@ diff_dropout_prob = 0.25
 # KEEDMD parameters
 l1_pos_keedmd = 9.85704592e-5
 l1_pos_ratio_keedmd = 0.1
-l1_vel_keedmd = 0.00667665
+l1_vel_keedmd = 1e-4
 l1_vel_ratio_keedmd = 1.0
 l1_eig_keedmd = 0.00135646
 l1_eig_ratio_keedmd = 0.1
@@ -198,12 +198,12 @@ if not load_fit:
     if save_traj:
       savemat('./core/examples/results/cart_pendulum_pd_data.mat', {'xs': xs, 't_eval': t_eval, 'us': us, 'us_nom':us_nom})
     xs, us, us_nom, ts = array(xs), array(us), array(us_nom), array(ts)
-    es = xs - q_d  # Tracking error
+    #es = xs - q_d  # Tracking error
 
     plot_traj = False
     if plot_traj:
         for ii in range(Ntraj):
-            plot_trajectory(es[ii], q_d[ii], us[ii], us_nom[ii], ts[ii])  # Plot simulated trajectory if desired
+            plot_trajectory(xs[ii], q_d[ii], us[ii], us_nom[ii], ts[ii])  # Plot simulated trajectory if desired
 
 #%%
 #!  ===============================================     FIT MODELS      ===============================================
@@ -220,13 +220,13 @@ if not load_fit:
     if load_diffeomorphism_model:
         eigenfunction_basis.load_diffeomorphism_model(diffeomorphism_model_file)
     else:
-        eigenfunction_basis.fit_diffeomorphism_model(X=es, t=ts, X_d=q_d, l2=l2_diffeomorphism,
+        eigenfunction_basis.fit_diffeomorphism_model(X=xs, t=ts, X_d=q_d, l2=l2_diffeomorphism,
             learning_rate=diff_learn_rate, learning_decay=diff_learn_rate_decay, n_epochs=diff_n_epochs, train_frac=diff_train_frac, batch_size=diff_batch_size)
         eigenfunction_basis.save_diffeomorphism_model(diffeomorphism_model_file)
     eigenfunction_basis.construct_basis(ub=upper_bounds, lb=lower_bounds)
 
     if plot_eigen:
-        eigenfunction_basis.plot_eigenfunction_evolution(es, np.zeros_like(es), t_eval)
+        eigenfunction_basis.plot_eigenfunction_evolution(xs, np.zeros_like(xs), t_eval)
 
     print('in {:.2f}s'.format(time.process_time()-t0))
     t0 = time.process_time()
@@ -235,8 +235,8 @@ if not load_fit:
     t0 = time.process_time()
     print(' - Fitting KEEDMD model...', end =" ")
     keedmd_model = Keedmd(eigenfunction_basis, n, l1_pos=l1_pos_keedmd, l1_ratio_pos=l1_pos_ratio_keedmd, l1_vel=l1_vel_keedmd, l1_ratio_vel=l1_vel_ratio_keedmd, l1_eig=l1_eig_keedmd, l1_ratio_eig=l1_eig_ratio_keedmd, K_p=K_p, K_d=K_d)
-    X, X_d, Z, Z_dot, U, U_nom, t = keedmd_model.process(es, q_d, us, us_nom, ts)
-    keedmd_model.fit(X, X_d, Z, Z_dot, U, U_nom)
+    X, X_d, Z, Z_dot, U, U_nom, t = keedmd_model.process(xs, q_d, us, us_nom, ts)
+    keedmd_model.tune_fit(X, X_d, Z, Z_dot, U, U_nom)
     print('in {:.2f}s'.format(time.process_time()-t0))
     
     # Construct basis of RBFs for EDMD:
@@ -323,7 +323,7 @@ if test_open_loop:
     xs_nom = []
 
     for ii in range(Ntraj_pred):
-        output_pred = CartPoleTrajectory(system_true, q_d_pred[ii,:,:].transpose(),t_pred)
+        output_pred = CartPoleTrajectory(system_true, q_d_pred[ii,:,:].T, t_pred)
         pd_controller_pred = PDController(output_pred, K_p, K_d, noise_var_pred)
 
         # Simulate true system (baseline):
@@ -335,7 +335,8 @@ if test_open_loop:
         keedmd_controller = OpenLoopController(keedmd_sys, us_pred_tmp, t_pred[:us_pred_tmp.shape[0]])
         z0_keedmd = keedmd_model.lift(x0_pred.reshape(x0_pred.shape[0],1), q_d_pred[ii,:1,:].transpose()).squeeze()
         zs_keedmd,_ = keedmd_sys.simulate(z0_keedmd,keedmd_controller,t_pred)
-        xs_keedmd_tmp = dot(keedmd_model.C,zs_keedmd.transpose())
+        es_keedmd_tmp = dot(keedmd_model.C,zs_keedmd.transpose())
+        xs_keedmd_tmp = es_keedmd_tmp + q_d_pred[ii,:,:].T
 
         edmd_controller = OpenLoopController(edmd_sys, us_pred_tmp, t_pred[:us_pred_tmp.shape[0]])
         z0_edmd = edmd_model.lift(x0_pred.reshape(x0_pred.shape[0],1), q_d_pred[ii,:1,:].transpose()).squeeze()

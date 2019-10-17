@@ -67,10 +67,10 @@ NN_parameter_file = 'scripts/NN_parameters.pickle'
 
 l2_diffeomorphism = np.linspace(0.,5., 20)
 jacobian_penalty_diffeomorphism = np.linspace(0.,5., 20)
-diff_n_epochs = [50, 100, 200, 500]
+diff_n_epochs = [50, 100, 200]
 diff_n_hidden_layers = [1, 2, 3, 4]
 diff_layer_width = [10, 25, 50, 100, 200]
-diff_batch_size = [8, 16, 32]
+diff_batch_size = [16, 32, 64]
 diff_learn_rate = np.linspace(1e-5, 1e-1, 20)  # Fix for current architecture
 diff_learn_rate_decay = [0.8, 0.9, 0.95, 0.975, 0.99, 1.0]
 diff_dropout_prob = [0., 0.05, 0.1, 0.25, 0.5]
@@ -157,15 +157,15 @@ for ii in range(Ntraj):
     ts.append(t_eval)
 
 xs, us, us_nom, ts = array(xs), array(us), array(us_nom), array(ts)
-es = xs - q_d  # Tracking error
+#es = xs - q_d  # Tracking error
 
 # %%
 # !  ======================================     TUNE DIFFEOMORPHISM MODEL      ========================================
 t0 = time.process_time()
 
-cv_inds = np.arange(start=0, stop=es.shape[0])
+cv_inds = np.arange(start=0, stop=xs.shape[0])
 np.random.shuffle(cv_inds)
-val_num = int(np.floor(es.shape[0]/n_folds))
+val_num = int(np.floor(xs.shape[0]/n_folds))
 
 if tune_diffeomorphism:
     test_score = []
@@ -189,10 +189,10 @@ if tune_diffeomorphism:
             val_inds = cv_inds[ff*val_num:(ff+1)*val_num]
             train_inds = np.delete(cv_inds,np.linspace(ff*val_num,(ff+1)*val_num-1,val_num, dtype=int))
             t = ts[train_inds,:]
-            X = es[train_inds,:,:]
+            X = xs[train_inds,:,:]
             Xd = q_d[train_inds,:,:]
             t_val = ts[val_inds, :]
-            X_val = es[val_inds, :, :]
+            X_val = xs[val_inds, :, :]
             Xd_val = q_d[val_inds, :, :]
 
             # Fit model with current data set and hyperparameters
