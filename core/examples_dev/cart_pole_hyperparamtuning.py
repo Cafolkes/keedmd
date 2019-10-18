@@ -65,13 +65,13 @@ n_folds = 2
 diffeomorphism_model_file = 'diff_model'
 NN_parameter_file = 'scripts/NN_parameters.pickle'
 
-l2_diffeomorphism = np.linspace(0.,5., 20)
-jacobian_penalty_diffeomorphism = np.linspace(0.,5., 20)
+l2_diffeomorphism = np.linspace(0.,5., 10)
+jacobian_penalty_diffeomorphism = np.linspace(0.,5., 10)
 diff_n_epochs = [50, 100, 200]
-diff_n_hidden_layers = [1, 2, 3, 4]
+diff_n_hidden_layers = [2, 3, 4]
 diff_layer_width = [10, 25, 50, 100, 200]
 diff_batch_size = [16, 32, 64]
-diff_learn_rate = np.linspace(1e-5, 1e-1, 20)  # Fix for current architecture
+diff_learn_rate = np.linspace(1e-5, 1e-2, 10)  # Fix for current architecture
 diff_learn_rate_decay = [0.8, 0.9, 0.95, 0.975, 0.99, 1.0]
 diff_dropout_prob = [0., 0.05, 0.1, 0.25, 0.5]
 

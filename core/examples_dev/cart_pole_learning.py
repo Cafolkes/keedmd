@@ -99,11 +99,11 @@ diff_learn_rate_decay = 0.99            #Fix for current architecture
 diff_dropout_prob = 0.25
 
 # KEEDMD parameters
-l1_pos_keedmd = 9.85704592e-5
+l1_pos_keedmd = 0.00017044
 l1_pos_ratio_keedmd = 0.1
-l1_vel_keedmd = 1e-4
+l1_vel_keedmd = 0.02277
 l1_vel_ratio_keedmd = 1.0
-l1_eig_keedmd = 0.00135646
+l1_eig_keedmd = 0.01197
 l1_eig_ratio_keedmd = 0.1
 
 # EDMD parameters

@@ -232,8 +232,8 @@ class KoopmanEigenfunctions(BasisFunctions):
             scheduler.step(i)
             if verbose:
                 print(' - Epoch: ',i,' Training loss:', format(losses[-1], '08f'), ' Validation loss:', format(val_losses[-1], '08f'))
-                print('Improvement metric (for early stopping): ', sum(abs(array(val_losses[-min(3,len(val_losses)):])-val_losses[-1]))/(3*val_losses[-min(3,len(val_losses))]))
-            if i > n_epochs/4 and sum(abs(array(val_losses[-min(3,len(val_losses)):])-val_losses[-1]))/(3*val_losses[-min(3,len(val_losses))]) < 0.05:
+                print('Improvement metric (for early stopping): ', sum(abs(array(losses[-min(5,len(losses)):])-losses[-1]))/(5*losses[-min(3,len(losses))]))
+            if i > n_epochs/4 and sum(abs(array(losses[-min(5,len(losses)):])-losses[-1]))/(5*losses[-min(5,len(losses))]) < 0.025:
                 print('Early stopping activated')
                 break
 
