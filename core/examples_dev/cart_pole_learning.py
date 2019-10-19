@@ -4,7 +4,7 @@ from matplotlib.pyplot import figure, grid, legend, plot, show, subplot, suptitl
 import os
 import sys
 from matplotlib.pyplot import figure, grid, legend, plot, show, subplot, suptitle, title, scatter, savefig, hist
-from numpy import arange, array, concatenate, cos, identity
+from numpy import arange, array, concatenate, cos, identity, zeros_like
 from numpy import linspace, ones, sin, tanh, tile, zeros, pi, random, interp, dot, multiply, asarray
 import numpy as np
 #from numpy.random import uniform
@@ -49,7 +49,7 @@ class CompositeController(Controller):
 
     def eval(self, x, t):
         u_1 = self.controller_1.eval(x, t)
-        u_2 = self.controller_2.eval(dot(self.C, x), t)
+        u_2 = self.controller_2.eval(dot(self.C, zeros_like(x)), t)
 
         return array([u_1.item(), u_2.item()])
 
@@ -86,24 +86,24 @@ noise_var = 0.5                     # Exploration noise to perturb controller
 plot_eigen = True
 eigenfunction_max_power = 2
 l2_diffeomorphism = 0.0  #0.26316                 #Fix for current architecture
-jacobian_penalty_diffeomorphism = 0.0 #4.47368 #3.95   #Fix for current architecture
+jacobian_penalty_diffeomorphism = 0.0 #0.55 #4.47368 #3.95   #Fix for current architecture
 load_diffeomorphism_model = False
 diffeomorphism_model_file = 'diff_model'
-diff_n_epochs = 100  # TODO: set back to 500
+diff_n_epochs = 200  # TODO: set back to 500
 diff_train_frac = 0.8
 diff_n_hidden_layers = 2
 diff_layer_width = 50
-diff_batch_size = 8
-diff_learn_rate = 0.001579#0.0737                  #Fix for current architecture
-diff_learn_rate_decay = 0.99            #Fix for current architecture
+diff_batch_size = 16
+diff_learn_rate = 0.00112#0.0737                  #Fix for current architecture
+diff_learn_rate_decay = 0.975            #Fix for current architecture
 diff_dropout_prob = 0.25
 
 # KEEDMD parameters
-l1_pos_keedmd = 0.00017044
+l1_pos_keedmd = 0.0012773
 l1_pos_ratio_keedmd = 0.1
-l1_vel_keedmd = 0.02277
+l1_vel_keedmd = 0.0232935
 l1_vel_ratio_keedmd = 1.0
-l1_eig_keedmd = 0.01197
+l1_eig_keedmd = 0.0079657
 l1_eig_ratio_keedmd = 0.1
 
 # EDMD parameters
@@ -337,6 +337,11 @@ if test_open_loop:
     xs_edmd = []
     xs_nom = []
 
+    # Modify KEEDMD system to account for nominal controller
+    B_apnd = zeros_like(keedmd_model.B)
+    B_apnd[n:, :] = -keedmd_model.B[n:, :]
+    keedmd_model.B = concatenate((keedmd_model.B, B_apnd), axis=1)
+
     for ii in range(Ntraj_pred):
         output_pred = CartPoleTrajectory(system_true, q_d_pred[ii,:,:].T, t_pred)
         pd_controller_pred = PDController(output_pred, K_p, K_d, noise_var_pred)
@@ -414,7 +419,7 @@ if test_open_loop:
             fill_between(t_eval, np.zeros_like(e_mean_keedmd[ii,:]), e_std_keedmd[ii, :], alpha=0.2)
 
             ylabel(str(ylabels[ii]))
-            ylim(0., 2.)
+            ylim(0., 5.)
             grid()
             if ii == 0:
                 title('Predicted state evolution of different models with open loop control')
@@ -538,6 +543,8 @@ if plotMPC:
 
 
 #KEEDMD MPC:
+keedmd_model.B = keedmd_model[:,:1] # Remove nominal controller modification
+#TODO: Add matrix/lambda function for forcing term in MPC (B_apnd*K*q_d)
 keedmd_sys = LinearSystemDynamics(A=keedmd_model.A, B=keedmd_model.B)
 keedmd_controller = MPCControllerDense(linear_dynamics=keedmd_sys,
                                      N=int(MPC_horizon / dt),

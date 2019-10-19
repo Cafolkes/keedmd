@@ -3,13 +3,13 @@
 from matplotlib.pyplot import figure, grid, legend, plot, show, subplot, suptitle, title, ylim, xlabel, ylabel, fill_between, close
 import os
 from matplotlib.pyplot import figure, grid, legend, plot, show, subplot, suptitle, title, scatter, savefig, hist
-from numpy import arange, array, concatenate
+from numpy import arange, array, concatenate, zeros_like
 from numpy import linspace, ones, sin, tanh, tile, zeros, pi, random, interp, dot, multiply, asarray
 import numpy as np
 from scipy.io import loadmat, savemat
 from ..systems import CartPole
 from ..dynamics import LinearSystemDynamics
-from ..controllers import PDController, OpenLoopController, MPCController, MPCControllerDense
+from ..controllers import Controller, PDController, OpenLoopController, MPCController, MPCControllerDense
 from ..learning import KoopmanEigenfunctions, RBF, Edmd, Keedmd
 import time
 import dill
@@ -37,6 +37,19 @@ class CartPoleTrajectory(CartPole):
 
     def act(self, q, t):
         return self.robotic_dynamics.act(q, t)
+
+class CompositeController(Controller):
+    def __init__(self, controller_1, controller_2, C):
+        self.controller_1 = controller_1
+        self.controller_2 = controller_2
+        self.C = C
+
+    def eval(self, x, t):
+        u_1 = self.controller_1.eval(x, t)
+        u_2 = self.controller_2.eval(dot(self.C, zeros_like(x)), t)
+
+        return array([u_1.item(), u_2.item()])
+
 
 #%% 
 #! ===============================================   SET PARAMETERS    ===============================================
@@ -183,7 +196,7 @@ print(' - Fitting KEEDMD model...', end =" ")
 t0 = time.process_time()
 keedmd_model = Keedmd(eigenfunction_basis, n, l1_pos=l1_pos_keedmd, l1_ratio_pos=l1_pos_ratio_keedmd, l1_vel=l1_vel_keedmd, l1_ratio_vel=l1_vel_ratio_keedmd, l1_eig=l1_eig_keedmd, l1_ratio_eig=l1_eig_ratio_keedmd, K_p=K_p, K_d=K_d)
 X, X_d, Z, Z_dot, U, U_nom, t = keedmd_model.process(xs, q_d, us, us_nom, ts)
-keedmd_model.tune_fit(X, X_d, Z, Z_dot, U, U_nom)
+keedmd_model.fit(X, X_d, Z, Z_dot, U, U_nom)
 
 print('in {:.2f}s'.format(time.process_time()-t0))
 
@@ -231,6 +244,11 @@ xs_pred = []
 xs_keedmd = []
 xs_edmd = []
 xs_nom = []
+
+# Modify KEEDMD system to account for nominal controller
+B_apnd = zeros_like(keedmd_model.B)
+B_apnd[n:,:] = -keedmd_model.B[n:, :]
+keedmd_model.B = concatenate((keedmd_model.B, B_apnd), axis=1)
 
 for ii in range(Ntraj_pred):
     output_pred = CartPoleTrajectory(system_true, q_d_pred[ii,:,:].transpose(),t_pred)
@@ -350,6 +368,8 @@ us_edmd_mpc = us_emdm_mpc.transpose()
 
 #KEEDMD MPC:
 print(' - KEEDMD model')
+keedmd_model.B = keedmd_model.B[:,:1] # Remove nominal controller modification
+#TODO: Add matrix/lambda function for forcing term in MPC (B_apnd*K*q_d)
 keedmd_sys = LinearSystemDynamics(A=keedmd_model.A, B=keedmd_model.B)
 keedmd_controller = MPCControllerDense(linear_dynamics=keedmd_sys,
                                      N=int(horizon_mpc/dt),
@@ -425,7 +445,7 @@ for ii in range(n):
     if ii == 1 or ii == 3:
         ylim(0., 2.)
     else:
-        ylim(0.,.5)
+        ylim(0.,2.)
 xlabel('Time (s)')
 legend(fontsize=10, loc='upper left')
 show()

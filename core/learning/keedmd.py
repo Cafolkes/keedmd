@@ -116,12 +116,7 @@ class Keedmd(Edmd):
             if self.K_p is None or self.K_p is None:
                 raise Exception('Nominal controller gains not defined.')
             # Take nominal controller into account:
-            #self.A[self.n:,:self.n] -= dot(self.B[self.n:,:],concatenate((self.K_p, self.K_d), axis=1))
-            B_apnd = zeros_like(self.B)
-            B_apnd[self.n:,:] = -self.B[self.n:, :]
-            self.B = concatenate((self.B,B_apnd), axis=1)
-
-
+            self.A[self.n:,:self.n] -= dot(self.B[self.n:,:],concatenate((self.K_p, self.K_d), axis=1))
 
     def tune_fit(self, X, X_d, Z, Z_dot, U, U_nom):
 
@@ -182,10 +177,7 @@ class Keedmd(Edmd):
         if not self.episodic:
             if self.K_p is None or self.K_p is None:
                 raise Exception('Nominal controller gains not defined.')
-            #self.A[self.n:,:self.n] -= dot(self.B[self.n:,:],concatenate((self.K_p, self.K_d), axis=1))
-            B_apnd = zeros_like(self.B)
-            B_apnd[self.n:,:] = -self.B[self.n:, :]
-            self.B = concatenate((self.B,B_apnd), axis=1)
+            self.A[self.n:,:self.n] -= dot(self.B[self.n:,:],concatenate((self.K_p, self.K_d), axis=1))
 
         print('KEEDMD l1 (pos, vel, eig): ', self.l1_pos, self.l1_vel, self.l1_eig)
         print('KEEDMD l1 ratio (pos, vel, eig): ', self.l1_ratio_pos, self.l1_ratio_vel, self.l1_ratio_eig)

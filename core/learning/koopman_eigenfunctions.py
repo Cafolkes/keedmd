@@ -199,32 +199,25 @@ class KoopmanEigenfunctions(BasisFunctions):
         # Training loop
         for i in range(n_epochs):
             # Uses loader to fetch one mini-batch for training
-            #print('Training epoch ', i)
             for x_batch, y_batch in train_loader:
                 # Send mini batch data to same location as model:
                 x_batch = x_batch.to(device)
                 y_batch = y_batch.to(device)
-                #print('Training: ', x_batch.shape, y_batch.shape)
+
                 # Train based on current batch:
                 batch_loss.append(train_step(x_batch, y_batch))
                 optimizer.zero_grad()
             losses.append(sum(batch_loss)/len(batch_loss))
             batch_loss = []
 
-            #print('Validating epoch ', i)
             with no_grad():
                 for x_val, y_val in val_loader:
                     # Sends data to same device as model
                     x_val = x_val.to(device)
                     y_val = y_val.to(device)
 
-                    #print('Validation: ', x_val.shape, y_val.shape)
-
                     self.diffeomorphism_model.eval() # Change model model to evaluation
-                    #xt_val = x_val[:, :2*self.n]  # [x, x_d]
-                    #xdot_val = x_val[:, 2*self.n:]  # [xdot]
                     y_pred = self.diffeomorphism_model(x_val)  # Predict
-                    #jacobian_xdot_val, zero_jacobian_val = calc_gradients(xt_val, xdot_val, yhat, None, None, self.diffeomorphism_model.training)
                     batch_val_loss.append(float(self.diffeomorphism_model.diffeomorphism_loss(y_val, y_pred, self.diffeomorphism_model.training))) # Compute validation loss
                 val_losses.append(sum(batch_val_loss)/len(batch_val_loss))  # Save validation loss
                 batch_val_loss = []
@@ -232,8 +225,8 @@ class KoopmanEigenfunctions(BasisFunctions):
             scheduler.step(i)
             if verbose:
                 print(' - Epoch: ',i,' Training loss:', format(losses[-1], '08f'), ' Validation loss:', format(val_losses[-1], '08f'))
-                print('Improvement metric (for early stopping): ', sum(abs(array(losses[-min(5,len(losses)):])-losses[-1]))/(5*losses[-min(3,len(losses))]))
-            if i > n_epochs/4 and sum(abs(array(losses[-min(5,len(losses)):])-losses[-1]))/(5*losses[-min(5,len(losses))]) < 0.025:
+                #print('Improvement metric (for early stopping): ', sum(abs(array(losses[-min(5,len(losses)):])-losses[-1]))/(5*losses[-min(3,len(losses))]))
+            if i > n_epochs/4 and sum(abs(array(losses[-min(5,len(losses)):])-losses[-1]))/(5*losses[-min(5,len(losses))]) < 0.005:
                 print('Early stopping activated')
                 break
 
@@ -270,8 +263,6 @@ class KoopmanEigenfunctions(BasisFunctions):
         self.diffeomorphism_model.load_state_dict(load(filename))
 
     def plot_eigenfunction_evolution(self, X, X_d, t):
-        #X = X.transpose()
-        #X_d = X_d.transpose()
         eigval_system = LinearSystemDynamics(A=diag(self.Lambda),B=zeros((self.Lambda.shape[0],1)))
         eigval_ctrl = ConstantController(eigval_system,0.)
 
@@ -298,7 +289,6 @@ class KoopmanEigenfunctions(BasisFunctions):
         eig_error_std = np.std(eig_error_norm, axis=1)
 
         figure(figsize=(15,15))
-        #suptitle('Eigenfunction VS Eigenvalue Evolution')
         for ii in range(1,26):
             subplot(5, 5, ii)
             plot(t, eig_error_mean[ii-1,:], linewidth=2, label='Mean')

@@ -109,8 +109,8 @@ noise_var = 0.5                                         # Exploration noise to p
 
 # Koopman eigenfunction parameters
 eigenfunction_max_power = 5                             # Max power of variables in eigenfunction products
-l2_diffeomorphism = 0.0                                 # l2 regularization strength
-jacobian_penalty_diffeomorphism = 0.0                   # Estimator jacobian regularization strength
+l2_diffeomorphism = 0.01                                # l2 regularization strength
+jacobian_penalty_diffeomorphism = 0.01                  # Estimator jacobian regularization strength
 diff_n_epochs = 200                                     # Number of epochs
 diff_train_frac = 0.9                                   # Fraction of data to be used for training
 diff_n_hidden_layers = 3                                # Number of hidden layers
