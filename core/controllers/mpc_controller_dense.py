@@ -35,7 +35,7 @@ class MPCControllerDense(Controller):
     Use lifting=True to solve MPC in the lifted space
     """
     def __init__(self, linear_dynamics, N, dt, umin, umax, xmin, xmax, 
-                Q, R, QN, xr, plotMPC=False, plotMPC_filename="",lifting=False, edmd_object=None, name="noname", soft=False, D=None):
+                Q, R, QN, xr, plotMPC=False, plotMPC_filename="",lifting=False, edmd_object=None, name="noname", soft=False, D=None, forcing=None):
         """__init__ [summary]
         
         Arguments:
@@ -58,7 +58,8 @@ class MPCControllerDense(Controller):
             edmd_object {edmd object} -- lifting object. It contains projection matrix and lifting function (default: {Edmd()})
             name {str} -- name for all saved files (default: {"noname"})
             soft {bool} -- flag to enable soft constraints (default: {False})
-            D {[type]} -- cost matrix for the soft variables (default: {None})
+            D {[numpy array [Ns,]]} -- cost matrix for the soft variables (default: {None})
+            Forcing {[lambda function]} -- forcing term in the dynamics (default: {None})            
         """
 
         Controller.__init__(self, linear_dynamics)
@@ -86,6 +87,7 @@ class MPCControllerDense(Controller):
         self.Q = Q
         self.R = R
         self.lifting = lifting
+        self.forcing = forcing
 
         self.nu = nu
         self.nx = nx
@@ -342,6 +344,13 @@ class MPCControllerDense(Controller):
             l = np.hstack([self.x_min_flat - self.Cbd @ self.a @ x, self.u_min_flat])
             u = np.hstack([self.x_max_flat - self.Cbd @ self.a @ x, self.u_max_flat])
 
+            if not forcing==None:
+                forcing_local = np.reshape(-self.Cbd @ self.forcing_total[:,tindex:tindex+N],(N*nx,),order='F')
+                l[:N*Nx] += forcing_local
+                u[:N*Nx] += forcing_local
+
+
+
         else:
             BQxr  = self.B.T @ np.reshape(self.Q.dot(xr),(N*nx,),order='F')
             l = np.hstack([self.x_min_flat - self.a @ x, self.u_min_flat])
@@ -350,6 +359,9 @@ class MPCControllerDense(Controller):
         # Update initial state
         BQax0 = self.BTQbda @ x
         q = BQax0  - BQxr
+
+        if not forcing==None:
+            q +=  self.B.T @ self.CQCbd @ forcing_local
 
         if self.soft:
             q = np.hstack([q,np.zeros(N*ns)])        
