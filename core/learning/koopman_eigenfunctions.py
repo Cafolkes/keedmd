@@ -63,8 +63,8 @@ class KoopmanEigenfunctions(BasisFunctions):
             w = real(w)
 
         # Scale up w to get kronecker delta
-        #w_scaling = diag(dot(v.T, w))
-        #w = divide(w, w_scaling.reshape(1,w.shape[0]))
+        w_scaling = diag(dot(v.T, w))
+        w = divide(w, w_scaling.reshape(1,w.shape[0]))
 
         p = array([ii for ii in range(self.max_power+1)])
         combinations = array(list(combinations_with_replacement(p, self.n)))
@@ -90,8 +90,8 @@ class KoopmanEigenfunctions(BasisFunctions):
         self.diffeomorphism_model.eval()
         input = npconcatenate((q, q_d),axis=1)
         diff_pred = self.diffeomorphism_model.predict(from_numpy(input))
-        return (q + diff_pred).transpose() #TODO: Return to this to get diffeomorphism with learning
-        #return q.T
+
+        return (q + diff_pred).transpose()
 
     def build_diffeomorphism_model(self, jacobian_penalty=1., n_hidden_layers = 2, layer_width=50, batch_size = 64, dropout_prob=0.1):
         """build_diffeomorphism_model 

@@ -61,7 +61,10 @@ class Edmd():
 
         else:
             # Construct EDMD matrices using Elastic Net L1 and L2 regularization
-            input = concatenate((Z.transpose(),U.transpose()),axis=1)
+            if U is None and U_nom is None:
+                input = Z.transpose()
+            else:
+                input = concatenate((Z.transpose(), U.transpose()), axis=1)
             output = Z_dot.transpose()
 
             CV = False
@@ -75,7 +78,8 @@ class Edmd():
             reg_model.fit(input,output)
 
             self.A = reg_model.coef_[:self.n_lift,:self.n_lift]
-            self.B = reg_model.coef_[:self.n_lift,self.n_lift:]
+            if not (U is None and U_nom is None):
+                self.B = reg_model.coef_[:self.n_lift, self.n_lift:]
             if self.override_C:
                 self.C = zeros((self.n,self.n_lift))
                 self.C[:self.n,:self.n] = eye(self.n)
@@ -119,7 +123,7 @@ class Edmd():
         self.Z_std[:self.n] = 1.  # Do not rescale states. Note: Assumes state is added to beginning of observables
         self.Z_std = self.Z_std.reshape((self.Z_std.shape[0], 1))
         self.Z_std = ones_like(self.Z_std)  #TODO: Remove after debug
-        Z_norm = array([divide(Z[ii,:,:], self.Z_std.transpose()) for ii in range(Z.shape[0])])
+        #Z_norm = array([divide(Z[ii,:,:], self.Z_std.transpose()) for ii in range(Z.shape[0])])
         Z_norm = Z  #TODO: Remove after debug
 
         Z_dot = array([differentiate_vec(Z_norm[ii,:,:],t[ii,:]) for ii in range(Ntraj)])  #Numerical differentiate lifted state
@@ -183,19 +187,25 @@ class Edmd():
         """
         return dot(self.C, dot(self.A,X) + dot(self.B, U))
 
-    def tune_fit(self, X, X_d, Z, Z_dot, U, U_nom):
+    def tune_fit(self, X, X_d, Z, Z_dot, U=None, U_nom=None):
         
-        l1_ratio = array([.1, .5, .7, .9, .95, .99, 1])  # Values to test
+        #l1_ratio = array([.1, .5, .7, .9, .95, .99, 1])  # Values to test
+        l1_ratio = array([1])  # Values to test
 
         # Construct EDMD matrices using Elastic Net L1 and L2 regularization
-        input = concatenate((Z.transpose(), U.transpose()), axis=1)
+        if U is None and U_nom is None:
+            input = Z.transpose()
+        else:
+            input = concatenate((Z.transpose(), U.transpose()), axis=1)
         output = Z_dot.transpose()
 
         reg_model_cv = linear_model.MultiTaskElasticNetCV(l1_ratio=l1_ratio, fit_intercept=False, normalize=False, cv=5, n_jobs=-1, selection='random')
         reg_model_cv.fit(input, output)
 
         self.A = reg_model_cv.coef_[:self.n_lift, :self.n_lift]
-        self.B = reg_model_cv.coef_[:self.n_lift, self.n_lift:]
+        if not (U is None and U_nom is None):
+            self.B = reg_model_cv.coef_[:self.n_lift, self.n_lift:]
+
         if self.override_C:
             self.C = zeros((self.n, self.n_lift))
             self.C[:self.n, :self.n] = eye(self.n)

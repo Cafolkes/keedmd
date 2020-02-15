@@ -90,9 +90,14 @@ class DiffeomorphismNet(nn.Module):
         A_cl_batch = self.A_cl.unsqueeze(0).expand(cur_batch_size, self.n, self.n)
 
         if is_training:
-            return mean((y_true - (h_dot - bmm(A_cl_batch, h.unsqueeze(-1)).squeeze()))**2) + self.jacobian_penalty*mean(zerograd**2)
+            #return mean((y_true - (h_dot - bmm(A_cl_batch, h.unsqueeze(-1)).squeeze()))**2) + self.jacobian_penalty*mean(zerograd**2)
+            return mean(
+                (y_true + h_dot - bmm(A_cl_batch, h.unsqueeze(-1)).squeeze()) ** 2) + self.jacobian_penalty * mean(
+                zerograd ** 2)
         else:
-            return mean((y_true - (h_dot - bmm(A_cl_batch, h.unsqueeze(-1)).squeeze())) ** 2)
+            #return mean((y_true - (h_dot - bmm(A_cl_batch, h.unsqueeze(-1)).squeeze())) ** 2)
+            return mean(
+                (y_true + h_dot - bmm(A_cl_batch, h.unsqueeze(-1)).squeeze()) ** 2)
 
     def predict(self, x):
         x.to(self.device)
