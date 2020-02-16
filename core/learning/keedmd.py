@@ -121,10 +121,8 @@ class Keedmd(Edmd):
             #B_apnd[self.n:,:] = -self.B[self.n:, :]
             #self.B = concatenate((self.B,B_apnd), axis=1)
 
-    def tune_fit(self, X, X_d, Z, Z_dot, U, U_nom):
+    def tune_fit(self, X, X_d, Z, Z_dot, U, U_nom, l1_ratio=array([1])):
 
-        #l1_ratio = array([.1, .7, .9, .95, .99, 1])  # Values to test
-        l1_ratio = array([1])  # Values to test
         reg_model_cv = linear_model.MultiTaskElasticNetCV(l1_ratio=l1_ratio, fit_intercept=False,
                                             normalize=False, cv=5, n_jobs=-1, selection='random', max_iter=1e5)
 

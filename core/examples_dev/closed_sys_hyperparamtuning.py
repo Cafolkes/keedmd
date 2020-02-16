@@ -1,5 +1,5 @@
 #%%
-"""Cart Pendulum Example"""
+"""Closed Koopman system example"""
 from ..dynamics import RoboticDynamics, LinearSystemDynamics, AffineDynamics, SystemDynamics
 from scipy.io import loadmat, savemat
 from matplotlib.pyplot import figure, grid, legend, plot, show, subplot, suptitle, title, scatter, savefig, hist
@@ -8,97 +8,38 @@ from numpy import linspace, ones, sin, tanh, tile, zeros, pi, random, interp, do
 import numpy as np
 from core.dynamics import LinearSystemDynamics
 from core.controllers import PDController, OpenLoopController, MPCController, MPCControllerDense
-from core.learning import KoopmanEigenfunctions, RBF, Edmd, Keedmd, plot_trajectory, IdentityBF
+from core.learning import KoopmanEigenfunctions, RBF, Edmd, Keedmd, plot_trajectory, IdentityBF, Monomials
+from core.systems import ClosedSubspaceSys
 import time
 import dill
 from pathlib import Path
-class InvertedPendulum(AffineDynamics, SystemDynamics):
-    """Inverted pendulum model.
-    States are x = (theta, theta_dot), where theta is the angle of the pendulum
-    in rad clockwise from upright and theta_dot is the angular rate of the
-    pendulum in rad/s clockwise. The input is u = (tau), where tau is torque in
-    N * m, applied clockwise at the base of the pendulum.
-    Attributes:
-    Mass (kg), m: float
-    Gravitational acceleration (m/s^2), g: float
-    Length (m), l: float
-    """
-
-    def __init__(self, m, g, l):
-        """Initialize an InvertedPendulum object.
-        Inputs:
-        Mass (kg), m: float
-        Gravitational acceleration (m/s^2), g: float
-        Length (m), l: float
-        """
-
-        AffineDynamics.__init__(self)
-        SystemDynamics.__init__(self,n=2,m=1)
-        self.m, self.g, self.l = m, g, l
-
-    def drift(self, x, t):
-        theta, theta_dot = x
-        return array([theta_dot, self.g / self.l * sin(theta)])
-
-    def act(self, x, t):
-        return array([[0], [1 / (self.m * (self.l ** 2))]])
-
-
-class InvertedPendulumFp(RoboticDynamics):
-    def __init__(self, robotic_dynamics, xf):
-        RoboticDynamics.__init__(self, 1, 1)
-        self.robotic_dynamics = robotic_dynamics
-        self.xf = xf
-
-    def eval(self, q, t):
-        if len(q.shape) == 1:
-            return q - self.xf
-        else:
-            return q - self.xf.reshape((self.xf.size,1))
-
-    def drift(self, q, t):
-        return self.robotic_dynamics.drift(q, t)
-
-    def act(self, q, t):
-        return self.robotic_dynamics.act(q, t)
-
-class InvertedPendulumTrajectory(InvertedPendulum):
-    def __init__(self, robotic_dynamics, q_d, t_d):
-        RoboticDynamics.__init__(self, 1., 1.)
-        self.robotic_dynamics = robotic_dynamics
-        self.q_d = q_d
-        self.t_d = t_d
-
-    def eval(self, q, t):
-        return q - self.desired_state(t)
-
-    def desired_state(self, t):
-        return [interp(t, self.t_d.flatten(),self.q_d[ii,:].flatten()) for ii in range(self.q_d.shape[0])]
-
-    def drift(self, q, t):
-        return self.robotic_dynamics.drift(q, t)
-
-    def act(self, q, t):
-        return self.robotic_dynamics.act(q, t)
-
 
 # %%
 # ! ===============================================   SET PARAMETERS    ===============================================
 
 # Tuning parameters
-folder = str(Path().absolute()) + '/experiments/episodic_KEEDMD/fast_drone_landing/'
-datafile_lst = [folder + '09132019_222031/episodic_data.pickle', folder + '09132019_231840/episodic_data.pickle'] #Add multiple paths to list if multiple data files
+#folder = str(Path().absolute()) + '/experiments/episodic_KEEDMD/fast_drone_landing/'
+#datafile_lst = [folder + '09132019_222031/episodic_data.pickle', folder + '09132019_231840/episodic_data.pickle'] #Add multiple paths to list if multiple data files
+
+# Define true system
+mu, lambd = -0.2, -1.
+system_true = ClosedSubspaceSys(mu, lambd)
+n, m = 2, 0                                             # Number of states and actuators
+upper_bounds = array([1, 1])                            # Upper State constraints
+lower_bounds = -upper_bounds                            # Lower State constraints
+
+# Define nominal model and nominal controller:
+A_nom = array([[mu, 0.], [0., lambd]])                  # Linearization of the true system around the origin
+B_nom = array([[0.],[0.]])                              # Linearization of the true system around the origin
+K_p = -array([[0.]])                                    # Proportional control gains
+K_d = -array([[0.]])                                    # Derivative control gains
+A_cl = A_nom - dot(B_nom,concatenate((K_p, K_d),axis=1))
+BK = dot(B_nom,concatenate((K_p, K_d),axis=1))
+nominal_sys = LinearSystemDynamics(A=A_nom, B=B_nom)
 
 # Diffeomorphism tuning parameters:
-tune_diffeomorphism = True
-n, m = 4, 1  # Number of states and actuators
-n_search = 1000
-n_folds = 2
-diffeomorphism_model_file = 'diff_model'
-NN_parameter_file = 'scripts/NN_parameters.pickle'
-
-l2_diffeomorphism = np.linspace(0.,5., 20)
-jacobian_penalty_diffeomorphism = np.linspace(0.,1., 20)
+l2_diffeomorphism = np.linspace(0.,5e-1, 20)
+jacobian_penalty_diffeomorphism = [1e1]
 diff_n_epochs = [50, 100, 200, 500]
 diff_n_hidden_layers = [1, 2, 3, 4]
 diff_layer_width = [10, 25, 50]
@@ -107,72 +48,47 @@ diff_learn_rate = np.linspace(1e-5, 1e-1, 20)  # Fix for current architecture
 diff_learn_rate_decay = [0.8, 0.9, 0.95, 0.975, 0.99, 1.0]
 diff_dropout_prob = [0., 0.05, 0.1, 0.25, 0.5]
 
-# KEEDMD tuning parameters
-tune_keedmd = True
+n_folds = 2
+n_search = 1000
+tune_diffeomorphism = True
+diffeomorphism_model_file = 'diff_model'
+NN_parameter_file = 'scripts/NN_parameters.pickle'
+
+# EDMD models tuning parameters
 eigenfunction_max_power = 3
+n_lift_edmd_monomials = (eigenfunction_max_power + 1) ** n - 1
+n_lift_edmd_rbf = (eigenfunction_max_power + 1) ** n - 1
 l1_ratio = array([.1, .5, .7, .9, .95, .99, 1])  # Values to test
-
-# EDMD tuning parameters
-n_lift_edmd = (eigenfunction_max_power + 1) ** n - 1
-l1_edmd = 1e-2
-l1_ratio_edmd = 0.5  # 1e-2
-
-# Define true system
-system_true = InvertedPendulum(m=1., l=1., g=9.81)
-n, m = 2, 1  # Number of states and actuators
-upper_bounds = array([pi/3, 2.0])  # Upper State constraints
-lower_bounds = -upper_bounds  # Lower State constraints
-
-# Define nominal model and nominal controller:
-A_nom = array([[0., 1.], [9.81, 0.]])  # Linearization of the true system around the origin
-B_nom = array([[0.],[1.]])  # Linearization of the true system around the origin
-K_p = -array([[-19.6708]])  # Proportional control gains
-K_d = -array([[-6.3515]])  # Derivative control gains
-K = concatenate((K_p, K_d),axis=1)
-BK = dot(B_nom, K)
-A_cl = A_nom + BK
-nominal_sys = LinearSystemDynamics(A=A_nom, B=B_nom)
+tune_edmd_models = True
 
 # Simulation parameters (data collection)
-plot_traj = False  # Plot trajectories generated for data collection
-traj_origin = 'load_mat'  # gen_MPC - solve MPC to generate desired trajectories, load_mat - load saved trajectories
-Ntraj = 20  # Number of trajectories to collect data from
-dt = 1.0e-2  # Time step
-N = int(2. / dt)  # Number of time steps
-t_eval = dt * arange(N + 1)  # Simulation time points
-noise_var = 0.5  # Exploration noise to perturb controller
+Ntraj = 50                                              # Number of trajectories to collect data from
+dt = 1.0e-1                                             # Time step length
+N = int(7.5/dt)                                         # Number of time steps
+t_eval = dt * arange(N + 1)                             # Simulation time points
 
 #%%
 #! ===============================================    COLLECT DATA     ===============================================
-#* Load trajectories
 print("Collect data:")
-print(' - Simulate system with {} trajectories using PD controller...'.format(Ntraj))
-t0 = time.process_time()
+
 # Simulate system from each initial condition
-xf = zeros((2,))
-outputs = InvertedPendulumFp(system_true, xf)
-pd_controllers = PDController(outputs, K_p, K_d, noise_var)
-pd_controllers_nom = PDController(outputs, K_p, K_d, 0.)  # Duplicate of controllers with no noise perturbation
-xs, us, us_nom, ts = [], [], [], []
+print(' - Simulate system with {} trajectories using PD controller'.format(Ntraj), end =" ")
+t0 = time.process_time()
+
+xf = ones((2,))
+empty_controller = OpenLoopController(system_true, np.atleast_2d(zeros_like(t_eval)).T, t_eval)
+xs, us, ts = [], [], []
 for ii in range(Ntraj):
-    #x_0 = multiply(random.rand(2,), array([pi,4])) - array([pi/3, 2.])
-    x_0 = np.random.rand(2)
+    x_0 = np.random.uniform(-1,1,(2,))
     x_0 /= np.linalg.norm(x_0)
-    xs_tmp, us_tmp = system_true.simulate(x_0, pd_controllers, t_eval)
-    us_nom_tmp = pd_controllers_nom.eval(xs_tmp.transpose(), t_eval).transpose()
+    xs_tmp, us_tmp = system_true.simulate(x_0, empty_controller, t_eval)
     xs.append(xs_tmp)
     us.append(us_tmp)
-    us_nom.append(us_nom_tmp[:us_tmp.shape[0],:])
     ts.append(t_eval)
 
-if plot_traj:
-    for ii in range(4):
-        figure()
-        plot(ts[ii],xs[ii][:,0])
-        plot(ts[ii], xs[ii][:, 1])
-        show()
+xs, us, us_nom, ts = array(xs), array(us), array(us), array(ts) # us, us_nom all zero dummy variables
 
-xs, us, us_nom, ts = array(xs), array(us), array(us_nom), array(ts)
+print('in {:.2f}s'.format(time.process_time()-t0))
 
 # %%
 # !  ======================================     TUNE DIFFEOMORPHISM MODEL      ========================================
@@ -242,5 +158,39 @@ if tune_diffeomorphism:
 eigenfunction_basis.construct_basis(ub=upper_bounds, lb=lower_bounds)
 
 print('in {:.2f}s'.format(time.process_time() - t0))
+
 # %%
 # !  =========================================     TUNE KEEDMD MODEL      ===========================================
+if tune_edmd_models:
+    # Fit KEEDMD model:
+    print('Tuning KEEDMD...')
+    keedmd_model = Keedmd(eigenfunction_basis, n, K_p=K_p, K_d=K_d)
+    X, X_d, Z, Z_dot, _, _, t = keedmd_model.process(xs, zeros_like(xs), np.atleast_3d(us), np.atleast_3d(us_nom), ts)
+    keedmd_model.tune_fit(X, X_d, Z, Z_dot)
+
+    print('Tuning KEEDMD full A-matrix learning...')
+    keedmd_model_full = Edmd(eigenfunction_basis, n)
+    X, X_d, Z, Z_dot, _, _, t = keedmd_model_full.process(xs, zeros_like(xs), np.atleast_3d(us), np.atleast_3d(us_nom),ts)
+    keedmd_model_full.tune_fit(X, X_d, Z, Z_dot)
+
+    # Construct basis of RBFs and fit EDMD:
+    print('Tuning EDMD RBFs...')
+    rbf_centers = multiply(random.rand(n, n_lift_edmd_rbf),
+                           (upper_bounds - lower_bounds).reshape((upper_bounds.shape[0], 1))) + lower_bounds.reshape(
+        (upper_bounds.shape[0], 1))
+    rbf_basis = RBF(rbf_centers, n, gamma=2.)
+    rbf_basis.construct_basis()
+
+    edmd_model_rbf = Edmd(rbf_basis, n)
+    X, X_d, Z, Z_dot, _, _, t = edmd_model_rbf.process(xs, zeros_like(xs), np.atleast_3d(us), np.atleast_3d(us_nom), ts)
+    edmd_model_rbf.tune_fit(X, X_d, Z, Z_dot)
+
+    # Construct basis of monomials and fit EDMD:
+    print('Tuning EDMD Monomials...')
+    monomial_basis = Monomials(n, n_lift_edmd_monomials)
+    monomial_basis.construct_basis()
+
+    edmd_model_monomial = Edmd(monomial_basis, n)
+    X, X_d, Z, Z_dot, _, _, t = edmd_model_monomial.process(xs, zeros_like(xs), np.atleast_3d(us),
+                                                            np.atleast_3d(us_nom), ts)
+    edmd_model_monomial.tune_fit(X, X_d, Z, Z_dot)
