@@ -13,7 +13,6 @@ from torch.utils.data.dataset import Dataset, TensorDataset
 from torch.utils.data.dataset import random_split
 from torch.utils.data.dataloader import DataLoader
 from torch.autograd.gradcheck import zero_gradients
-from torchviz import make_dot
 
 class KoopmanEigenfunctions(BasisFunctions):
     """
