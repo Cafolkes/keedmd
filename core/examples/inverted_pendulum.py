@@ -110,31 +110,32 @@ noise_var = 0.5                                         # Exploration noise to p
 # Koopman eigenfunction parameters
 eigenfunction_max_power = 5                             # Max power of variables in eigenfunction products
 l2_diffeomorphism = 0.0                                 # l2 regularization strength
-jacobian_penalty_diffeomorphism = 0.0                   # Estimator jacobian regularization strength
-diff_n_epochs = 200                                     # Number of epochs
+jacobian_penalty_diffeomorphism = 1e1                  # Estimator jacobian regularization strength
+diff_n_epochs = 500                                     # Number of epochs
 diff_train_frac = 0.9                                   # Fraction of data to be used for training
 diff_n_hidden_layers = 3                                # Number of hidden layers
-diff_layer_width = 100                                  # Number of units in each layer
-diff_batch_size = 16                                    # Batch size
+diff_layer_width = 50                                  # Number of units in each layer
+diff_batch_size = 32                                    # Batch size
 diff_learn_rate = 0.06842                               # Leaning rate
-diff_learn_rate_decay = 0.99                            # Learning rate decay
+diff_learn_rate_decay = 0.95                            # Learning rate decay
 diff_dropout_prob = 0.25                                # Dropout rate
 
 # KEEDMD parameters
-l1_pos_keedmd = 8.195946542380519e-07                   # l1 regularization strength for position states
+l1_pos_keedmd = 2.959346801305389e-05                   # l1 regularization strength for position states
 l1_pos_ratio_keedmd = 1.0                               # l1-l2 ratio for position states
-l1_vel_keedmd = 0.008926319071231337                    # l1 regularization strength for velocity states
+l1_vel_keedmd = 0.01699292625990855                     # l1 regularization strength for velocity states
 l1_vel_ratio_keedmd = 1.0                               # l1-l2 ratio for velocity states
-l1_eig_keedmd = 0.0010856707261463175                   # l1 regularization strength for eigenfunction states
+l1_eig_keedmd = 0.07540177706202959                     # l1 regularization strength for eigenfunction states
 l1_eig_ratio_keedmd = 0.1                               # l1-l2 ratio for eigenfunction states
 
 # EDMD parameters (benchmark to compare against)
 n_lift_edmd = (eigenfunction_max_power+1)**n-1          # Lifting dimension EDMD (same number as for KEEDMD)
-l1_edmd = 0.015656845050848606                          # l1 regularization strength
+l1_edmd = 0.18986906539015286                           # l1 regularization strength
 l1_ratio_edmd = 1.0                                     # l1-l2 ratio
+a
 
 # Open loop evaluation parameters
-Ntraj_pred = 40                                         # Number of trajectories to use to evaluate open loop performance
+Ntraj_pred = 20                                         # Number of trajectories to use to evaluate open loop performance
 noise_var_pred = 0.5                                    # Exploration noise to perturb controller
 traj_bounds_pred = [2, 0.5, 0.1, 0.1]                   # State constraints, [x, theta, x_dot, theta_dot]
 
@@ -201,7 +202,8 @@ print(' - Fitting KEEDMD model...', end =" ")
 t0 = time.process_time()
 keedmd_model = Keedmd(eigenfunction_basis, n, l1_pos=l1_pos_keedmd, l1_ratio_pos=l1_pos_ratio_keedmd, l1_vel=l1_vel_keedmd, l1_ratio_vel=l1_vel_ratio_keedmd, l1_eig=l1_eig_keedmd, l1_ratio_eig=l1_eig_ratio_keedmd, K_p=K_p, K_d=K_d)
 X, X_d, Z, Z_dot, U, U_nom, t = keedmd_model.process(xs, zeros_like(xs), us, us_nom, ts)
-keedmd_model.fit(X, X_d, Z, Z_dot, U, U_nom)
+#keedmd_model.fit(X, X_d, Z, Z_dot, U, U_nom)
+keedmd_model.tune_fit(X, X_d, Z, Z_dot, U, U_nom, l1_ratio=l1_ratio_vals)
 
 print('in {:.2f}s'.format(time.process_time()-t0))
 
@@ -220,7 +222,8 @@ print(' - Fitting EDMD model...', end =" ")
 t0 = time.process_time()
 edmd_model = Edmd(rbf_basis, n, l1=l1_edmd, l1_ratio=l1_ratio_edmd)
 X, X_d, Z, Z_dot, U, U_nom, t = edmd_model.process(xs, zeros_like(xs), us, us_nom, ts)
-edmd_model.fit(X, X_d, Z, Z_dot, U, U_nom)
+#edmd_model.fit(X, X_d, Z, Z_dot, U, U_nom)
+edmd_model.tune_fit(X, X_d, Z, Z_dot, U, U_nom, l1_ratio=l1_ratio_vals)
 
 print('in {:.2f}s'.format(time.process_time()-t0))
 

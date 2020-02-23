@@ -161,15 +161,21 @@ def calc_koopman_modes(A, output, x_0, t_eval):
 
 def calc_reduced_mdl(model):
     A = model.A
-    useful_inds = np.argwhere(np.abs(A[:2,:]) > 0)
+    C = model.C
+    useful_rows = np.argwhere(np.abs(C) > 0)
+    useful_rows = np.unique(useful_rows[:,1])
+    useful_inds = np.argwhere(np.abs(A[useful_rows,:]) > 0)
     useful_cols = np.unique(useful_inds[:,1])
+    useful_coords = np.unique(np.concatenate((useful_rows, useful_cols)))
 
-    A_red = model.A[useful_cols, :]
-    A_red = A_red[:, useful_cols]
+
+    A_red = model.A[useful_coords, :]
+    A_red = A_red[:, useful_coords]
     if model.B is not None:
-        B_red = model.B[useful_cols,:]
+        B_red = model.B[useful_coords,:]
     else:
         B_red = None
+    C_red = C[:,useful_coords]
 
-    return A_red, B_red, useful_cols
+    return A_red, B_red, C_red, useful_coords
 

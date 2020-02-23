@@ -9,7 +9,7 @@ class Edmd():
     Base class for edmd-type methods. Implements baseline edmd with the possible addition of l1 and/or l2 regularization.
     Overload fit for more specific methods.
     '''
-    def __init__(self, basis=BasisFunctions(0,0), system_dim=0, l1=0., l1_ratio=0.5, acceleration_bounds=None, override_C=True):
+    def __init__(self, basis=BasisFunctions(0,0), system_dim=0, l1=0., l1_ratio=0.5, acceleration_bounds=None, override_C=True, add_ones=True, add_state=True):
         self.A = None
         self.B = None
         self.C = None
@@ -21,9 +21,17 @@ class Edmd():
         self.m = None
         self.override_C = override_C
         self.acceleration_bounds = acceleration_bounds #(nx1)
-        self.Z_std = ones((basis.Nlift+basis.n+1,1))
+        self.add_ones=add_ones
+        self.add_state=add_state
 
-    def fit(self, X, X_d, Z, Z_dot, U, U_nom):
+        lift_dim = basis.Nlift
+        if self.add_ones:
+            lift_dim += 1
+        if self.add_state:
+            lift_dim += basis.n
+        self.Z_std = ones((lift_dim, 1))
+
+    def fit(self, X, X_d, Z, Z_dot, U=None, U_nom=None, X_dot=None):
         """
         Fit a EDMD object with the given basis function
 
@@ -46,12 +54,18 @@ class Edmd():
         if self.l1 == 0.:
             # Construct EDMD matrices as described in M. Korda, I. Mezic, "Linear predictors for nonlinear dynamical systems: Koopman operator meets model predictive control":
             W = concatenate((Z_dot, X), axis=0)
-            V = concatenate((Z, U), axis=0)
+            if U is None and U_nom is None:
+                V = Z
+            else:
+                V = concatenate((Z, U), axis=0)
             VVt = dot(V,V.transpose())
             WVt = dot(W,V.transpose())
             M = dot(WVt, linalg.pinv(VVt))
             self.A = M[:self.n_lift,:self.n_lift]
-            self.B = M[:self.n_lift,self.n_lift:]
+            if U is None and U_nom is None:
+                self.B = None
+            else:
+                self.B = M[:self.n_lift,self.n_lift:]
             self.C = M[self.n_lift:,:self.n_lift]
 
             if self.override_C:
@@ -85,7 +99,12 @@ class Edmd():
                 self.C[:self.n,:self.n] = eye(self.n)
                 self.C = multiply(self.C, self.Z_std.transpose())
             else:
-                raise Exception('Warning: Learning of C not implemented for regularized regression.')
+                input = Z.T
+                output = X.T
+                reg_model_C = linear_model.ElasticNet(alpha=self.l1, l1_ratio=self.l1_ratio, fit_intercept=False,
+                                                    normalize=False, selection='random', max_iter=1e5)
+                reg_model_C.fit(input, output)
+                self.C = reg_model_C.coef_
 
     def process(self, X, X_d, U, U_nom, t):
         """process filter data
@@ -109,7 +128,7 @@ class Edmd():
 
         Ntraj = X.shape[0]  # Number of trajectories in dataset
         Z = array([self.lift(X[ii,:,:].transpose(), X[ii,:,:].transpose()) for ii in range(Ntraj)])  # Lift x
-        Z_old = copy(Z)  #TODO: Remove after debug
+        #Z_old = copy(Z)  #TODO: Remove after debug
         # Vectorize Z- data
         n_data = Z.shape[0] * Z.shape[1]
         self.n_lift = Z.shape[2]
@@ -122,9 +141,9 @@ class Edmd():
         self.Z_std[argwhere(self.Z_std == 0.)] = 1.
         self.Z_std[:self.n] = 1.  # Do not rescale states. Note: Assumes state is added to beginning of observables
         self.Z_std = self.Z_std.reshape((self.Z_std.shape[0], 1))
-        self.Z_std = ones_like(self.Z_std)  #TODO: Remove after debug
-        #Z_norm = array([divide(Z[ii,:,:], self.Z_std.transpose()) for ii in range(Z.shape[0])])
-        Z_norm = Z  #TODO: Remove after debug
+        #self.Z_std = ones_like(self.Z_std)  #TODO: Remove after debug
+        Z_norm = array([divide(Z[ii,:,:], self.Z_std.transpose()) for ii in range(Z.shape[0])])
+        #Z_norm = Z  #TODO: Remove after debug
 
         Z_dot = array([differentiate_vec(Z_norm[ii,:,:],t[ii,:]) for ii in range(Ntraj)])  #Numerical differentiate lifted state
 
@@ -136,25 +155,6 @@ class Edmd():
                                                                         U.transpose().reshape((self.m,n_data),order=order), \
                                                                         U_nom.transpose().reshape((self.m, n_data),order=order), \
                                                                         t.transpose().reshape((1,n_data),order=order)
-
-        '''import matplotlib.pyplot as plt
-        ind = 4
-        plt.figure()
-        plt.subplot(1,1,1)
-        plt.plot(t[0, :200], Z_flat[ind, :200], label='Z_3')
-        plt.plot(t[0, :200], Z_dot_flat[ind, :200], label='$\\dot{Z}_1$')
-        plt.plot(t[0, :200], Z_old[0, :200, ind], label='Unnormalized Z_3')
-        plt.grid()
-        plt.legend()
-        #plt.title('Position derivative')
-        #plt.subplot(2, 1, 2)
-        #plt.plot(t[0, :200], Z_flat[3, :200], label='Z_4')
-        #plt.plot(t[0, :200], Z_dot_flat[1, :200], label='$\\dot{Z}_2$')
-        #plt.plot(t[0, :200], Z_old[0, :200, 3], label='Unnormalized Z_4')
-        #plt.grid()
-        #plt.legend()
-        #plt.title('Angle derivative')
-        plt.show()'''
 
         return X_flat, X_d_flat, Z_flat, Z_dot_flat, U_flat, U_nom_flat, t_flat
 
@@ -171,8 +171,14 @@ class Edmd():
         Z = self.basis.lift(X, X_d)
         if not X.shape[1] == Z.shape[1]:
             Z = Z.transpose()
-        one_vec = ones((1,Z.shape[1]))
-        output_norm = divide(concatenate((X,one_vec, Z),axis=0),self.Z_std)
+
+        if self.add_ones:
+            one_vec = ones((1, Z.shape[1]))
+            Z = concatenate((one_vec, Z), axis=0)
+        if self.add_state:
+            Z = concatenate((X, Z), axis=0)
+
+        output_norm = divide(Z, self.Z_std)
         return output_norm.transpose()
 
     def predict(self,X, U):

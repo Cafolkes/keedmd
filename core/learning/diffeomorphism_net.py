@@ -36,11 +36,6 @@ class DiffeomorphismNet(nn.Module):
             h.append(F.relu(self.fc_hidden[ii](h[-1])))
         h_out = self.fc_out(h[-1])
 
-        #import torch
-        #test_data = 0
-        #test_dim = 0
-        #print('Numerical jacobian: ', torch.autograd.grad(h_out[test_data,test_dim], xt, retain_graph=True, allow_unused=True)[0][0,:self.n])
-
         # Define diffeomorphism Jacobian model:
         h_grad = self.fc_in.weight
         h_grad = mm(self.fc_hidden[0].weight, h_grad)
@@ -53,9 +48,6 @@ class DiffeomorphismNet(nn.Module):
             h_grad = delta * h_grad
 
         h_grad = bmm(self.fc_out.weight.unsqueeze(0).expand(cur_batch_size,self.n,self.layer_width), h_grad)
-        #print('Gradient network: ', h_grad[test_dim,test_dim,:self.n])
-        #print('In network: ', h_grad.shape, xdot.unsqueeze(-1).shape)
-        #h_dot = bmm(h_grad[:,:,:self.n], xtdot[:,:self.n].unsqueeze(-1))
         h_dot = bmm(h_grad, xtdot.unsqueeze(-1))
         h_dot = h_dot.squeeze(-1)
 

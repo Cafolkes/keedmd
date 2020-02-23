@@ -79,6 +79,7 @@ class KoopmanEigenfunctions(BasisFunctions):
 
     def construct_scaling_function(self,ub,lb):
         scale_factor = (ub-lb).reshape((self.n,1))
+        #scale_factor = np.ones_like(scale_factor)  #TODO: Remove if scaling factor desired
         scale_func = lambda q: divide(q, scale_factor)
 
         return scale_func
@@ -89,10 +90,10 @@ class KoopmanEigenfunctions(BasisFunctions):
         self.diffeomorphism_model.eval()
         input = npconcatenate((q, q_d),axis=1)
         diff_pred = self.diffeomorphism_model.predict(from_numpy(input))
+        #diff_pred = np.concatenate((zeros((1,1)), [-1/(-0.4+1)*q[:,0]**2]), axis=1)  # TODO: Remove (analytic diffeomorphism)
+        return (q + diff_pred).T
 
-        return (q + diff_pred).transpose()
-
-    def build_diffeomorphism_model(self, jacobian_penalty=1., n_hidden_layers = 2, layer_width=50, batch_size = 64, dropout_prob=0.1):
+    def build_diffeomorphism_model(self, jacobian_penalty=1., n_hidden_layers=2, layer_width=50, batch_size=64, dropout_prob=0.1):
         """build_diffeomorphism_model 
         
         Keyword Arguments:
@@ -232,7 +233,7 @@ class KoopmanEigenfunctions(BasisFunctions):
             if verbose:
                 print(' - Epoch: ',i,' Training loss:', format(losses[-1], '08f'), ' Validation loss:', format(val_losses[-1], '08f'))
                 print('Improvement metric (for early stopping): ', sum(abs(array(val_losses[-min(3,len(val_losses)):])-val_losses[-1]))/(3*val_losses[-min(3,len(val_losses))]))
-            if i > n_epochs/4 and sum(abs(array(val_losses[-min(3,len(val_losses)):])-val_losses[-1]))/(3*val_losses[-min(3,len(val_losses))]) < 0.05:
+            if i > n_epochs/4 and sum(abs(array(val_losses[-min(3,len(val_losses)):])-val_losses[-1]))/(3*val_losses[-min(3,len(val_losses))]) < 0.01:
                 #print('Early stopping activated')
                 break
 

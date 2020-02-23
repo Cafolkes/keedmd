@@ -55,7 +55,7 @@ K_d = -array([[8.0734, 7.4294]])                    # Derivative control gains
 nominal_sys = LinearSystemDynamics(A=A_nom, B=B_nom)
 
 # Simulation parameters (data collection)
-Ntraj = 40                                          # Number of trajectories to collect data from
+Ntraj = 20                                          # Number of trajectories to collect data from
 dt = 1.0e-2                                         # Time step length
 N = int(2./dt)                                      # Number of time steps
 t_eval = dt * arange(N + 1)                         # Simulation time points
@@ -69,30 +69,31 @@ umax = 5                                            # MPC actuation constraint
 MPC_horizon = 2 # [s]                               # MPC time horizon
 
 # Koopman eigenfunction parameters
-eigenfunction_max_power = 2                         # Max power of variables in eigenfunction products
-l2_diffeomorphism = 0.0                             # l2 regularization strength
-jacobian_penalty_diffeomorphism = 4.47368           # Estimator jacobian regularization strength
-diff_n_epochs = 250                                 # Number of epochs
-diff_train_frac = 0.9                               # Fraction of data to be used for training
-diff_n_hidden_layers = 1                            # Number of hidden layers
-diff_layer_width = 10                               # Number of units in each layer
-diff_batch_size = 8                                 # Batch size
-diff_learn_rate = 0.01579                           # Leaning rate
-diff_learn_rate_decay = 0.99                        # Learning rate decay
-diff_dropout_prob = 0.25                            # Dropout rate
+eigenfunction_max_power = 5                             # Max power of variables in eigenfunction products
+l2_diffeomorphism = 0.0                                 # l2 regularization strength
+jacobian_penalty_diffeomorphism = 1e1                  # Estimator jacobian regularization strength
+diff_n_epochs = 500                                     # Number of epochs
+diff_train_frac = 0.9                                   # Fraction of data to be used for training
+diff_n_hidden_layers = 3                                # Number of hidden layers
+diff_layer_width = 50                                  # Number of units in each layer
+diff_batch_size = 16                                    # Batch size
+diff_learn_rate = 0.06842                               # Leaning rate
+diff_learn_rate_decay = 0.99                            # Learning rate decay
+diff_dropout_prob = 0.25                                # Dropout rate
 
 # KEEDMD parameters
-l1_pos_keedmd = 9.85704592e-5                       # l1 regularization strength for position states
-l1_pos_ratio_keedmd = 0.1                           # l1-l2 ratio for position states
-l1_vel_keedmd = 0.00667665                          # l1 regularization strength for velocity states
-l1_vel_ratio_keedmd = 1.0                           # l1-l2 ratio for velocity states
-l1_eig_keedmd = 0.00135646                          # l1 regularization strength for eigenfunction states
-l1_eig_ratio_keedmd = 0.1                           # l1-l2 ratio for eigenfunction states
+l1_pos_keedmd = 0.008655058865847103                   # l1 regularization strength for position states
+l1_pos_ratio_keedmd = 0.5                               # l1-l2 ratio for position states
+l1_vel_keedmd = 0.021946759346411642                     # l1 regularization strength for velocity states
+l1_vel_ratio_keedmd = 1.0                               # l1-l2 ratio for velocity states
+l1_eig_keedmd = 0.5440087521003517                     # l1 regularization strength for eigenfunction states
+l1_eig_ratio_keedmd = 0.1                               # l1-l2 ratio for eigenfunction states
 
 # EDMD parameters (benchmark to compare against)
 n_lift_edmd = (eigenfunction_max_power+1)**n-1      # Lifting dimension EDMD (same number as for KEEDMD)
 l1_edmd = 0.00687693796                             # l1 regularization strength
 l1_ratio_edmd = 1.00                                # l1-l2 ratio
+l1_ratio_vals = array([0.1, 0.5, 0.75, 0.9, 0.95, 0.99, 1.0])
 
 # Open loop evaluation parameters
 Ntraj_pred = 40                                     # Number of trajectories to use to evaluate open loop performance
@@ -183,7 +184,8 @@ print(' - Fitting KEEDMD model...', end =" ")
 t0 = time.process_time()
 keedmd_model = Keedmd(eigenfunction_basis, n, l1_pos=l1_pos_keedmd, l1_ratio_pos=l1_pos_ratio_keedmd, l1_vel=l1_vel_keedmd, l1_ratio_vel=l1_vel_ratio_keedmd, l1_eig=l1_eig_keedmd, l1_ratio_eig=l1_eig_ratio_keedmd, K_p=K_p, K_d=K_d)
 X, X_d, Z, Z_dot, U, U_nom, t = keedmd_model.process(xs, q_d, us, us_nom, ts)
-keedmd_model.tune_fit(X, X_d, Z, Z_dot, U, U_nom)
+keedmd_model.fit(X, X_d, Z, Z_dot, U, U_nom)
+#keedmd_model.tune_fit(X, X_d, Z, Z_dot, U, U_nom, l1_ratio=l1_ratio_vals)
 
 print('in {:.2f}s'.format(time.process_time()-t0))
 
@@ -203,6 +205,7 @@ t0 = time.process_time()
 edmd_model = Edmd(rbf_basis, n, l1=l1_edmd, l1_ratio=l1_ratio_edmd)
 X, X_d, Z, Z_dot, U, U_nom, t = edmd_model.process(xs, q_d, us, us_nom, ts)
 edmd_model.fit(X, X_d, Z, Z_dot, U, U_nom)
+#edmd_model.tune_fit(X, X_d, Z, Z_dot, U, U_nom, l1_ratio=l1_ratio_vals)
 
 print('in {:.2f}s'.format(time.process_time()-t0))
 
@@ -263,7 +266,7 @@ for ii in range(Ntraj_pred):
 
 # Calculate error statistics
 mse_keedmd = array([(xs_keedmd[ii] - xs_pred[ii])**2 for ii in range(Ntraj_pred)])
-mse_edmd = array([(xs_edmd[ii] - xs_pred[ii])**2 for ii in range(Ntraj_pred)])
+mse_edmd = array([(xs_edmd[ii] - xs_pred[ii])**2 for iqi in range(Ntraj_pred)])
 mse_nom = array([(xs_nom[ii] - xs_pred[ii])**2 for ii in range(Ntraj_pred)])
 e_keedmd = array(np.abs([xs_keedmd[ii] - xs_pred[ii] for ii in range(Ntraj_pred)]))
 e_edmd = array(np.abs([xs_edmd[ii] - xs_pred[ii] for ii in range(Ntraj_pred)]))
