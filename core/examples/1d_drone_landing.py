@@ -138,11 +138,12 @@ f2 = plt.figure(figsize=(12,9))
 gs2 = gridspec.GridSpec(3,3, figure=f2)
 
 # - Plot evolution of MPC cost:
+y_mpc = [c/mpc_cost_ep[0] for c in mpc_cost_ep]
 b0 = f2.add_subplot(gs2[0,:])
-b0.plot(x_ep_plt, mpc_cost_ep)
+b0.plot(x_ep_plt, y_mpc)
 b0.set_title('MPC Cost Evolution')
 b0.set_xlabel('Episode')
-b0.set_ylabel('MPC Cost')
+b0.set_ylabel('Normalized MPC Cost')
 b0.xaxis.set_major_locator(MaxNLocator(integer=True))
 b0.grid()
 
