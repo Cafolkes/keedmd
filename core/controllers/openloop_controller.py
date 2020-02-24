@@ -27,4 +27,4 @@ class OpenLoopController(Controller):
         Returns:
             control action -- numpy array [Nu,]
         """
-        return array([interp(t, self.t_open_loop.flatten(), self.u_open_loop[:,ii].flatten()) for ii in range(self.m)]).squeeze()
+        return array([interp(t, self.t_open_loop.flatten(), self.u_open_loop[:,ii].flatten()) for ii in range(self.m)]).flatten()

@@ -6,7 +6,7 @@ import time
 
 import numpy as np
 import scipy as sp
-import scipy.signal as signal
+import scipy.io as sio
 import scipy.sparse as sparse
 import osqp
 import matplotlib.pyplot as plt
@@ -26,7 +26,7 @@ def block_diag(M,n):
   return sparse.block_diag([M for i in range(n)])
 
 
-class MPCControllerDense(Controller):
+class RobustMpcDense(Controller):
     """
     Class for controllers MPC.
 
@@ -75,8 +75,7 @@ class MPCControllerDense(Controller):
             self.edmd_object = edmd_object
         else:
             self.C = sparse.eye(ns)
-
-        lin_model_d = signal.cont2discrete((Ac,Bc,self.C,zeros((ns,1))),dt)
+        lin_model_d = sp.signal.cont2discrete((Ac,Bc,self.C,zeros((ns,1))),dt)
         Ad = sparse.csc_matrix(lin_model_d[0]) #TODO: If bad behavior, delete this
         Bd = sparse.csc_matrix(lin_model_d[1]) #TODO: If bad behavior, delete this
         self.plotMPC = plotMPC
@@ -375,7 +374,7 @@ class MPCControllerDense(Controller):
 
         self.run_time = np.append(self.run_time,self._osqp_result.info.run_time)
 
-        return self._osqp_result.x[:nu]
+        return  self._osqp_result.x[:nu]
 
     def parse_result(self,x,u):
         """parse_result obtain state from MPC optimization
