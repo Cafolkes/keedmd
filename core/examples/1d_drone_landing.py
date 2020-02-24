@@ -91,7 +91,7 @@ x_ep, xd_ep, u_ep, traj_ep, B_ep, t_ep = np.array(x_ep), np.array(xd_ep), np.arr
 
 # Plot evolution of ensembles of B and predicted trajectories for each episode:
 f1 = plt.figure(figsize=(12,6))
-gs1 = gridspec.GridSpec(3,3, figure=f1)
+gs1 = gridspec.GridSpec(2,3, figure=f1)
 
 # - Plot evolution of B ensemble:
 n_B = B_ep.shape[1]
@@ -118,7 +118,7 @@ a0.grid()
 plot_ep = [0, int((N_ep-1)/2), N_ep-1]
 a_lst = []
 for ii in range(3):
-    a_lst.append(f1.add_subplot(gs1[1:, ii]))
+    a_lst.append(f1.add_subplot(gs1[1, ii]))
     a_lst[ii].plot([t_eval[0], t_eval[-1]], [ground_altitude, ground_altitude], '--r', lw=2, label='Ground constraint')
     a_lst[ii].plot(t_eval, traj_ep[plot_ep[ii], 0, 0, :], label='Min B')
     a_lst[ii].plot(t_eval, traj_ep[plot_ep[ii], 1, 0, :], label='Mid B')
@@ -134,8 +134,8 @@ f1.savefig('core/examples/results/b_ensemble.pdf', format='pdf', dpi=2400)
 
 
 # Plot MPC cost and executed trajectory every episode:
-f2 = plt.figure(figsize=(12,8))
-gs2 = gridspec.GridSpec(5,3, figure=f2)
+f2 = plt.figure(figsize=(12,9))
+gs2 = gridspec.GridSpec(3,3, figure=f2)
 
 # - Plot evolution of MPC cost:
 b0 = f2.add_subplot(gs2[0,:])
@@ -149,7 +149,7 @@ b0.grid()
 # - Plot executed trajectories and control effort for each episode:
 b1_lst, b2_lst = [], []
 for ii in range(3):
-    b1_lst.append(f2.add_subplot(gs2[1:3, ii]))
+    b1_lst.append(f2.add_subplot(gs2[1, ii]))
     b1_lst[ii].plot([t_eval[0], t_eval[-1]], [ground_altitude, ground_altitude], '--r', lw=2, label='Ground constraint')
     b1_lst[ii].plot(t_eval, x_ep[plot_ep[ii], :, 0], label='z')
     b1_lst[ii].fill_between(t_eval, ref[0,:], x_ep[plot_ep[ii], :, 0], alpha=0.2)
@@ -162,7 +162,7 @@ for ii in range(3):
     b1_lst[ii].set_ylabel('z, $\dot{z}$ (m, m/s)')
     b1_lst[ii].grid()
 
-    b2_lst.append(f2.add_subplot(gs2[3:, ii]))
+    b2_lst.append(f2.add_subplot(gs2[2, ii]))
     b2_lst[ii].plot(t_eval[:-1], u_ep[plot_ep[ii], :, 0], label='T')
     b2_lst[ii].plot([t_eval[0], t_eval[-2]], [umax+T_hover, umax+T_hover], '--r', lw=2, label='Max thrust')
     b2_lst[ii].fill_between(t_eval[:-1], np.zeros_like(u_ep[plot_ep[ii], :, 0]), u_ep[plot_ep[ii], :, 0], alpha=0.2)
