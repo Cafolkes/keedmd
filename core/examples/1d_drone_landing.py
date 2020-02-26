@@ -9,8 +9,8 @@ from matplotlib import gridspec
 import numpy as np
 
 #%%
+print("Starting 1D Drone Landing Simulation..")
 #! ===============================================   SET PARAMETERS    ================================================
-
 # Define system parameters of the drone:
 mass = 1                                                    # Drone mass (kg)
 rotor_rad = 0.08                                            # Rotor radius (m)
@@ -25,14 +25,13 @@ system = OneDimDrone(mass, rotor_rad, drag_coeff, air_dens, area, gravity, groun
 # Define initial linearized model and ensemble of Bs (linearized around hover):
 A = np.array([[0., 1.], [0., 0.]])
 B_mean = np.array([[0.],[1/mass]])
-B_ensemble = [B_mean-np.array([[0.],[0.5]]), B_mean, B_mean+np.array([[0.],[0.5]])]
 
 # Define simulation parameters:
-z_0 = np.array([2., 0.])                                    # Initial position
+z_0 = np.array([4., 0.])                                    # Initial position
 dt = 1e-2                                                   # Time step length
 t_max = 2.                                                  # End time (sec)
 t_eval = np.linspace(0, t_max, int(t_max/dt))               # Simulation time points
-N_ep = 21                                                   # Number of episodes
+N_ep = 5                                                   # Number of episodes
 
 # Model predictive controller parameters:
 Q = np.array([[1e4, 0.], [0., 1.]])
@@ -46,27 +45,36 @@ xmax=np.array([10., 10.])
 ref = np.array([[ground_altitude+0.01 for _ in range(N_steps+1)],
                 [0. for _ in range(N_steps+1)]])
 
+
+#! Filter Parameters:
+eta = 0.1
+Nb = 3
+B_ensemble = np.stack([B_mean-np.array([[0.],[0.5]]), B_mean, B_mean+np.array([[0.],[0.5]])],axis=2)
+
+B_ensemble_list = [B_mean-np.array([[0.],[0.5]]), B_mean, B_mean+np.array([[0.],[0.5]])]
 #%%
 #! ===============================================   RUN EXPERIMENT    ================================================
-
-inverse_kalman_filter = InverseKalmanFilter(B_ensemble)
+true_sys = LinearSystemDynamics(A, B_mean)
+inverse_kalman_filter = InverseKalmanFilter(A,B_mean, eta, B_ensemble  )
 
 x_ep, xd_ep, u_ep, traj_ep, B_ep, mpc_cost_ep, t_ep = [], [], [], [], [], [], []
-B_ep.append(B_ensemble)
+# B_ensemble [Ns,Nu,Ne] numpy array
+B_ep.append(B_ensemble) # B_ep[N_ep] of numpy array [Ns,Nu,Ne]
+
 
 for ep in range(N_ep):
-
+    print(f"Episode {ep}")
     # Calculate predicted trajectories for each B in the ensemble:
     traj_ep_tmp = []
-    for B in B_ep[-1]:
-        lin_dyn = LinearSystemDynamics(A, B)
+    for i in range(Nb):
+        lin_dyn = LinearSystemDynamics(A, B_ensemble[:,:,i])
         ctrl_tmp = MPCController(lin_dyn, N_steps, dt, umin, umax, xmin, xmax, Q, R, QN, ref)
         ctrl_tmp.eval(z_0, 0)
         traj_ep_tmp.append(ctrl_tmp.parse_result())
     traj_ep.append(traj_ep_tmp)
 
     # Design robust MPC with current ensemble of Bs and execute experiment:
-    lin_dyn = LinearSystemDynamics(A, B_ep[-1][1])
+    lin_dyn = LinearSystemDynamics(A, B_ep[-1][:,:,1])
     controller = MPCController(lin_dyn, N_steps, dt, umin, umax, xmin, xmax, Q, R, QN, ref)  # TODO: Implement Robust MPC
     x_tmp, u_tmp = system.simulate(z_0, controller, t_eval)
     x_ep.append(x_tmp)
@@ -94,16 +102,17 @@ f1 = plt.figure(figsize=(12,6))
 gs1 = gridspec.GridSpec(2,3, figure=f1)
 
 # - Plot evolution of B ensemble:
-n_B = B_ep.shape[1]
+n_B = B_ep[0].shape[2]
 x_ensemble, y_ensemble = [], []
 x_ep_plt, y_min, y_max = [], [], []
 for ep in range(N_ep):
     x_ep_plt.append(ep)
-    y_min.append(B_ep[ep,0,1,0])
-    y_max.append(B_ep[ep,n_B-1,1,0])
+    y_min.append(B_ep[ep][1,0,0])
+    print(f"min {B_ep[ep][1,0,0]}, max {B_ep[ep][1,0,n_B-1]}")
+    y_max.append(B_ep[ep][1,0,n_B-1]) # B_ep[N_ep] of numpy array [Ns,Nu,Ne]
     for ii in range(n_B):
         x_ensemble.append(ep)
-        y_ensemble.append(B_ep[ep,ii,1,0])
+        y_ensemble.append(B_ep[ep][1,0,ii])
 
 a0 = f1.add_subplot(gs1[0,:])
 a0.scatter(x_ensemble, y_ensemble)
