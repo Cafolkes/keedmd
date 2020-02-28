@@ -47,15 +47,16 @@ ref = np.array([[ground_altitude+0.01 for _ in range(N_steps+1)],
 
 
 #! Filter Parameters:
-eta = 0.1
-Nb = 3
+eta = 0.1**2 # measurement covariance
+Nb = 3 # number of ensemble
+nk = 5 # number of steps for multi-step prediction
 B_ensemble = np.stack([B_mean-np.array([[0.],[0.5]]), B_mean, B_mean+np.array([[0.],[0.5]])],axis=2)
 
 B_ensemble_list = [B_mean-np.array([[0.],[0.5]]), B_mean, B_mean+np.array([[0.],[0.5]])]
 #%%
 #! ===============================================   RUN EXPERIMENT    ================================================
 true_sys = LinearSystemDynamics(A, B_mean)
-inverse_kalman_filter = InverseKalmanFilter(A,B_mean, eta, B_ensemble  )
+inverse_kalman_filter = InverseKalmanFilter(A,B_mean, eta, B_ensemble, dt, nk )
 
 x_ep, xd_ep, u_ep, traj_ep, B_ep, mpc_cost_ep, t_ep = [], [], [], [], [], [], []
 # B_ensemble [Ns,Nu,Ne] numpy array

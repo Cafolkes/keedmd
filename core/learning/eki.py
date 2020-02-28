@@ -103,6 +103,21 @@ class EnKF():
         return self.measurament_update(x_plus,P_plus,y)
     
 class EKI():
+    """Implements the Inverse Kalman Inversion. 
+
+    It uses the model 
+
+            y = G(theta) + eta
+
+    where theta is a parametrization of your dynamics, eta is a gaussian noise, and G(theta)  is the forward function
+    to compute the expected measurement. The
+
+    Dimensions: 
+        u: number of parameters to estimate
+        Ne: number of ensemble members
+        Ny: number of measurements
+
+    """
     
     def __init__(self, u_0, G, eta_0, true_theta, maxiter, max_error):
         """
@@ -125,8 +140,7 @@ class EKI():
 
         self.n  = u_0.shape[0]
         self.Ne = u_0.shape[1]
-        
-        #xe = np.zeros((self.n,self.Ne))
+
         
         
     def solveIP(self,xe,Y):
@@ -140,14 +154,15 @@ class EKI():
         Returns:
             numpy array [n,Ne]  -- next ensemble
         """
-        
+        Ny = Y.shape[0]
+
         R = np.diag(np.ones(Y.size)*self.eta_0)
         xepast = xe
 
         for j in range(self.maxiter):
             
             ubar = np.mean(xe,axis=1,keepdims=True)
-            Gxe = np.zeros((Y.shape[0],self.Ne))
+            Gxe = np.zeros((Ny,self.Ne))
             for i in range(self.Ne):
                 Gxe[:,i] = self.G(xe[:,i])
             gbar = np.mean(Gxe,axis=1,keepdims=True)
@@ -169,31 +184,3 @@ class EKI():
             #if (abs(error) < self.max_error):
             #    break
         return xe
-        
-
-class EKIk():
-    """EnKF 
-    Dimensions:
-    - n: size of the state space of u
-    - m: size of the measurements
-    - Ne: number of ensamble members
-
-    """
-    def __init__(self, n, Ne, G, true_theta, eta_0, use_data, maxiter=20, max_error=1e-10, u_0=None):
-        self.Ne = Ne
-        self.n = n
-        self.use_data = use_data
-        self.true_theta = true_theta
-
-        if u_0 is None:
-            u_0 = np.random.randn(self.n,self.Ne)
-
-        self.eki = EKI(u_0, G, eta_0, true_theta=true_theta, maxiter=maxiter, max_error=max_error)
-
-    def update(self, u, y):
-        if (self.use_data(y)):
-            unew = self.eki.solveIP(u,y)
-        else:
-            print(" - Skip EKI")
-            unew = u
-        return unew
