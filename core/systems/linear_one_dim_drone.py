@@ -4,7 +4,7 @@ from scipy.integrate import solve_ivp
 from core.dynamics import RoboticDynamics
 
 
-class OneDimDrone(RoboticDynamics):
+class LinearOneDimDrone(RoboticDynamics):
 
     def __init__(self, mass, rotor_rad, drag_coeff, air_dens, area, gravity, ground_altitude, T_hover):
         """One dimensional drone model
@@ -34,13 +34,13 @@ class OneDimDrone(RoboticDynamics):
         return array([[self.mass]])
 
     def C(self, q, q_dot):
-        return array([[0.]])
+        return array([[[0.]]])
 
     def G(self, q):
         return array([self.mass*self.gravity])
 
     def B(self, q):
-        return array([1.])
+        return array([[1.]])
 
     def simulate(self, x_0, controller, ts, processed=True, atol=1e-6, rtol=1e-6):
         """Simulate system from initial state with specified controller.

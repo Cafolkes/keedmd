@@ -1,4 +1,4 @@
-from ..systems import OneDimDrone
+from ..systems import OneDimDrone, LinearOneDimDrone
 from ..controllers import RobustMpcDense, MPCController, OpenLoopController
 from ..dynamics import SystemDynamics, LinearSystemDynamics
 from ..learning import InverseKalmanFilter
@@ -20,7 +20,8 @@ area = 0.04                                                 # Drone surface area
 gravity = 9.81                                              # Gravity (m/s^2)
 T_hover = mass*gravity                                      # Hover thrust (N)
 ground_altitude = 0.2                                       # Altitude corresponding to drone landed (m)
-system = OneDimDrone(mass, rotor_rad, drag_coeff, air_dens, area, gravity, ground_altitude, T_hover)
+#system = OneDimDrone(mass, rotor_rad, drag_coeff, air_dens, area, gravity, ground_altitude, T_hover)
+system = LinearOneDimDrone(mass, rotor_rad, drag_coeff, air_dens, area, gravity, ground_altitude, T_hover)
 
 # Define initial linearized model and ensemble of Bs (linearized around hover):
 A = np.array([[0., 1.], [0., 0.]])
