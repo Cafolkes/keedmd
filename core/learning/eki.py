@@ -172,15 +172,15 @@ class EKI():
             Cug =    u_d @ Gxe_d.T
             Cgg =  Gxe_d @ Gxe_d.T
             K = Cug @ np.linalg.inv(Cgg + R) 
-            Yd = np.reshape(Y, (-1, 1)) + np.random.normal(size=(Y.size,self.Ne))*self.eta_0*0.01
+            Yd = np.reshape(Y, (-1, 1)) + np.random.normal(size=(Y.size,self.Ne))*self.eta_0
             xe = xe + K @ (Yd - Gxe)                                 
 
             error_v = np.mean(xe,axis=1)-self.true_theta
             dtheta_change = xe-xepast
-            error_dtheta = np.sqrt(dtheta_change.dot(dtheta_change))
+            #error_dtheta = np.sqrt(dtheta_change.dot(dtheta_change))
             xepast = xe
             error = np.sqrt(error_v.dot(error_v))
-            print(f'Iteration EKI {j+1}/{self.maxiter}. Error {error:.2f}, dt {dtheta_change:.3f}')
+            print(f'Iteration EKI {j+1}/{self.maxiter}. Error {error:.2f}')
             #if (abs(error) < self.max_error):
             #    break
         return xe

@@ -6,11 +6,17 @@ from .basis_functions import BasisFunctions
 from .learner import Learner
 from .eki import EKI
 import numpy as np
+import scipy
 import scipy.signal as signal
 from scipy.integrate import solve_ivp
 
 
-
+def hp(x):
+    # use to to plot a numpy array
+    import matplotlib.pyplot as plt
+    plt.matshow(x)
+    plt.colorbar()
+    plt.show()
 
 class InverseKalmanFilter(Learner):
     '''
@@ -18,6 +24,7 @@ class InverseKalmanFilter(Learner):
     '''
     def __init__(self, A, TrueB, eta_0, B_ensemble, dt, nk):
 
+        self.A = A
         self.B_ensemble = B_ensemble
         self.Ns = self.B_ensemble.shape[0]
         self.Nu = self.B_ensemble.shape[1]
@@ -26,54 +33,55 @@ class InverseKalmanFilter(Learner):
         G = lambda theta,y: 0
 
         self.eki = EKI(B_ensemble_flat, G, eta_0, 
-              true_theta=TrueB, maxiter=100, max_error= 1e-6)
+              true_theta=TrueB.flatten(), maxiter=5, max_error= 1e-6)
         self.Bshape = TrueB.shape
         self.dt = dt
-
-
+        self.nk = nk    
+        self.get_multistep_matrices(TrueB)
+    
+    def get_multistep_matrices(self,B):
         # #! Prep matrices for prediction
         # build A^{nk}
-        lin_model_d = signal.cont2discrete((A,TrueB,zeros((ns,1))),dt)
+        lin_model_d = signal.cont2discrete((self.A,B,np.identity(self.Ns),zeros((self.Ns,1))),self.dt)
         Ad = lin_model_d[0]
         Bd = lin_model_d[1]
-        xpm = np.expm(self.A*self.dt*nk)
+        xpm = scipy.linalg.expm(self.A*self.dt*self.nk)
         
-        # # build ABM
-        self.ABM = np.zeros((Ns,Nu*nk))
-        self.An = Bd
-        for i in range(nk):
-             self.ABM = np.hstack((self.ABM,self.An))
-             self.An = self.An @ A
-        self.Ank = self.An @ A
-
+        # # build ABM as in x(k)=Ad^k+ABM @ uvector
+        self.ABM = Bd 
+        self.An  = Ad
+        for i in range(self.nk-1):
+            self.ABM = np.hstack([self.An @ Bd,self.ABM])
+            self.An = self.An @ Ad
 
         # Test Prep Matrices
-        check_ab = True
+        check_ab = False
         if check_ab:
-            x0  = np.random.rand(Ns)
+            x0  = np.random.rand(self.Ns)
             xd = x0.copy()
             xc = x0.copy()
 
             # Store data Init
-            nsim = 100
-            xst = np.zeros((Ns,nk))
-            ust = np.zeros((Nu,nk))
+            xst = np.zeros((self.Ns,self.nk))
+            ust = np.zeros((self.Nu,self.nk))
 
             # Simulate in closed loop
-            for i in range(nk):
+            for i in range(self.nk):
                 # Fake pd controller
-                ctrl = np.zeros(Nu,) #np.random.rand(nu,)
+                ctrl = np.zeros(self.Nu,) 
+                ctrl = np.random.rand(self.Nu,)
                 xd = Ad @ xd + Bd @ ctrl
-                xc = solve_ivp(lambda t,x: A@x+TrueB@ctrl, [0, dt], xc, atol=1e-6, rtol=1e-6).y[:, -1] 
+                xc = solve_ivp(lambda t,x: self.A @ x + B @ ctrl, [0, self.dt], xc, atol=1e-6, rtol=1e-6).y[:, -1] 
          
                 # Store Data
                 xst[:,i] = xd
                 ust[:,i] = ctrl
 
-            x_multistep = self.ABM@x0 + self.ABM@ust.flatten()
+            x_multistep = self.An@x0 + self.ABM@ust.flatten()
             print(f"multistep {x_multistep}")
             print(f"discrete {xd}")
             print(f"continous {xc}")
+            print(f"ctrl")
         
 
     def fit(self, X, X_dot, U):
@@ -97,31 +105,27 @@ class InverseKalmanFilter(Learner):
                 self.new_ensamble[:,:,i] = B_mean + shrink_rate*(self.B_ensemble[:,:,i]-B_mean)
         else:
 
-            nk = 5
-            Ym = X[:,nk:]-X[:,:-nk]
+            Ym = X[:,self.nk:]-X[:,:-self.nk]
             Ym_flat = Ym.flatten()
-            self.eki.G = lambda Bflat: self.Gdynamics(Bflat,X,X_dot,nk=nk,dt=dt)
-
-            self.new_ensamble = self.eki.solveIP(self.B_ensemble, Ym_flat)
-
+            self.eki.G = lambda Bflat: self.Gdynamics(Bflat,X,U)
+            self.B_ensemble_flat =  self.B_ensemble.reshape(-1, self.B_ensemble.shape[-1])
+            self.new_ensamble_flat = self.eki.solveIP(self.B_ensemble_flat, Ym_flat)
+            self.new_ensamble = self.new_ensamble_flat.reshape((self.Ns,self.Nu,self.Ne))
+    
         self.B_ensemble = self.new_ensamble.copy()
-        return self.new_ensamble
+        self.new_ensamble
 
-    def Gdynamics(self,Bflat, X, X_dot, nk):
-
-        N = X.shape[0]
+    def Gdynamics(self,Bflat, X, U):
+    
         Ny = X.shape[1]
-        Ng = Ny - nk
-        G = np.zeros((N,Ng))
+        Ng = Ny - self.nk
+        G = np.zeros((self.Ns,Ng))
 
-
-
-        # B = Bflat.reshape(self.Bshape)
-        # Goutput = np.zeros()
-        # Ny = X_dot.len()
-        # for i in range(nk,Ny):
-        #     Goutput[:,i] = 
-
+        B = Bflat.reshape(self.Bshape)
+        self.get_multistep_matrices(B)
+        for i in range(Ng):
+            G[:,i] = self.An @ X[:,i] + self.ABM @ U[:,i:i+self.nk].flatten()-X[:,i]
+        return G.flatten()
         
         
 
