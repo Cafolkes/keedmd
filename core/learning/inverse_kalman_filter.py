@@ -23,7 +23,7 @@ class InverseKalmanFilter(Learner):
     '''
     Transforms a parametrized dynamics problem as a Inverse Kalman Inversion problem
     '''
-    def __init__(self, A, TrueB, eta_0, B_ensemble, dt, nk):
+    def __init__(self, A, TrueB, E, eta_0, B_ensemble, dt, nk):
 
         self.A = A
         self.B_ensemble = B_ensemble
@@ -39,6 +39,7 @@ class InverseKalmanFilter(Learner):
         self.dt = dt
         self.nk = nk    
         self.get_multistep_matrices(TrueB)
+        self.E = E
     
     def get_multistep_matrices(self,B):
         # #! Prep matrices for prediction
@@ -56,7 +57,7 @@ class InverseKalmanFilter(Learner):
             self.An = self.An @ Ad
 
         # Test Prep Matrices
-        check_ab = True
+        check_ab = False
         if check_ab:
             x0  = np.random.rand(self.Ns)
             xd = x0.copy()
@@ -98,6 +99,25 @@ class InverseKalmanFilter(Learner):
         - t: time, numpy 2d array [Ntraj, N]
         """
 
+        debug = True
+        if debug:
+            plt.figure()
+            plt.subplot(2,1,1,xlabel="time", ylabel="X")
+            for i in range(self.Ns):
+                plt.plot(X[i,:], linewidth=1,label=f'state {i}') 
+            plt.grid()
+            plt.title("State")
+            plt.legend()
+            plt.subplot(2,1,2,xlabel="U", ylabel=f"U")
+            for i in range(self.Nu):
+                plt.plot(U[i,:], linewidth=1,label=f'Input {i}') 
+            plt.grid()
+            plt.title("Input")
+            plt.legend()
+            plt.show()
+
+
+
         
         shrink_debug = False
         if (shrink_debug):
@@ -131,7 +151,7 @@ class InverseKalmanFilter(Learner):
             xc = X[:,i]
             for ii in range(self.nk):
                 ctrl = U[:,i+ii]
-                xc = solve_ivp(lambda t,x: self.A @ x + B @ ctrl, [0, self.dt], xc, atol=1e-6, rtol=1e-6).y[:, -1] 
+                xc = solve_ivp(lambda t,x: self.A @ x + B @ ctrl + self.E, [0, self.dt], xc, atol=1e-6, rtol=1e-6).y[:, -1] 
             #ctrl = U[:,i:i+self.nk]
             #f_x_dot = lambda t,x: self.A @ x + B @ ctrl[int(t/dt)]
             #Xplus = solve_ivp(f_x_dot, [0, dt*nk], X[:,j], atol=1e-6, rtol=1e-6).y[:, -1] 

@@ -180,7 +180,7 @@ class EKI():
                 plt.subplot(2,2,1,xlabel="Ns*(N+1)", ylabel="Ns*(N+1)")
                 for i in range(self.Ne):
                     plt.plot(Gxe[:,i], linewidth=1,label=f'\\theta {xe[:,i]}')
-                plt.plot(Y, linewidth=1,label=f'Measurement')                
+                plt.plot(Y, linewidth=3,label=f'Measurement')                
                 plt.xlabel("Time, x, then v")
                 plt.ylabel("measurement difference")
                 plt.grid()

@@ -26,6 +26,8 @@ system = LinearOneDimDrone(mass, rotor_rad, drag_coeff, air_dens, area, gravity,
 # Define initial linearized model and ensemble of Bs (linearized around hover):
 A = np.array([[0., 1.], [0., 0.]])
 B_mean = np.array([[0.],[1/mass]])
+Ns = B_mean.shape[0]
+Nu = B_mean.shape[1]
 
 # Define simulation parameters:
 z_0 = np.array([4., 0.])                                    # Initial position
@@ -49,15 +51,21 @@ ref = np.array([[ground_altitude+0.01 for _ in range(N_steps+1)],
 
 #! Filter Parameters:
 eta = 0.6**2 # measurement covariance
-Nb = 3 # number of ensemble
+Nb = 7 # number of ensemble
 nk = 5 # number of steps for multi-step prediction
-B_ensemble = np.stack([B_mean-np.array([[0.],[0.6]]), B_mean, B_mean+np.array([[0.],[0.6]])],axis=2)
+B_ensemble = np.zeros((Ns,Nu,Nb))
+for i in range(Nb):
+    B_ensemble[:,:,i] = B_mean+np.array([[0.],[np.random.normal()*0.5]])
+
+E= np.array([0,-gravity*mass])
+#B_emsemble = np.stack([B_mean-np.array([[0.],[0.6]]), B_mean, B_mean+np.array([[0.],[0.6]])],axis=2)
+
 
 B_ensemble_list = [B_mean-np.array([[0.],[0.5]]), B_mean, B_mean+np.array([[0.],[0.5]])]
 #%%
 #! ===============================================   RUN EXPERIMENT    ================================================
 true_sys = LinearSystemDynamics(A, B_mean)
-inverse_kalman_filter = InverseKalmanFilter(A,B_mean, eta, B_ensemble, dt, nk )
+inverse_kalman_filter = InverseKalmanFilter(A,B_mean, E, eta, B_ensemble, dt, nk )
 
 x_ep, xd_ep, u_ep, traj_ep, B_ep, mpc_cost_ep, t_ep = [], [], [], [], [], [], []
 # B_ensemble [Ns,Nu,Ne] numpy array
