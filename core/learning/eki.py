@@ -4,7 +4,7 @@ from matplotlib import pyplot as plt
 from sklearn.preprocessing import PolynomialFeatures
 import dill
 from itertools import combinations_with_replacement 
-
+import matplotlib.cm as cm
 
 class EnKF():
     """EnKF 
@@ -155,13 +155,13 @@ class EKI():
             numpy array [n,Ne]  -- next ensemble
         """
         Ny = Y.shape[0]
-
+        print(f"xe shape: {xe.shape}, Y shape: {Y.shape}")
         R = np.diag(np.ones(Y.size)*self.eta_0)
         xepast = xe
 
         for j in range(self.maxiter):
             
-            ubar = np.mean(xe,axis=1,keepdims=True)
+            ubar = np.mean(xe,axis=1,keepdims=True) # keepdims so it can be substracted to xe
             Gxe = np.zeros((Ny,self.Ne))
             for i in range(self.Ne):
                 Gxe[:,i] = self.G(xe[:,i])
@@ -169,18 +169,44 @@ class EKI():
 
             u_d = xe - ubar
             Gxe_d = Gxe - gbar
+            Cuu = u_d @ u_d.T
             Cug =    u_d @ Gxe_d.T
             Cgg =  Gxe_d @ Gxe_d.T
             K = Cug @ np.linalg.inv(Cgg + R) 
-            Yd = np.reshape(Y, (-1, 1)) + np.random.normal(size=(Y.size,self.Ne))*self.eta_0
+            
+            debug = True
+            if debug:
+                plt.figure()
+                plt.subplot(2,2,1,xlabel="Ns*(N+1)", ylabel="Ns*(N+1)")
+                for i in range(self.Ne):
+                    plt.plot(Gxe[:,i], linewidth=1,label=f'\\theta {xe[:,i]}')
+                plt.plot(Y, linewidth=1,label=f'Measurement')                
+                plt.xlabel("Time, x, then v")
+                plt.ylabel("measurement difference")
+                plt.grid()
+                plt.title("Measurement for different ensembles")
+                plt.legend()
+                plt.subplot(2,2,2,xlabel="U", ylabel=f"Cuu")
+                plt.imshow(Cuu,  interpolation='nearest', cmap=cm.Greys_r)
+                plt.subplot(2,2,3,xlabel="g", ylabel="Cgg")
+                plt.imshow(Cgg,  interpolation='nearest', cmap=cm.Greys_r)
+                plt.subplot(2,2,4,xlabel="time", ylabel="K")
+                plt.plot(K.T, linewidth=1,label=f'Measurement')  
+                plt.show()
+
+            Yd = np.reshape(Y, (-1, 1)) + np.random.normal(size=(Y.size,self.Ne))*self.eta_0*0.
             xe = xe + K @ (Yd - Gxe)                                 
 
             error_v = np.mean(xe,axis=1)-self.true_theta
             dtheta_change = xe-xepast
             #error_dtheta = np.sqrt(dtheta_change.dot(dtheta_change))
-            xepast = xe
+            xepast = xe.copy()
             error = np.sqrt(error_v.dot(error_v))
             print(f'Iteration EKI {j+1}/{self.maxiter}. Error {error:.2f}')
+            print(f"xe {xe}")
+
+
+
             #if (abs(error) < self.max_error):
             #    break
         return xe

@@ -9,6 +9,7 @@ import numpy as np
 import scipy
 import scipy.signal as signal
 from scipy.integrate import solve_ivp
+from matplotlib import pyplot as plt
 
 
 def hp(x):
@@ -55,7 +56,7 @@ class InverseKalmanFilter(Learner):
             self.An = self.An @ Ad
 
         # Test Prep Matrices
-        check_ab = False
+        check_ab = True
         if check_ab:
             x0  = np.random.rand(self.Ns)
             xd = x0.copy()
@@ -105,15 +106,16 @@ class InverseKalmanFilter(Learner):
                 self.new_ensamble[:,:,i] = B_mean + shrink_rate*(self.B_ensemble[:,:,i]-B_mean)
         else:
 
-            Ym = X[:,self.nk:]-X[:,:-self.nk]
+            Ym = X[:,self.nk:]#-X[:,:-self.nk]
             Ym_flat = Ym.flatten()
             self.eki.G = lambda Bflat: self.Gdynamics(Bflat,X,U)
-            self.B_ensemble_flat =  self.B_ensemble.reshape(-1, self.B_ensemble.shape[-1])
-            self.new_ensamble_flat = self.eki.solveIP(self.B_ensemble_flat, Ym_flat)
-            self.new_ensamble = self.new_ensamble_flat.reshape((self.Ns,self.Nu,self.Ne))
+            self.B_ensemble_flat =  self.B_ensemble.reshape(-1, self.B_ensemble.shape[-1]) # [NsNu,Ne]
+            print(f"new {self.B_ensemble_flat}")
+            self.new_ensemble_flat = self.eki.solveIP(self.B_ensemble_flat, Ym_flat)
+            print(f"new {self.B_ensemble_flat}")
+            self.new_ensamble = self.new_ensemble_flat.reshape((self.Ns,self.Nu,self.Ne))
     
         self.B_ensemble = self.new_ensamble.copy()
-        self.new_ensamble
 
     def Gdynamics(self,Bflat, X, U):
     
@@ -124,7 +126,7 @@ class InverseKalmanFilter(Learner):
         B = Bflat.reshape(self.Bshape)
         self.get_multistep_matrices(B)
         for i in range(Ng):
-            G[:,i] = self.An @ X[:,i] + self.ABM @ U[:,i:i+self.nk].flatten()-X[:,i]
+            G[:,i] = self.An @ X[:,i] + self.ABM @ U[:,i:i+self.nk].flatten()#-X[:,i]
         return G.flatten()
         
         

@@ -48,10 +48,10 @@ ref = np.array([[ground_altitude+0.01 for _ in range(N_steps+1)],
 
 
 #! Filter Parameters:
-eta = 0.1**2 # measurement covariance
+eta = 0.6**2 # measurement covariance
 Nb = 3 # number of ensemble
 nk = 5 # number of steps for multi-step prediction
-B_ensemble = np.stack([B_mean-np.array([[0.],[0.5]]), B_mean, B_mean+np.array([[0.],[0.5]])],axis=2)
+B_ensemble = np.stack([B_mean-np.array([[0.],[0.6]]), B_mean, B_mean+np.array([[0.],[0.6]])],axis=2)
 
 B_ensemble_list = [B_mean-np.array([[0.],[0.5]]), B_mean, B_mean+np.array([[0.],[0.5]])]
 #%%
