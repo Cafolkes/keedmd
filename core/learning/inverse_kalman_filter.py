@@ -79,7 +79,7 @@ class InverseKalmanFilter(Learner):
                 ust[:,i] = ctrl
 
             #xc2 = solve_ivp(lambda t,x: self.A @ x + B @ ust[:,np.max([np.int(t/self.dt),self.nk-1])], [0, self.dt*self.nk], x0, atol=1e-6, rtol=1e-6).y[:, -1] 
-            print(f"cont 2{xc2}")
+            #print(f"cont 2{xc2}")
             x_multistep = self.An@x0 + self.ABM@ust.flatten()
             print(f"multistep {x_multistep}")
             print(f"discrete {xd}")
@@ -130,12 +130,12 @@ class InverseKalmanFilter(Learner):
         for i in range(Ng):
             xc = X[:,i]
             for ii in range(self.nk):
-                ctrl = 
+                ctrl = U[:,i+ii]
                 xc = solve_ivp(lambda t,x: self.A @ x + B @ ctrl, [0, self.dt], xc, atol=1e-6, rtol=1e-6).y[:, -1] 
             #ctrl = U[:,i:i+self.nk]
             #f_x_dot = lambda t,x: self.A @ x + B @ ctrl[int(t/dt)]
-            Xplus = solve_ivp(f_x_dot, [0, dt*nk], X[:,j], atol=1e-6, rtol=1e-6).y[:, -1] 
-            G[:,j] = Xplus
+            #Xplus = solve_ivp(f_x_dot, [0, dt*nk], X[:,j], atol=1e-6, rtol=1e-6).y[:, -1] 
+            G[:,i] = xc
             #G[:,i] = self.An @ X[:,i] + self.ABM @ U[:,i:i+self.nk].flatten()#-X[:,i]
         return G.flatten()
         
