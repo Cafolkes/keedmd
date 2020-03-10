@@ -79,7 +79,6 @@ class KoopmanEigenfunctions(BasisFunctions):
 
     def construct_scaling_function(self,ub,lb):
         scale_factor = (ub-lb).reshape((self.n,1))
-        #scale_factor = np.ones_like(scale_factor)  #TODO: Remove if scaling factor desired
         scale_func = lambda q: divide(q, scale_factor)
 
         return scale_func
@@ -90,7 +89,6 @@ class KoopmanEigenfunctions(BasisFunctions):
         self.diffeomorphism_model.eval()
         input = npconcatenate((q, q_d),axis=1)
         diff_pred = self.diffeomorphism_model.predict(from_numpy(input))
-        #diff_pred = np.concatenate((zeros((1,1)), [-1/(-0.4+1)*q[:,0]**2]), axis=1)  # TODO: Remove (analytic diffeomorphism)
         return (q + diff_pred).T
 
     def build_diffeomorphism_model(self, jacobian_penalty=1., n_hidden_layers=2, layer_width=50, batch_size=64, dropout_prob=0.1):

@@ -132,7 +132,7 @@ l1_eig_ratio_keedmd = 0.1                               # l1-l2 ratio for eigenf
 n_lift_edmd = (eigenfunction_max_power+1)**n-1          # Lifting dimension EDMD (same number as for KEEDMD)
 l1_edmd = 0.18986906539015286                           # l1 regularization strength
 l1_ratio_edmd = 1.0                                     # l1-l2 ratio
-a
+l1_ratio_vals = [0.1, 0.3, 0.5, 0.75, 0.9, 0.95, 0.99]
 
 # Open loop evaluation parameters
 Ntraj_pred = 20                                         # Number of trajectories to use to evaluate open loop performance
@@ -212,7 +212,7 @@ print(' - Constructing RBF basis...', end =" ")
 t0 = time.process_time()
 
 rbf_centers = multiply(random.rand(n,n_lift_edmd),(upper_bounds-lower_bounds).reshape((upper_bounds.shape[0],1)))+lower_bounds.reshape((upper_bounds.shape[0],1))
-rbf_basis = RBF(rbf_centers, n)
+rbf_basis = RBF(rbf_centers, n, gamma=1)
 rbf_basis.construct_basis()
 
 print('in {:.2f}s'.format(time.process_time()-t0))
