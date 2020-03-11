@@ -130,8 +130,8 @@ l1_eig_ratio_keedmd = 0.1                               # l1-l2 ratio for eigenf
 
 # EDMD parameters (benchmark to compare against)
 n_lift_edmd = (eigenfunction_max_power+1)**n-1          # Lifting dimension EDMD (same number as for KEEDMD)
-l1_edmd = 0.18986906539015286                           # l1 regularization strength
-l1_ratio_edmd = 1.0                                     # l1-l2 ratio
+l1_edmd = 0.14016560134046951                           # l1 regularization strength
+l1_ratio_edmd = 0.99                                    # l1-l2 ratio
 l1_ratio_vals = [0.1, 0.3, 0.5, 0.75, 0.9, 0.95, 0.99]
 
 # Open loop evaluation parameters
@@ -202,8 +202,8 @@ print(' - Fitting KEEDMD model...', end =" ")
 t0 = time.process_time()
 keedmd_model = Keedmd(eigenfunction_basis, n, l1_pos=l1_pos_keedmd, l1_ratio_pos=l1_pos_ratio_keedmd, l1_vel=l1_vel_keedmd, l1_ratio_vel=l1_vel_ratio_keedmd, l1_eig=l1_eig_keedmd, l1_ratio_eig=l1_eig_ratio_keedmd, K_p=K_p, K_d=K_d)
 X, X_d, Z, Z_dot, U, U_nom, t = keedmd_model.process(xs, zeros_like(xs), us, us_nom, ts)
-#keedmd_model.fit(X, X_d, Z, Z_dot, U, U_nom)
-keedmd_model.tune_fit(X, X_d, Z, Z_dot, U, U_nom, l1_ratio=l1_ratio_vals)
+keedmd_model.fit(X, X_d, Z, Z_dot, U, U_nom)
+#keedmd_model.tune_fit(X, X_d, Z, Z_dot, U, U_nom, l1_ratio=l1_ratio_vals)
 
 print('in {:.2f}s'.format(time.process_time()-t0))
 
@@ -222,8 +222,8 @@ print(' - Fitting EDMD model...', end =" ")
 t0 = time.process_time()
 edmd_model = Edmd(rbf_basis, n, l1=l1_edmd, l1_ratio=l1_ratio_edmd)
 X, X_d, Z, Z_dot, U, U_nom, t = edmd_model.process(xs, zeros_like(xs), us, us_nom, ts)
-#edmd_model.fit(X, X_d, Z, Z_dot, U, U_nom)
-edmd_model.tune_fit(X, X_d, Z, Z_dot, U, U_nom, l1_ratio=l1_ratio_vals)
+edmd_model.fit(X, X_d, Z, Z_dot, U, U_nom)
+#edmd_model.tune_fit(X, X_d, Z, Z_dot, U, U_nom, l1_ratio=l1_ratio_vals)
 
 print('in {:.2f}s'.format(time.process_time()-t0))
 

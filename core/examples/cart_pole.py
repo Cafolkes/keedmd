@@ -69,7 +69,7 @@ umax = 5                                            # MPC actuation constraint
 MPC_horizon = 2 # [s]                               # MPC time horizon
 
 # Koopman eigenfunction parameters
-eigenfunction_max_power = 5                             # Max power of variables in eigenfunction products
+eigenfunction_max_power = 4                             # Max power of variables in eigenfunction products
 l2_diffeomorphism = 0.0                                 # l2 regularization strength
 jacobian_penalty_diffeomorphism = 1e1                  # Estimator jacobian regularization strength
 diff_n_epochs = 500                                     # Number of epochs
@@ -144,7 +144,6 @@ for ii in range(Ntraj):
 savemat('./core/examples/cart_pole_d.mat', {'t_d': t_eval, 'q_d': q_d})
 print('in {:.2f}s'.format(time.process_time()-t0))
 
-
 # Simulate system from each initial condition
 print(' - Simulate system with {} trajectories using PD controller...'.format(Ntraj), end =" ")
 t0 = time.process_time()
@@ -160,8 +159,10 @@ for ii in range(Ntraj):
     us.append(us_tmp)
     us_nom.append(us_nom_tmp[:us_tmp.shape[0],:])
     ts.append(t_eval)
+
 xs, us, us_nom, ts = array(xs), array(us), array(us_nom), array(ts)
 print('in {:.2f}s'.format(time.process_time()-t0))
+
 #%%
 #!  ===============================================     FIT MODELS      ===============================================
 
@@ -194,7 +195,7 @@ print(' - Constructing RBF basis...', end =" ")
 t0 = time.process_time()
 
 rbf_centers = multiply(random.rand(n,n_lift_edmd),(upper_bounds-lower_bounds).reshape((upper_bounds.shape[0],1)))+lower_bounds.reshape((upper_bounds.shape[0],1))
-rbf_basis = RBF(rbf_centers, n)
+rbf_basis = RBF(rbf_centers, n, gamma=1.)
 rbf_basis.construct_basis()
 
 print('in {:.2f}s'.format(time.process_time()-t0))
@@ -204,8 +205,8 @@ print(' - Fitting EDMD model...', end =" ")
 t0 = time.process_time()
 edmd_model = Edmd(rbf_basis, n, l1=l1_edmd, l1_ratio=l1_ratio_edmd)
 X, X_d, Z, Z_dot, U, U_nom, t = edmd_model.process(xs, q_d, us, us_nom, ts)
-edmd_model.fit(X, X_d, Z, Z_dot, U, U_nom)
-#edmd_model.tune_fit(X, X_d, Z, Z_dot, U, U_nom, l1_ratio=l1_ratio_vals)
+#edmd_model.fit(X, X_d, Z, Z_dot, U, U_nom)
+edmd_model.tune_fit(X, X_d, Z, Z_dot, U, U_nom, l1_ratio=l1_ratio_vals)
 
 print('in {:.2f}s'.format(time.process_time()-t0))
 
@@ -266,7 +267,7 @@ for ii in range(Ntraj_pred):
 
 # Calculate error statistics
 mse_keedmd = array([(xs_keedmd[ii] - xs_pred[ii])**2 for ii in range(Ntraj_pred)])
-mse_edmd = array([(xs_edmd[ii] - xs_pred[ii])**2 for iqi in range(Ntraj_pred)])
+mse_edmd = array([(xs_edmd[ii] - xs_pred[ii])**2 for ii in range(Ntraj_pred)])
 mse_nom = array([(xs_nom[ii] - xs_pred[ii])**2 for ii in range(Ntraj_pred)])
 e_keedmd = array(np.abs([xs_keedmd[ii] - xs_pred[ii] for ii in range(Ntraj_pred)]))
 e_edmd = array(np.abs([xs_edmd[ii] - xs_pred[ii] for ii in range(Ntraj_pred)]))
@@ -455,4 +456,53 @@ plot(t_pred[:-1], us_keedmd_mpc[0, :], linewidth=2, label='KEEDMD', color='tab:o
 xlabel('Time (s)')
 ylabel('u')
 grid()
+show()
+
+#%%
+#!========================================  PLOT OPEN AND CLOSED LOOP RESULTS FOR PAPER =========================================
+
+# Plot errors of different models and statistics, open loop
+ylabels = ['$|e_x|$', '$|e_{\\theta}|$']
+figure(figsize=(6,4))
+for ii in range(2):
+    subplot(2, 1, ii+1)
+    plot(t_pred, np.abs(e_mean_nom[ii,:]), linewidth=2, label='Nominal', color='tab:gray')
+    fill_between(t_pred, np.zeros_like(e_mean_nom[ii,:]), e_std_nom[ii,:], alpha=0.2, color='tab:gray')
+
+    plot(t_pred, np.abs(e_mean_edmd[ii,:]), linewidth=2, label='$EDMD$', color='tab:green')
+    fill_between(t_pred, np.zeros_like(e_mean_edmd[ii, :]), e_std_edmd[ii, :], alpha=0.2, color='tab:green')
+
+    plot(t_pred, np.abs(e_mean_keedmd[ii,:]), linewidth=2, label='$KEEDMD$',color='tab:orange')
+    fill_between(t_pred, np.zeros_like(e_mean_keedmd[ii,:]), e_std_keedmd[ii, :], alpha=0.2,color='tab:orange')
+
+    ylabel(ylabels[ii])
+    grid()
+    if ii == 0:
+        title('Mean absolute open loop prediction error (+ 1 std)')
+    if ii == 1 or ii == 3:
+        ylim(0., 2.)
+    else:
+        ylim(0.,.5)
+xlabel('Time (sec)')
+legend(fontsize=10, loc='lower right')
+savefig('core/examples/results/open_loop.pdf', format='pdf', dpi=2400)
+
+
+#! Plot the closed loop trajectory:
+ylabels = ['$x$', '$\\theta$']
+figure(figsize=(6,4))
+for ii in range(2):
+    subplot(2, 1, ii+1)
+    plot(t_pred, qd_mpc[ii,:], linestyle="--",linewidth=2, label='Reference')
+    plot(t_pred, xs_nom_mpc[ii, :], linewidth=2, label='Nominal', color='tab:gray')
+    plot(t_pred, xs_edmd_mpc[ii,:], linewidth=2, label='EDMD', color='tab:green')
+    plot(t_pred, xs_keedmd_mpc[ii,:], linewidth=2, label='KEEDMD',color='tab:orange')
+    ylabel(ylabels[ii])
+    grid()
+    if ii == 0:
+        title('Closed loop trajectory tracking with MPC')
+xlabel('Time (sec)')
+legend(fontsize=10, loc='lower right')
+savefig('core/examples/results/closed_loop.pdf', format='pdf', dpi=2400)
+
 show()

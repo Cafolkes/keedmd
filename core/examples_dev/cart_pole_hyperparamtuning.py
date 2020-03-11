@@ -67,7 +67,7 @@ NN_parameter_file = 'scripts/NN_parameters.pickle'
 
 l2_diffeomorphism = np.linspace(0.,1., 20)
 jacobian_penalty_diffeomorphism = np.linspace(0.,1e1, 20)
-diff_n_epochs = [50, 100, 200]
+diff_n_epochs = [250]
 diff_n_hidden_layers = [1, 2, 3, 4]
 diff_layer_width = [10, 25, 50]
 diff_batch_size = [16, 32, 64]
@@ -105,7 +105,7 @@ nominal_sys = LinearSystemDynamics(A=A_nom, B=B_nom)
 # Simulation parameters (data collection)
 plot_traj_gen = False  # Plot trajectories generated for data collection
 traj_origin = 'load_mat'  # gen_MPC - solve MPC to generate desired trajectories, load_mat - load saved trajectories
-Ntraj = 20  # Number of trajectories to collect data from
+Ntraj = 40  # Number of trajectories to collect data from
 dt = 1.0e-2  # Time step
 N = int(2. / dt)  # Number of time steps
 t_eval = dt * arange(N + 1)  # Simulation time points
