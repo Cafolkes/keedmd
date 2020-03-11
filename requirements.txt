@@ -59,7 +59,7 @@ Pyphen==0.9.4
 pyre-check==0.0.6
 python-dateutil==2.6.1
 pytz==2017.2
-PyYAML==3.12
+PyYAML==5.1
 pyzmq==18.0.1
 qtconsole==4.3.1
 requests==2.18.4
