@@ -2,11 +2,11 @@
 """Cart Pendulum Example"""
 from matplotlib.pyplot import figure, grid, legend, plot, show, subplot, suptitle, title, ylim, xlabel, ylabel, fill_between, close
 import os
-from matplotlib.pyplot import figure, grid, legend, plot, show, subplot, suptitle, title, scatter, savefig, hist
+from matplotlib.pyplot import figure, grid, legend, plot, show, subplot, title, savefig
 from numpy import arange, array, concatenate
-from numpy import linspace, ones, sin, tanh, tile, zeros, pi, random, interp, dot, multiply, asarray
+from numpy import zeros, pi, random, interp, dot, multiply, asarray
 import numpy as np
-from scipy.io import loadmat, savemat
+from scipy.io import savemat
 from ..systems import CartPole
 from ..dynamics import LinearSystemDynamics
 from ..controllers import PDController, OpenLoopController, MPCController, MPCControllerDense
@@ -43,77 +43,76 @@ class CartPoleTrajectory(CartPole):
 
 # Define true system
 system_true = CartPole(m_c=.5, m_p=.2, l=.4)
-n, m = 4, 1  # Number of states and actuators       # Number of states and actuators
-upper_bounds = array([3.0, pi/3, 2, 2])             # Upper State constraints
-lower_bounds = -upper_bounds                        # Lower State constraints
+n, m = 4, 1                                             # Number of states and actuators
+upper_bounds = array([3.0, pi/3, 2, 2])                 # Upper State constraints
+lower_bounds = -upper_bounds                            # Lower State constraints
 
 # Define nominal model and nominal controller:
 A_nom = array([[0., 0., 1., 0.], [0., 0., 0., 1.], [0., -3.924, 0., 0.], [0., 34.335, 0., 0.]])  # Linearization of the true system around the origin
-B_nom = array([[0.],[0.],[2.],[-5.]])               # Linearization of the true system around the origin
-K_p = -array([[7.3394, 39.0028]])                   # Proportional control gains
-K_d = -array([[8.0734, 7.4294]])                    # Derivative control gains
+B_nom = array([[0.],[0.],[2.],[-5.]])                   # Linearization of the true system around the origin
+K_p = -array([[7.3394, 39.0028]])                       # Proportional control gains
+K_d = -array([[8.0734, 7.4294]])                        # Derivative control gains
 nominal_sys = LinearSystemDynamics(A=A_nom, B=B_nom)
 
 # Simulation parameters (data collection)
-Ntraj = 20                                          # Number of trajectories to collect data from
-dt = 1.0e-2                                         # Time step length
-N = int(2./dt)                                      # Number of time steps
-t_eval = dt * arange(N + 1)                         # Simulation time points
-noise_var = 0.5                                     # Exploration noise to perturb controller
-traj_bounds = [2.5,0.25,0.05,0.05]                  # State constraints, [x, theta, x_dot, theta_dot]
-q_d = zeros((Ntraj,N+1,n))                          # Desired trajectories (initialization)
-Q = sparse.diags([0,0,0,0])                         # MPC state penalty matrix
-QN = sparse.diags([100000.,100000.,10000.,10000.])  # MPC final state penalty matrix
-R = sparse.eye(m)                                   # MPC control penalty matrix
-umax = 5                                            # MPC actuation constraint
-MPC_horizon = 2 # [s]                               # MPC time horizon
+Ntraj = 40                                              # Number of trajectories to collect data from
+dt = 1.0e-2                                             # Time step length
+N = int(2./dt)                                          # Number of time steps
+t_eval = dt * arange(N + 1)                             # Simulation time points
+noise_var = 0.5                                         # Exploration noise to perturb controller
+traj_bounds = [2.5,0.25,0.05,0.05]                      # State constraints, [x, theta, x_dot, theta_dot]
+q_d = zeros((Ntraj,N+1,n))                              # Desired trajectories (initialization)
+Q = sparse.diags([0,0,0,0])                             # MPC state penalty matrix
+QN = sparse.diags([100000.,100000.,10000.,10000.])      # MPC final state penalty matrix
+R = sparse.eye(m)                                       # MPC control penalty matrix
+umax = 5                                                # MPC actuation constraint
+MPC_horizon = 2                                         # MPC time horizon [sec]
 
 # Koopman eigenfunction parameters
-eigenfunction_max_power = 4                             # Max power of variables in eigenfunction products
+eigenfunction_max_power = 2                             # Max power of variables in eigenfunction products
 l2_diffeomorphism = 0.0                                 # l2 regularization strength
-jacobian_penalty_diffeomorphism = 1e1                  # Estimator jacobian regularization strength
+jacobian_penalty_diffeomorphism = 1e1                   # Estimator jacobian regularization strength
 diff_n_epochs = 500                                     # Number of epochs
 diff_train_frac = 0.9                                   # Fraction of data to be used for training
 diff_n_hidden_layers = 3                                # Number of hidden layers
-diff_layer_width = 50                                  # Number of units in each layer
+diff_layer_width = 50                                   # Number of units in each layer
 diff_batch_size = 16                                    # Batch size
-diff_learn_rate = 0.06842                               # Leaning rate
+diff_learn_rate = 1e-1                                  # Learning rate
 diff_learn_rate_decay = 0.99                            # Learning rate decay
 diff_dropout_prob = 0.25                                # Dropout rate
 
 # KEEDMD parameters
-l1_pos_keedmd = 0.008655058865847103                   # l1 regularization strength for position states
-l1_pos_ratio_keedmd = 0.5                               # l1-l2 ratio for position states
-l1_vel_keedmd = 0.021946759346411642                     # l1 regularization strength for velocity states
+l1_pos_keedmd = 0.001979592839755224                    # l1 regularization strength for position states
+l1_pos_ratio_keedmd = 0.1                               # l1-l2 ratio for position states
+l1_vel_keedmd = 0.024029630466870816                    # l1 regularization strength for velocity states
 l1_vel_ratio_keedmd = 1.0                               # l1-l2 ratio for velocity states
-l1_eig_keedmd = 0.5440087521003517                     # l1 regularization strength for eigenfunction states
+l1_eig_keedmd = 6.819171287059534                       # l1 regularization strength for eigenfunction states
 l1_eig_ratio_keedmd = 0.1                               # l1-l2 ratio for eigenfunction states
 
 # EDMD parameters (benchmark to compare against)
-n_lift_edmd = (eigenfunction_max_power+1)**n-1      # Lifting dimension EDMD (same number as for KEEDMD)
-l1_edmd = 0.00687693796                             # l1 regularization strength
-l1_ratio_edmd = 1.00                                # l1-l2 ratio
+n_lift_edmd = (eigenfunction_max_power+1)**n-1          # Lifting dimension EDMD (same number as for KEEDMD)
+l1_edmd = 0.00687693796                                 # l1 regularization strength
+l1_ratio_edmd = 1.00                                    # l1-l2 ratio
 l1_ratio_vals = array([0.1, 0.5, 0.75, 0.9, 0.95, 0.99, 1.0])
 
 # Open loop evaluation parameters
-Ntraj_pred = 40                                     # Number of trajectories to use to evaluate open loop performance
-noise_var_pred = 0.5                                # Exploration noise to perturb controller
-traj_bounds_pred = [2, 0.5, 0.1, 0.1]               # State constraints, [x, theta, x_dot, theta_dot]
-q_d_pred = zeros((Ntraj_pred, N + 1, n))            # Desired trajectories (initialization)
-
+Ntraj_pred = 40                                         # Number of trajectories to use to evaluate open loop performance
+noise_var_pred = 0.5                                    # Exploration noise to perturb controller
+traj_bounds_pred = [2, 0.5, 0.1, 0.1]                   # State constraints, [x, theta, x_dot, theta_dot]
+q_d_pred = zeros((Ntraj_pred, N + 1, n))                # Desired trajectories (initialization)
 
 # Closed loop evaluation parameters
-x_0_mpc = array([2., 0.25, 0., 0.])                 # Initial condition
-t_pred_mpc = t_eval.squeeze()                       # Time steps
-noise_var_mpc = 0.0                                 # Exploration noise to perturb controller
-Q_mpc = sparse.diags([5000,5000,100,100])           # MPC state penalty matrix
-QN_mpc = Q                                          # MPC final state penalty matrix
-R_mpc = sparse.eye(m)                               # MPC control penalty matrix
-D_mpc = sparse.diags([500,300,50,60])               # MPC state constraint violation penalty matrix
+x_0_mpc = array([2., 0.25, 0., 0.])                     # Initial condition
+t_pred_mpc = t_eval.squeeze()                           # Time steps
+noise_var_mpc = 0.0                                     # Exploration noise to perturb controller
+Q_mpc = sparse.diags([5e3, 5e3, 1e2, 1e2])               # MPC state penalty matrix
+QN_mpc = Q                                              # MPC final state penalty matrix
+R_mpc = sparse.eye(m)                                   # MPC control penalty matrix
+D_mpc = sparse.diags([500,300,50,60])                   # MPC state constraint violation penalty matrix
 upper_bounds_mpc = array([np.Inf, np.Inf, np.Inf, np.Inf])  # MPC state constraints
-lower_bounds_mpc = -upper_bounds_mpc                # MPC state constraints
-umax_mpc = 5.                                       # MPC actuation constraint
-horizon_mpc = 0.4                                   # MPC time horizon
+lower_bounds_mpc = -upper_bounds_mpc                    # MPC state constraints
+umax_mpc = 5.                                           # MPC actuation constraint
+horizon_mpc = 0.4                                       # MPC time horizon
 
 
 
@@ -179,7 +178,6 @@ eigenfunction_basis.construct_basis(ub=upper_bounds, lb=lower_bounds)
 
 print('in {:.2f}s'.format(time.process_time()-t0))
 
-
 # Fit KEEDMD model:
 print(' - Fitting KEEDMD model...', end =" ")
 t0 = time.process_time()
@@ -205,11 +203,10 @@ print(' - Fitting EDMD model...', end =" ")
 t0 = time.process_time()
 edmd_model = Edmd(rbf_basis, n, l1=l1_edmd, l1_ratio=l1_ratio_edmd)
 X, X_d, Z, Z_dot, U, U_nom, t = edmd_model.process(xs, q_d, us, us_nom, ts)
-#edmd_model.fit(X, X_d, Z, Z_dot, U, U_nom)
-edmd_model.tune_fit(X, X_d, Z, Z_dot, U, U_nom, l1_ratio=l1_ratio_vals)
+edmd_model.fit(X, X_d, Z, Z_dot, U, U_nom)
+#edmd_model.tune_fit(X, X_d, Z, Z_dot, U, U_nom, l1_ratio=l1_ratio_vals)
 
 print('in {:.2f}s'.format(time.process_time()-t0))
-
 
 #%%
 #!  ==============================================  EVALUATE PERFORMANCE -- OPEN LOOP =========================================
@@ -404,91 +401,36 @@ outfile = open(folder + "/closed_loop.pickle", 'wb')
 dill.dump(data_list, outfile)
 outfile.close()
 
-
-#%%
-#!========================================  PLOT OPEN AND CLOSED LOOP RESULTS =========================================
-
-# Plot errors of different models and statistics, open loop
-ylabels = ['x', '$\\theta$', '$\\dot{x}$', '$\\dot{\\theta}$']
-figure(figsize=(6,8))
-for ii in range(n):
-    subplot(4, 1, ii+1)
-    plot(t_pred, np.abs(e_mean_nom[ii,:]), linewidth=2, label='Nominal', color='tab:gray')
-    fill_between(t_pred, np.zeros_like(e_mean_nom[ii,:]), e_std_nom[ii,:], alpha=0.2, color='tab:gray')
-
-    plot(t_pred, np.abs(e_mean_edmd[ii,:]), linewidth=2, label='$EDMD$', color='tab:green')
-    fill_between(t_pred, np.zeros_like(e_mean_edmd[ii, :]), e_std_edmd[ii, :], alpha=0.2, color='tab:green')
-
-    plot(t_pred, np.abs(e_mean_keedmd[ii,:]), linewidth=2, label='$KEEDMD$',color='tab:orange')
-    fill_between(t_pred, np.zeros_like(e_mean_keedmd[ii,:]), e_std_keedmd[ii, :], alpha=0.2,color='tab:orange')
-
-    ylabel(ylabels[ii])
-    grid()
-    if ii == 0:
-        title('Mean absolute open loop prediction error (+ 1 std)')
-    if ii == 1 or ii == 3:
-        ylim(0., 2.)
-    else:
-        ylim(0.,.5)
-xlabel('Time (s)')
-legend(fontsize=10, loc='upper left')
-show()
-
-#! Plot the closed loop trajectory:
-ylabels = ['$x$', '$\\theta$', '$\\dot{x}$', '$\\dot{\\theta}$']
-figure(figsize=(6,10))
-for ii in range(n):
-    subplot(n+1, 1, ii+1)
-    plot(t_pred, qd_mpc[ii,:], linestyle="--",linewidth=2, label='Reference')
-    plot(t_pred, xs_nom_mpc[ii, :], linewidth=2, label='Nominal', color='tab:gray')
-    plot(t_pred, xs_edmd_mpc[ii,:], linewidth=2, label='EDMD', color='tab:green')
-    plot(t_pred, xs_keedmd_mpc[ii,:], linewidth=2, label='KEEDMD',color='tab:orange')
-    ylabel(ylabels[ii])
-    grid()
-    if ii == 0:
-        title('Closed loop trajectory tracking performance')
-xlabel('Time (s)')
-legend(fontsize=10, loc='upper left')
-subplot(n + 1, 1, n + 1)
-plot(t_pred[:-1], us_nom_mpc[0, :], linewidth=2, label='Nominal', color='tab:gray')
-plot(t_pred[:-1], us_edmd_mpc[0, :], linewidth=2, label='EDMD', color='tab:green')
-plot(t_pred[:-1], us_keedmd_mpc[0, :], linewidth=2, label='KEEDMD', color='tab:orange')
-xlabel('Time (s)')
-ylabel('u')
-grid()
-show()
-
 #%%
 #!========================================  PLOT OPEN AND CLOSED LOOP RESULTS FOR PAPER =========================================
 
 # Plot errors of different models and statistics, open loop
-ylabels = ['$|e_x|$', '$|e_{\\theta}|$']
+ylabels = ['$e_x$', '$e_{\\theta}$']
 figure(figsize=(6,4))
 for ii in range(2):
     subplot(2, 1, ii+1)
-    plot(t_pred, np.abs(e_mean_nom[ii,:]), linewidth=2, label='Nominal', color='tab:gray')
-    fill_between(t_pred, np.zeros_like(e_mean_nom[ii,:]), e_std_nom[ii,:], alpha=0.2, color='tab:gray')
+    plot(t_pred, e_mean_nom[ii,:], linewidth=2, label='Nominal', color='tab:gray')
+    fill_between(t_pred, e_mean_nom[ii,:]-e_std_nom[ii,:], e_mean_nom[ii,:]+e_std_nom[ii,:], alpha=0.2, color='tab:gray')
 
-    plot(t_pred, np.abs(e_mean_edmd[ii,:]), linewidth=2, label='$EDMD$', color='tab:green')
-    fill_between(t_pred, np.zeros_like(e_mean_edmd[ii, :]), e_std_edmd[ii, :], alpha=0.2, color='tab:green')
+    plot(t_pred, e_mean_edmd[ii,:], linewidth=2, label='EDMD', color='tab:green')
+    fill_between(t_pred, e_mean_edmd[ii,:] - e_std_edmd[ii, :], e_mean_edmd[ii,:] + e_std_edmd[ii, :], alpha=0.2, color='tab:green')
 
-    plot(t_pred, np.abs(e_mean_keedmd[ii,:]), linewidth=2, label='$KEEDMD$',color='tab:orange')
-    fill_between(t_pred, np.zeros_like(e_mean_keedmd[ii,:]), e_std_keedmd[ii, :], alpha=0.2,color='tab:orange')
+    plot(t_pred, e_mean_keedmd[ii,:], linewidth=2, label='KEEDMD',color='tab:orange')
+    fill_between(t_pred, e_mean_keedmd[ii,:]- e_std_keedmd[ii, :], e_mean_keedmd[ii,:] + e_std_keedmd[ii, :], alpha=0.2,color='tab:orange')
 
     ylabel(ylabels[ii])
     grid()
     if ii == 0:
-        title('Mean absolute open loop prediction error (+ 1 std)')
-    if ii == 1 or ii == 3:
-        ylim(0., 2.)
+        title('Mean open loop prediction error (+/- 1 std)')
+        legend(fontsize=10, loc='upper left')
+        ylim(0., 1.)
     else:
-        ylim(0.,.5)
+        ylim(0., 4.)
+
 xlabel('Time (sec)')
-legend(fontsize=10, loc='lower right')
 savefig('core/examples/results/open_loop.pdf', format='pdf', dpi=2400)
 
-
-#! Plot the closed loop trajectory:
+# Plot the closed loop trajectory:
 ylabels = ['$x$', '$\\theta$']
 figure(figsize=(6,4))
 for ii in range(2):
@@ -501,8 +443,7 @@ for ii in range(2):
     grid()
     if ii == 0:
         title('Closed loop trajectory tracking with MPC')
+        legend(fontsize=10, loc='lower left')
 xlabel('Time (sec)')
-legend(fontsize=10, loc='lower right')
 savefig('core/examples/results/closed_loop.pdf', format='pdf', dpi=2400)
-
 show()
