@@ -1,8 +1,10 @@
 #%%
 """Cart Pendulum Example"""
+import matplotlib
 from matplotlib.pyplot import figure, grid, legend, plot, show, subplot, suptitle, title, ylim, xlabel, ylabel, fill_between, close
 import os
-from matplotlib.pyplot import figure, grid, legend, plot, show, subplot, title, savefig
+from matplotlib.pyplot import figure, grid, legend, plot, show, subplot, title, savefig, tight_layout
+from matplotlib.ticker import MaxNLocator
 from numpy import arange, array, concatenate
 from numpy import zeros, pi, random, interp, dot, multiply, asarray
 import numpy as np
@@ -105,7 +107,7 @@ q_d_pred = zeros((Ntraj_pred, N + 1, n))                # Desired trajectories (
 x_0_mpc = array([2., 0.25, 0., 0.])                     # Initial condition
 t_pred_mpc = t_eval.squeeze()                           # Time steps
 noise_var_mpc = 0.0                                     # Exploration noise to perturb controller
-Q_mpc = sparse.diags([5e3, 5e3, 1e2, 1e2])               # MPC state penalty matrix
+Q_mpc = sparse.diags([5e3, 3e3, 1e2, 1e2])               # MPC state penalty matrix
 QN_mpc = Q                                              # MPC final state penalty matrix
 R_mpc = sparse.eye(m)                                   # MPC control penalty matrix
 D_mpc = sparse.diags([500,300,50,60])                   # MPC state constraint violation penalty matrix
@@ -183,8 +185,8 @@ print(' - Fitting KEEDMD model...', end =" ")
 t0 = time.process_time()
 keedmd_model = Keedmd(eigenfunction_basis, n, l1_pos=l1_pos_keedmd, l1_ratio_pos=l1_pos_ratio_keedmd, l1_vel=l1_vel_keedmd, l1_ratio_vel=l1_vel_ratio_keedmd, l1_eig=l1_eig_keedmd, l1_ratio_eig=l1_eig_ratio_keedmd, K_p=K_p, K_d=K_d)
 X, X_d, Z, Z_dot, U, U_nom, t = keedmd_model.process(xs, q_d, us, us_nom, ts)
-keedmd_model.fit(X, X_d, Z, Z_dot, U, U_nom)
-#keedmd_model.tune_fit(X, X_d, Z, Z_dot, U, U_nom, l1_ratio=l1_ratio_vals)
+#keedmd_model.fit(X, X_d, Z, Z_dot, U, U_nom)
+keedmd_model.tune_fit(X, X_d, Z, Z_dot, U, U_nom, l1_ratio=l1_ratio_vals)
 
 print('in {:.2f}s'.format(time.process_time()-t0))
 
@@ -406,7 +408,7 @@ outfile.close()
 
 # Plot errors of different models and statistics, open loop
 ylabels = ['$e_x$', '$e_{\\theta}$']
-figure(figsize=(6,4))
+ax = figure(figsize=(6,5)).gca()
 for ii in range(2):
     subplot(2, 1, ii+1)
     plot(t_pred, e_mean_nom[ii,:], linewidth=2, label='Nominal', color='tab:gray')
@@ -423,16 +425,20 @@ for ii in range(2):
     if ii == 0:
         title('Mean open loop prediction error (+/- 1 std)')
         legend(fontsize=10, loc='upper left')
-        ylim(0., 1.)
+        ylim(-2., 2.)
     else:
-        ylim(0., 4.)
+        ylim(-4., 4.)
 
 xlabel('Time (sec)')
-savefig('core/examples/results/open_loop.pdf', format='pdf', dpi=2400)
+ax.yaxis.set_major_locator(MaxNLocator(integer=True))
+matplotlib.rcParams['pdf.fonttype'] = 42
+matplotlib.rcParams['ps.fonttype'] = 42
+tight_layout()
+savefig('core/examples/results/openloop_error.pdf', format='pdf', dpi=2400)
 
 # Plot the closed loop trajectory:
 ylabels = ['$x$', '$\\theta$']
-figure(figsize=(6,4))
+bx = figure(figsize=(6,5)).gca()
 for ii in range(2):
     subplot(2, 1, ii+1)
     plot(t_pred, qd_mpc[ii,:], linestyle="--",linewidth=2, label='Reference')
@@ -445,5 +451,9 @@ for ii in range(2):
         title('Closed loop trajectory tracking with MPC')
         legend(fontsize=10, loc='lower left')
 xlabel('Time (sec)')
-savefig('core/examples/results/closed_loop.pdf', format='pdf', dpi=2400)
+bx.yaxis.set_major_locator(MaxNLocator(integer=True))
+matplotlib.rcParams['pdf.fonttype'] = 42
+matplotlib.rcParams['ps.fonttype'] = 42
+tight_layout()
+savefig('core/examples/results/closedloop.pdf', format='pdf', dpi=2400)
 show()
