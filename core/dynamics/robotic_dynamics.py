@@ -98,8 +98,7 @@ class RoboticDynamics(SystemDynamics, AffineDynamics, PDDynamics):
 
     def drift(self, x, t):
         q, q_dot = reshape(x, (2, -1))
-        #print(x, q, q_dot)
-        return concatenate([q_dot, -solve(self.D(q), self.H(q, q_dot))])
+        return concatenate([q_dot, -solve(self.D(q), self.H(q, q_dot)).squeeze(axis=1)])
 
     def act(self, x, t):
         q = self.proportional(x, t)
