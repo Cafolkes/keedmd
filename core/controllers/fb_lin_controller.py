@@ -1,4 +1,3 @@
-from numpy import dot
 from numpy.linalg import solve
 
 from .controller import Controller
