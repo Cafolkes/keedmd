@@ -1,4 +1,3 @@
-from sklearn.metrics.pairwise import rbf_kernel
 from .basis_functions import BasisFunctions
 from .utils import rbf
 from numpy import array, atleast_2d, tile, diag, reshape

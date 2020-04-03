@@ -5,12 +5,11 @@ from matplotlib.pyplot import figure, grid, legend, plot, show, subplot, suptitl
     fill_between, savefig, close, text, tight_layout
 from matplotlib.ticker import MaxNLocator
 from datetime import datetime
-from numpy import arange, array, concatenate, cos, identity
-from numpy import linspace, ones, sin, tanh, tile, zeros, pi, random, interp, dot, zeros_like
+from numpy import array
+from numpy import linspace, random, zeros_like
 import numpy as np
 import scipy as sp
 import scipy.sparse as sparse
-import os
 import dill
 
 # KEEDMD
