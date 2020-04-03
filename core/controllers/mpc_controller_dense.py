@@ -1,19 +1,16 @@
 
 
 from numpy import zeros
-from numpy.linalg import eigvals
 import time
 
 import numpy as np
-import scipy as sp
-import scipy.io as sio
 import scipy.sparse as sparse
+from scipy.signal import cont2discrete
 import osqp
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 
 from .controller import Controller
-from ..learning.edmd import Edmd
 
 
 def block_diag(M,n):
@@ -75,7 +72,8 @@ class MPCControllerDense(Controller):
             self.edmd_object = edmd_object
         else:
             self.C = sparse.eye(ns)
-        lin_model_d = sp.signal.cont2discrete((Ac,Bc,self.C,zeros((ns,1))),dt)
+
+        lin_model_d = cont2discrete((Ac,Bc,self.C,zeros((ns,1))),dt)
         Ad = sparse.csc_matrix(lin_model_d[0]) #TODO: If bad behavior, delete this
         Bd = sparse.csc_matrix(lin_model_d[1]) #TODO: If bad behavior, delete this
         self.plotMPC = plotMPC

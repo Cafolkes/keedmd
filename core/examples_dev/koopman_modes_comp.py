@@ -5,11 +5,11 @@ from matplotlib.pyplot import figure, grid, legend, plot, show, subplot, suptitl
 from numpy import arange, array, concatenate, cos, identity
 from numpy import linspace, ones, sin, tanh, tile, zeros, pi, random, interp, dot, multiply, asarray, zeros_like
 import numpy as np
-from ..dynamics import RoboticDynamics, LinearSystemDynamics, AffineDynamics, SystemDynamics
-from ..controllers import PDController, OpenLoopController, MPCController, MPCControllerDense
-from ..learning import KoopmanEigenfunctions, RBF, Edmd, Keedmd, Monomials
-from ..systems import ClosedSubspaceSys
-from ..learning.utils import calc_koopman_modes, calc_reduced_mdl, differentiate_vec
+from core.dynamics import RoboticDynamics, LinearSystemDynamics, AffineDynamics, SystemDynamics
+from core.controllers import PDController, OpenLoopController, MPCController, MPCControllerDense
+from core.learning import KoopmanEigenfunctions, RBF, Edmd, Keedmd, Monomials
+from core.systems import ClosedSubspaceSys
+from core.learning.utils import calc_koopman_modes, calc_reduced_mdl, differentiate_vec
 import time
 
 #%%

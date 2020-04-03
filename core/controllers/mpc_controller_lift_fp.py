@@ -1,17 +1,11 @@
 
 
 from numpy import zeros
-from numpy.linalg import eigvals
-import time
-
 import numpy as np
 import scipy as sp
-import scipy.io as sio
 import scipy.sparse as sparse
 import osqp
 import matplotlib.pyplot as plt
-import matplotlib.cm as cm
-
 
 from .controller import Controller
 from ..learning.edmd import Edmd

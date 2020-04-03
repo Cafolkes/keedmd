@@ -1,6 +1,4 @@
 from numpy import zeros, random
-
-
 from .controller import Controller
 
 class AggregatedMpcController(Controller):

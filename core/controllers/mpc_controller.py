@@ -1,11 +1,6 @@
 
 
-from numpy import zeros
-from numpy.linalg import eigvals
-
 import numpy as np
-import scipy as sp
-import scipy.io as sio
 import scipy.sparse as sparse
 import osqp
 import matplotlib.pyplot as plt
