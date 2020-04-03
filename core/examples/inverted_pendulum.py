@@ -1,7 +1,6 @@
 #%%
 """Inverted Pendulum Example"""
 from matplotlib.pyplot import figure, grid, legend, plot, show, subplot, suptitle, title, ylim, xlabel, ylabel, fill_between, close
-import os
 from matplotlib.pyplot import figure, grid, legend, plot, show, subplot, suptitle, title, scatter, savefig, hist
 from numpy import arange, array, concatenate, cos, identity
 from numpy import linspace, ones, sin, tanh, tile, zeros, pi, random, interp, dot, multiply, asarray, zeros_like
@@ -11,7 +10,6 @@ from ..dynamics import RoboticDynamics, LinearSystemDynamics, AffineDynamics, Sy
 from ..controllers import PDController, OpenLoopController, MPCController, MPCControllerDense
 from ..learning import KoopmanEigenfunctions, RBF, Edmd, Keedmd, plot_trajectory, IdentityBF
 import time
-import dill
 import control
 import scipy.sparse as sparse
 

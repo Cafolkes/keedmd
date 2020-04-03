@@ -1,7 +1,7 @@
 #%%
 """Cart Pendulum Example"""
 import matplotlib
-from matplotlib.pyplot import figure, grid, legend, plot, show, subplot, suptitle, title, ylim, xlabel, ylabel, fill_between, close
+from matplotlib.pyplot import ylim, xlabel, ylabel, fill_between
 import os
 from matplotlib.pyplot import figure, grid, legend, plot, show, subplot, title, savefig, tight_layout
 from matplotlib.ticker import MaxNLocator

@@ -7,7 +7,6 @@ from matplotlib.pyplot import figure, grid, legend, plot, show, subplot, suptitl
 from numpy import arange, array, concatenate, cos, identity
 from numpy import linspace, ones, sin, tanh, tile, zeros, pi, random, interp, dot, multiply, asarray
 import numpy as np
-#from numpy.random import uniform
 from scipy.io import loadmat, savemat
 from sys import argv
 from ..systems import CartPole

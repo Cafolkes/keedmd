@@ -1,34 +1,16 @@
 #%%
 """Cart Pendulum Example"""
-from matplotlib.pyplot import figure, grid, legend, plot, show, subplot, suptitle, title, ylim, xlabel, ylabel, fill_between, close
-from os import path
-import os
-import sys
-from matplotlib.pyplot import figure, grid, legend, plot, show, subplot, suptitle, title, scatter, savefig, hist
-from numpy import arange, array, concatenate, cos, identity
-from numpy import linspace, ones, sin, tanh, tile, zeros, pi, random, interp, dot, multiply, asarray
-import numpy as np
-#from numpy.random import uniform
-from scipy.io import loadmat, savemat
-from sys import argv
+from scipy.io import savemat
 from core.systems import CartPole
-import time
-import dill
-import control
-from datetime import datetime
 import random as veryrandom
 import scipy.sparse as sparse
-from matplotlib.pyplot import figure, grid, legend, plot, show, subplot, suptitle, title, ylim, xlabel, ylabel, \
-    fill_between
-from matplotlib.pyplot import figure, grid, legend, plot, show, subplot, suptitle, title, scatter, savefig, hist
-from numpy import arange, array, concatenate, cos, identity, dstack
-from numpy import linspace, ones, sin, tanh, tile, zeros, pi, random, interp, dot, multiply, asarray, zeros_like
+from numpy import arange, array, concatenate
+from numpy import zeros, pi, interp, dot, asarray
 import numpy as np
 from core.dynamics import LinearSystemDynamics
-from core.controllers import PDController, OpenLoopController, MPCController, MPCControllerDense
-from core.learning import KoopmanEigenfunctions, RBF, Edmd, Keedmd, plot_trajectory, IdentityBF
+from core.controllers import PDController, MPCController
+from core.learning import KoopmanEigenfunctions
 import time
-import dill
 from pathlib import Path
 class CartPoleTrajectory(CartPole):
     def __init__(self, robotic_dynamics, q_d, t_d):

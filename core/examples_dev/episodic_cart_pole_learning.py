@@ -1,22 +1,12 @@
 """Cart Pendulum Example"""
-from matplotlib.pyplot import figure, grid, legend, plot, show, subplot, suptitle, title, ylim, xlabel, ylabel, \
-    fill_between
-from os import path
-import sys
-from matplotlib.pyplot import figure, grid, legend, plot, show, subplot, suptitle, title, scatter, savefig, text
-from numpy import arange, array, concatenate, cos, identity
-from numpy import linspace, ones, sin, tanh, tile, zeros, pi, random, interp, dot
-import numpy as np
-# from numpy.random import uniform
-from scipy.io import loadmat, savemat
-from sys import argv
+from matplotlib.pyplot import figure, grid, plot, show, subplot, title
+from numpy import arange, array, concatenate
+from numpy import linspace, ones, zeros, pi, interp, dot
+from scipy.io import savemat
 from core.systems import CartPole
 from core.dynamics import LinearSystemDynamics
-from core.controllers import PDController, OpenLoopController, MPCController
-from core.learning import KoopmanEigenfunctions, RBF, Edmd, Keedmd, plot_trajectory_ep
-import time
-
-import random as veryrandom
+from core.controllers import MPCController
+from core.learning import KoopmanEigenfunctions, Keedmd, plot_trajectory_ep
 import scipy.sparse as sparse
 from core.handlers import SimulationHandler
 

@@ -1,4 +1,4 @@
-from numpy import array, concatenate, cos, dot, reshape, sin, zeros
+from numpy import array
 
 from core.dynamics import SystemDynamics
 
