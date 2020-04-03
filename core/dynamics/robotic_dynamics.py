@@ -1,4 +1,4 @@
-from numpy import array, concatenate, dot, reshape, zeros
+from numpy import concatenate, dot, reshape, zeros, atleast_1d
 from numpy.linalg import solve
 
 from .affine_dynamics import AffineDynamics
@@ -98,7 +98,7 @@ class RoboticDynamics(SystemDynamics, AffineDynamics, PDDynamics):
 
     def drift(self, x, t):
         q, q_dot = reshape(x, (2, -1))
-        return concatenate([q_dot, -solve(self.D(q), self.H(q, q_dot)).squeeze(axis=1)])
+        return concatenate([q_dot, atleast_1d(-solve(self.D(q), self.H(q, q_dot)).squeeze())])
 
     def act(self, x, t):
         q = self.proportional(x, t)
