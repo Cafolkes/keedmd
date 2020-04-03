@@ -5,7 +5,7 @@ The code in this repository was prepared to implement the methodologies describe
 
 1. C. Folkestad, D. Pastor, I. Mezic, R. Mohr, M. Fonoberova, J. Burdick, "Extended Dynamic Mode Decomposition with Learned Koopman Eigenfunction for Prediction and Control", in *Proc. American Control Conf*, (accepted) 2020 
 
-2. C. Folkestad, D. Pastor, J. W. Burdick, "EEpisodic Koopman Learning of Nonlinear Robot Dynamics with Application to Fast Multirotor Landing", in *Proc. International Conference on Robotics and Automation*, (accepted) 2020 
+2. C. Folkestad, D. Pastor, J. W. Burdick, "Episodic Koopman Learning of Nonlinear Robot Dynamics with Application to Fast Multirotor Landing", in *Proc. International Conference on Robotics and Automation*, (accepted) 2020 
 
 The simulation framework of this repository is adapted from the [Learning and Control Core Library](https://github.com/learning-and-control/core).
 
