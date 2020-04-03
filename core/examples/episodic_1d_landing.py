@@ -320,12 +320,16 @@ ctrl_effort = array(ctrl_effort_arr)[:,0]
 
 track_error_norm = track_error/ track_error[0]
 ctrl_effort_norm = ctrl_effort/ctrl_effort[0]
+mpc_cost = np.array([sum(np.diag(np.dot(np.dot((Xval_ep_arr[ii,:,:]-Xd_ep_arr[0,0,:,:].T).T,Q), Xval_ep_arr[ii,:,:]-Xd_ep_arr[0,0,:,:].T))) + sum(np.diag(np.dot(np.dot(Uval_ep_arr[ii,:,:].T,R),Uval_ep_arr[ii,:,:]))) for ii in range(Xval_ep_arr.shape[0])])
+mpc_cost_norm = mpc_cost/mpc_cost[0]
+
 
 figure(figsize=(12, 9)).gca()
 ax = subplot(3, 1, 1)
 title('Tracking error and control effort improvement')
-ax.plot(range(len(track_error_norm)), track_error_norm, linewidth=2, label='$\int (z-z_d)^2 dt$ (normalized)')
-ax.plot(range(len(ctrl_effort_norm)), ctrl_effort_norm, linewidth=2, label='$\int u^2 dt$ (normalized)')
+ax.plot(range(len(mpc_cost_norm)), mpc_cost_norm, 'k', linewidth=2, label='$\int (x-x_d)^TQ(x-x_d)+u^TRu \, dt$ (normalized)')
+ax.plot(range(len(track_error_norm)), track_error_norm, linewidth=0.5, label='$\int (z-z_d)^2 dt$ (normalized)')
+ax.plot(range(len(ctrl_effort_norm)), ctrl_effort_norm, linewidth=0.5, label='$\int u^2 dt$ (normalized)')
 ax.xaxis.set_major_locator(MaxNLocator(integer=True))
 ylabel('Normalized error/effort')
 xlabel('Episode')
