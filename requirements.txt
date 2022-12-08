@@ -1,4 +1,4 @@
-certifi==2019.11.28
+certifi==2022.12.7
 cffi==1.13.2
 control==0.8.3
 cvxpy==1.0.25
